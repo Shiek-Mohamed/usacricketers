@@ -5,8 +5,13 @@ import ReactMarkdown from "react-markdown"
 import { useAppStore } from "@/lib/store"
 import { useArticle, useArticles } from "@/lib/use-data"
 import type { Article } from "@/lib/types"
-import { ArticleCard } from "@/components/cricket/article-card"
 import { timeAgo } from "@/components/cricket/ui"
+import { InnerPageLayout } from "@/components/site/inner-layout"
+import {
+  ArticleListWidget,
+  FeaturedArticlesWidget,
+  NewsletterWidget,
+} from "@/components/site/sidebar-widgets"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -211,91 +216,86 @@ export function ArticleDetailView() {
     : []
 
   return (
-    <div className="space-y-5">
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => navigate("news")}
-        className="gap-1 self-start"
-      >
-        <ChevronLeft className="h-4 w-4" /> Back to news
-      </Button>
+    <InnerPageLayout
+      sidebar={
+        <>
+          {related.length > 0 && (
+            <ArticleListWidget title="Related Stories" articles={related} />
+          )}
+          <FeaturedArticlesWidget articles={allArticles ?? []} />
+          <NewsletterWidget />
+        </>
+      }
+    >
+      <div className="space-y-5">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate("news")}
+          className="gap-1 self-start"
+        >
+          <ChevronLeft className="h-4 w-4" /> Back to news
+        </Button>
 
-      <article className="space-y-4">
-        {/* Hero */}
-        <header className="space-y-3">
-          <Badge className="bg-primary text-primary-foreground">
-            {article.category}
-          </Badge>
-          <h1 className="text-2xl font-bold leading-tight sm:text-3xl">
-            {article.title}
-          </h1>
-          <p className="text-base text-muted-foreground sm:text-lg">
-            {article.excerpt}
-          </p>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1">
-              <User className="h-3.5 w-3.5" />
-              {article.author}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Clock className="h-3.5 w-3.5" />
-              {timeAgo(article.publishedAt)}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Clock className="h-3.5 w-3.5" />
-              {readTime} min read
-            </span>
+        <article className="space-y-4">
+          {/* Hero */}
+          <header className="space-y-3">
+            <Badge className="bg-primary text-primary-foreground">
+              {article.category}
+            </Badge>
+            <h1 className="text-2xl font-bold leading-tight sm:text-3xl">
+              {article.title}
+            </h1>
+            <p className="text-base text-muted-foreground sm:text-lg">
+              {article.excerpt}
+            </p>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1">
+                <User className="h-3.5 w-3.5" />
+                {article.author}
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <Clock className="h-3.5 w-3.5" />
+                {timeAgo(article.publishedAt)}
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <Clock className="h-3.5 w-3.5" />
+                {readTime} min read
+              </span>
+            </div>
+          </header>
+
+          <ArticleHeroImage url={article.imageUrl} />
+
+          {/* Content */}
+          <div className="max-w-none">
+            <ArticleMarkdown content={article.content} />
           </div>
-        </header>
 
-        <ArticleHeroImage url={article.imageUrl} />
+          {/* Tags */}
+          {tags.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 border-t pt-4">
+              <span className="text-xs font-semibold text-muted-foreground">
+                Tags:
+              </span>
+              {tags.map((t) => (
+                <Badge key={t} variant="secondary">
+                  {t}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </article>
 
-        {/* Content */}
-        <div className="max-w-none">
-          <ArticleMarkdown content={article.content} />
-        </div>
-
-        {/* Tags */}
-        {tags.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 border-t pt-4">
-            <span className="text-xs font-semibold text-muted-foreground">
-              Tags:
-            </span>
-            {tags.map((t) => (
-              <Badge key={t} variant="secondary">
-                {t}
-              </Badge>
-            ))}
-          </div>
-        )}
-      </article>
-
-      {/* Related */}
-      {related.length > 0 && (
-        <section className="border-t pt-5">
-          <div className="mb-3 flex items-center gap-2">
-            <span className="h-5 w-1 rounded-full bg-red-600" />
-            <h2 className="text-sm font-extrabold uppercase tracking-tight sm:text-base">
-              Related Stories
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {related.map((a) => (
-              <ArticleCard key={a.id} article={a} variant="compact" />
-            ))}
-          </div>
-        </section>
-      )}
-
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => navigate("news")}
-        className="gap-1"
-      >
-        <ArrowLeft className="h-4 w-4" /> More news
-      </Button>
-    </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigate("news")}
+          className="gap-1"
+        >
+          <ArrowLeft className="h-4 w-4" /> More news
+        </Button>
+      </div>
+    </InnerPageLayout>
   )
 }

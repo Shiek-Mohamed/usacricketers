@@ -6,6 +6,12 @@ import { useTeam, usePlayers, useMatches } from "@/lib/use-data"
 import { useAppStore } from "@/lib/store"
 import { TeamBadge, PlayerAvatar } from "@/components/cricket/ui"
 import { MiniScorecard } from "@/components/cricket/mini-scorecard"
+import { InnerPageLayout } from "@/components/site/inner-layout"
+import {
+  TeamInfoWidget,
+  SquadSummaryWidget,
+  RecentResultsWidget,
+} from "@/components/site/sidebar-widgets"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -93,120 +99,132 @@ export function TeamDetailView() {
   }
 
   return (
-    <section className="space-y-5">
-      <Button
-        variant="ghost"
-        size="sm"
-        className="-ml-2"
-        onClick={() => navigate("teams")}
-      >
-        <ArrowLeft className="size-4" /> Back to Teams
-      </Button>
+    <InnerPageLayout
+      sidebar={
+        <>
+          <TeamInfoWidget team={team} />
+          {players && players.length > 0 && (
+            <SquadSummaryWidget players={players} />
+          )}
+          <RecentResultsWidget matches={recentMatches} title="Team Results" />
+        </>
+      }
+    >
+      <div className="space-y-5">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="-ml-2"
+          onClick={() => navigate("teams")}
+        >
+          <ArrowLeft className="size-4" /> Back to Teams
+        </Button>
 
-      {/* Header */}
-      <Card className="gap-0 overflow-hidden py-0">
-        <div
-          className="h-2 w-full"
-          style={{ background: team.primaryColor }}
-          aria-hidden
-        />
-        <CardContent className="flex flex-col items-start gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
-          <TeamBadge team={team} size="xl" />
-          <div className="min-w-0 flex-1 space-y-1">
-            <h1 className="text-3xl font-extrabold tracking-tight">{team.name}</h1>
-            <p className="text-sm font-medium text-muted-foreground">
-              {team.shortName} · {team.country}
-            </p>
-            {team.description && (
-              <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                {team.description}
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Squad */}
-      <Card className="gap-0 py-0">
-        <CardHeader className="border-b px-5 sm:px-6">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Users className="size-4 text-emerald-600" />
-            Squad
-            <span className="ml-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-              {players?.length ?? 0}
-            </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className={cn("p-0", SCROLLBAR_CLASS)}>
+        {/* Header */}
+        <Card className="gap-0 overflow-hidden py-0">
           <div
-            className={cn(
-              "max-h-96 overflow-y-auto",
-              SCROLLBAR_CLASS
-            )}
-          >
-            {playersLoading ? (
-              <div className="space-y-2 p-4">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <Skeleton key={i} className="h-14 w-full rounded-md" />
-                ))}
-              </div>
-            ) : players && players.length > 0 ? (
-              <ul className="divide-y">
-                {ROLE_GROUPS.map((grp) => {
-                  const list = grouped[grp.label] ?? []
-                  if (list.length === 0) return null
-                  return (
-                    <li key={grp.label}>
-                      <div className="bg-muted/40 px-5 py-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                        {grp.label} ({list.length})
-                      </div>
-                      {list.map((p) => (
-                        <PlayerRow
-                          key={p.id}
-                          player={p}
-                          onClick={() => navigate("player-detail", p.id)}
-                        />
-                      ))}
-                    </li>
-                  )
-                })}
-              </ul>
-            ) : (
-              <div className="p-6 text-center text-sm text-muted-foreground">
-                No players in this squad yet.
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+            className="h-2 w-full"
+            style={{ background: team.primaryColor }}
+            aria-hidden
+          />
+          <CardContent className="flex flex-col items-start gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
+            <TeamBadge team={team} size="xl" />
+            <div className="min-w-0 flex-1 space-y-1">
+              <h1 className="text-3xl font-extrabold tracking-tight">{team.name}</h1>
+              <p className="text-sm font-medium text-muted-foreground">
+                {team.shortName} · {team.country}
+              </p>
+              {team.description && (
+                <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                  {team.description}
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* Recent matches */}
-      <div>
-        <h2 className="mb-3 flex items-center gap-2 text-lg font-bold">
-          <CalendarClock className="size-5 text-emerald-600" />
-          Recent Matches
-        </h2>
-        {matchesLoading ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-40 w-full rounded-lg" />
-            ))}
-          </div>
-        ) : recentMatches.length === 0 ? (
-          <Card>
-            <CardContent className="py-10 text-center text-sm text-muted-foreground">
-              No recent matches for this team.
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {recentMatches.map((m) => (
-              <MiniScorecard key={m.id} match={m} />
-            ))}
-          </div>
-        )}
+        {/* Squad */}
+        <Card className="gap-0 py-0">
+          <CardHeader className="border-b px-5 sm:px-6">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Users className="size-4 text-emerald-600" />
+              Squad
+              <span className="ml-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                {players?.length ?? 0}
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className={cn("p-0", SCROLLBAR_CLASS)}>
+            <div
+              className={cn(
+                "max-h-96 overflow-y-auto",
+                SCROLLBAR_CLASS
+              )}
+            >
+              {playersLoading ? (
+                <div className="space-y-2 p-4">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <Skeleton key={i} className="h-14 w-full rounded-md" />
+                  ))}
+                </div>
+              ) : players && players.length > 0 ? (
+                <ul className="divide-y">
+                  {ROLE_GROUPS.map((grp) => {
+                    const list = grouped[grp.label] ?? []
+                    if (list.length === 0) return null
+                    return (
+                      <li key={grp.label}>
+                        <div className="bg-muted/40 px-5 py-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                          {grp.label} ({list.length})
+                        </div>
+                        {list.map((p) => (
+                          <PlayerRow
+                            key={p.id}
+                            player={p}
+                            onClick={() => navigate("player-detail", p.id)}
+                          />
+                        ))}
+                      </li>
+                    )
+                  })}
+                </ul>
+              ) : (
+                <div className="p-6 text-center text-sm text-muted-foreground">
+                  No players in this squad yet.
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Recent matches */}
+        <div>
+          <h2 className="mb-3 flex items-center gap-2 text-lg font-bold">
+            <CalendarClock className="size-5 text-emerald-600" />
+            Recent Matches
+          </h2>
+          {matchesLoading ? (
+            <div className="grid grid-cols-1 gap-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-40 w-full rounded-lg" />
+              ))}
+            </div>
+          ) : recentMatches.length === 0 ? (
+            <Card>
+              <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                No recent matches for this team.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {recentMatches.map((m) => (
+                <MiniScorecard key={m.id} match={m} />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    </section>
+    </InnerPageLayout>
   )
 }
 

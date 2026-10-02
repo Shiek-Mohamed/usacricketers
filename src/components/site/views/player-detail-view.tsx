@@ -17,9 +17,15 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-import { usePlayer } from "@/lib/use-data"
+import { usePlayer, usePlayers } from "@/lib/use-data"
 import { useAppStore } from "@/lib/store"
 import { PlayerAvatar, TeamBadge } from "@/components/cricket/ui"
+import { InnerPageLayout } from "@/components/site/inner-layout"
+import {
+  PlayerSummaryWidget,
+  PlayerInfoWidget,
+  TeammatesWidget,
+} from "@/components/site/sidebar-widgets"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -39,6 +45,7 @@ export function PlayerDetailView() {
   const id = useAppStore((s) => s.id)
   const navigate = useAppStore((s) => s.navigate)
   const { data: player, loading } = usePlayer(id)
+  const { data: teammates } = usePlayers(player?.teamId)
 
   const battingChartData = useMemo(() => {
     if (!player) return []
@@ -89,214 +96,226 @@ export function PlayerDetailView() {
   }
 
   return (
-    <section className="space-y-5">
-      <Button
-        variant="ghost"
-        size="sm"
-        className="-ml-2"
-        onClick={() => navigate("players")}
-      >
-        <ArrowLeft className="size-4" /> Back to Players
-      </Button>
-
-      {/* Header */}
-      <Card className="gap-0 overflow-hidden py-0">
-        <div
-          className="h-2 w-full"
-          style={{
-            background: player.team
-              ? player.team.primaryColor
-              : "#475569",
-          }}
-          aria-hidden
-        />
-        <CardContent className="flex flex-col items-start gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
-          <PlayerAvatar
-            name={player.name}
-            team={player.team}
-            size="xl"
-          />
-          <div className="min-w-0 flex-1 space-y-1.5">
-            <h1 className="text-3xl font-extrabold tracking-tight">
-              {player.name}
-            </h1>
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              {player.team && (
-                <button
-                  className="flex items-center gap-1.5 rounded-full px-1 py-0.5 transition-colors hover:bg-accent"
-                  onClick={() =>
-                    player.team && navigate("team-detail", player.team.id)
-                  }
-                >
-                  <TeamBadge team={player.team} size="sm" />
-                  <span className="font-semibold text-foreground">
-                    {player.team.name}
-                  </span>
-                </button>
-              )}
-              <Badge variant="secondary">{player.role}</Badge>
-            </div>
-            {player.bio && (
-              <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                {player.bio}
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Style chips */}
-      <div className="flex flex-wrap gap-2 text-xs">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 font-medium">
-          <Target className="size-3.5 text-emerald-600" />
-          {player.battingStyle}
-        </span>
-        {player.bowlingStyle && (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 font-medium">
-            <Disc className="size-3.5 text-amber-600" />
-            {player.bowlingStyle}
-          </span>
-        )}
-      </div>
-
-      {/* Batting stats */}
-      <Card className="gap-0 py-0">
-        <CardHeader className="border-b px-5 sm:px-6">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <BarChart3 className="size-4 text-emerald-600" />
-            Batting Statistics
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <BattingTable stats={player.battingStats} />
-        </CardContent>
-      </Card>
-
-      {/* Batting chart */}
-      <Card className="gap-2 py-4">
-        <CardHeader className="px-5 sm:px-6">
-          <CardTitle className="text-sm font-semibold">
-            Batting Highlights
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="px-2 sm:px-6">
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={battingChartData}
-                margin={{ top: 10, right: 16, bottom: 0, left: 0 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  className="stroke-border"
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="name"
-                  tick={{ fontSize: 11 }}
-                  className="text-muted-foreground"
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 11 }}
-                  className="text-muted-foreground"
-                  axisLine={false}
-                  tickLine={false}
-                  width={36}
-                />
-                <Tooltip
-                  cursor={{ fill: "rgba(0,0,0,0.04)" }}
-                  contentStyle={{
-                    fontSize: 12,
-                    borderRadius: 8,
-                    border: "1px solid hsl(var(--border))",
-                  }}
-                />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                  {battingChartData.map((d) => (
-                    <Cell key={d.name} fill={d.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Bowling stats (if any) */}
-      {player.bowlingStats && (
+    <InnerPageLayout
+      sidebar={
         <>
-          <Card className="gap-0 py-0">
-            <CardHeader className="border-b px-5 sm:px-6">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Disc className="size-4 text-amber-600" />
-                Bowling Statistics
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <BowlingTable stats={player.bowlingStats} />
-            </CardContent>
-          </Card>
-
-          <Card className="gap-2 py-4">
-            <CardHeader className="px-5 sm:px-6">
-              <CardTitle className="text-sm font-semibold">
-                Bowling Highlights
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-2 sm:px-6">
-              <div className="h-56 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={bowlingChartData}
-                    margin={{ top: 10, right: 16, bottom: 0, left: 0 }}
-                  >
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      className="stroke-border"
-                      vertical={false}
-                    />
-                    <XAxis
-                      dataKey="name"
-                      tick={{ fontSize: 11 }}
-                      className="text-muted-foreground"
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 11 }}
-                      className="text-muted-foreground"
-                      axisLine={false}
-                      tickLine={false}
-                      width={36}
-                    />
-                    <Tooltip
-                      cursor={{ fill: "rgba(0,0,0,0.04)" }}
-                      contentStyle={{
-                        fontSize: 12,
-                        borderRadius: 8,
-                        border: "1px solid hsl(var(--border))",
-                      }}
-                    />
-                    <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                      {bowlingChartData.map((d) => (
-                        <Cell key={d.name} fill={d.color} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+          <PlayerSummaryWidget player={player} />
+          <PlayerInfoWidget player={player} />
+          {teammates && teammates.length > 1 && (
+            <TeammatesWidget players={teammates} excludeId={id ?? undefined} />
+          )}
         </>
-      )}
+      }
+    >
+      <div className="space-y-5">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="-ml-2"
+          onClick={() => navigate("players")}
+        >
+          <ArrowLeft className="size-4" /> Back to Players
+        </Button>
 
-      <Separator />
-      <p className="text-[11px] text-muted-foreground">
-        All stats are career aggregates across formats as maintained by the CMS.
-      </p>
-    </section>
+        {/* Header */}
+        <Card className="gap-0 overflow-hidden py-0">
+          <div
+            className="h-2 w-full"
+            style={{
+              background: player.team
+                ? player.team.primaryColor
+                : "#475569",
+            }}
+            aria-hidden
+          />
+          <CardContent className="flex flex-col items-start gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
+            <PlayerAvatar
+              name={player.name}
+              team={player.team}
+              size="xl"
+            />
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <h1 className="text-3xl font-extrabold tracking-tight">
+                {player.name}
+              </h1>
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                {player.team && (
+                  <button
+                    className="flex items-center gap-1.5 rounded-full px-1 py-0.5 transition-colors hover:bg-accent"
+                    onClick={() =>
+                      player.team && navigate("team-detail", player.team.id)
+                    }
+                  >
+                    <TeamBadge team={player.team} size="sm" />
+                    <span className="font-semibold text-foreground">
+                      {player.team.name}
+                    </span>
+                  </button>
+                )}
+                <Badge variant="secondary">{player.role}</Badge>
+              </div>
+              {player.bio && (
+                <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                  {player.bio}
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Style chips */}
+        <div className="flex flex-wrap gap-2 text-xs">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 font-medium">
+            <Target className="size-3.5 text-emerald-600" />
+            {player.battingStyle}
+          </span>
+          {player.bowlingStyle && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 font-medium">
+              <Disc className="size-3.5 text-amber-600" />
+              {player.bowlingStyle}
+            </span>
+          )}
+        </div>
+
+        {/* Batting stats */}
+        <Card className="gap-0 py-0">
+          <CardHeader className="border-b px-5 sm:px-6">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <BarChart3 className="size-4 text-emerald-600" />
+              Batting Statistics
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <BattingTable stats={player.battingStats} />
+          </CardContent>
+        </Card>
+
+        {/* Batting chart */}
+        <Card className="gap-2 py-4">
+          <CardHeader className="px-5 sm:px-6">
+            <CardTitle className="text-sm font-semibold">
+              Batting Highlights
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-2 sm:px-6">
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={battingChartData}
+                  margin={{ top: 10, right: 16, bottom: 0, left: 0 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    className="stroke-border"
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 11 }}
+                    className="text-muted-foreground"
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    className="text-muted-foreground"
+                    axisLine={false}
+                    tickLine={false}
+                    width={36}
+                  />
+                  <Tooltip
+                    cursor={{ fill: "rgba(0,0,0,0.04)" }}
+                    contentStyle={{
+                      fontSize: 12,
+                      borderRadius: 8,
+                      border: "1px solid hsl(var(--border))",
+                    }}
+                  />
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                    {battingChartData.map((d) => (
+                      <Cell key={d.name} fill={d.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Bowling stats (if any) */}
+        {player.bowlingStats && (
+          <>
+            <Card className="gap-0 py-0">
+              <CardHeader className="border-b px-5 sm:px-6">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Disc className="size-4 text-amber-600" />
+                  Bowling Statistics
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <BowlingTable stats={player.bowlingStats} />
+              </CardContent>
+            </Card>
+
+            <Card className="gap-2 py-4">
+              <CardHeader className="px-5 sm:px-6">
+                <CardTitle className="text-sm font-semibold">
+                  Bowling Highlights
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-2 sm:px-6">
+                <div className="h-56 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={bowlingChartData}
+                      margin={{ top: 10, right: 16, bottom: 0, left: 0 }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        className="stroke-border"
+                        vertical={false}
+                      />
+                      <XAxis
+                        dataKey="name"
+                        tick={{ fontSize: 11 }}
+                        className="text-muted-foreground"
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 11 }}
+                        className="text-muted-foreground"
+                        axisLine={false}
+                        tickLine={false}
+                        width={36}
+                      />
+                      <Tooltip
+                        cursor={{ fill: "rgba(0,0,0,0.04)" }}
+                        contentStyle={{
+                          fontSize: 12,
+                          borderRadius: 8,
+                          border: "1px solid hsl(var(--border))",
+                        }}
+                      />
+                      <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                        {bowlingChartData.map((d) => (
+                          <Cell key={d.name} fill={d.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
+
+        <Separator />
+        <p className="text-[11px] text-muted-foreground">
+          All stats are career aggregates across formats as maintained by the CMS.
+        </p>
+      </div>
+    </InnerPageLayout>
   )
 }
 

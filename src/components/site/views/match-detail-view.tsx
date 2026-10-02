@@ -11,11 +11,15 @@ import {
   formatMatchTime,
 } from "@/components/cricket/ui"
 import { ScorecardView } from "@/components/cricket/scorecard"
+import { InnerPageLayout } from "@/components/site/inner-layout"
+import {
+  MatchInfoWidget,
+  RecentResultsWidget,
+} from "@/components/site/sidebar-widgets"
+import { useMatches } from "@/lib/use-data"
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -23,7 +27,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
   ChevronLeft,
   MapPin,
-  Users,
   Trophy,
   CalendarDays,
   Info,
@@ -120,28 +123,6 @@ function MatchHeaderCard({ match }: { match: Match }) {
   )
 }
 
-function InfoCard({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: React.ElementType
-  label: string
-  value: string
-}) {
-  return (
-    <Card className="p-4">
-      <div className="mb-1.5 flex items-center gap-2 text-muted-foreground">
-        <Icon className="h-3.5 w-3.5" />
-        <span className="text-[11px] font-bold uppercase tracking-wide">
-          {label}
-        </span>
-      </div>
-      <p className="text-sm font-medium">{value}</p>
-    </Card>
-  )
-}
-
 function MatchDetailSkeleton() {
   return (
     <div className="space-y-4">
@@ -168,6 +149,7 @@ export function MatchDetailView() {
   const id = useAppStore((s) => s.id)
   const navigate = useAppStore((s) => s.navigate)
   const { data, loading, error } = useMatch(id)
+  const { data: allMatches } = useMatches()
 
   if (loading) return <MatchDetailSkeleton />
 
@@ -197,79 +179,54 @@ export function MatchDetailView() {
   const sc = match.scorecard
 
   return (
-    <div className="space-y-5">
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => navigate("matches")}
-        className="gap-1 self-start"
-      >
-        <ChevronLeft className="h-4 w-4" /> Back to matches
-      </Button>
+    <InnerPageLayout
+      sidebar={
+        <>
+          <MatchInfoWidget match={match} />
+          <RecentResultsWidget matches={allMatches ?? []} />
+        </>
+      }
+    >
+      <div className="space-y-5">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate("matches")}
+          className="gap-1 self-start"
+        >
+          <ChevronLeft className="h-4 w-4" /> Back to matches
+        </Button>
 
-      <MatchHeaderCard match={match} />
+        <MatchHeaderCard match={match} />
 
-      {match.status === "completed" && match.result && (
-        <div className="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-emerald-900">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-emerald-700">
-            <Trophy className="h-4 w-4" /> Result
+        {match.status === "completed" && match.result && (
+          <div className="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-emerald-900">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-emerald-700">
+              <Trophy className="h-4 w-4" /> Result
+            </div>
+            <p className="mt-1 text-sm font-semibold">{match.result}</p>
           </div>
-          <p className="mt-1 text-sm font-semibold">{match.result}</p>
-        </div>
-      )}
-
-      {/* Scorecard */}
-      <section>
-        <div className="mb-3 flex items-center gap-2">
-          <span className="h-5 w-1 rounded-full bg-red-600" />
-          <h2 className="text-sm font-extrabold uppercase tracking-tight sm:text-base">
-            Full Scorecard
-          </h2>
-        </div>
-        {sc ? (
-          <ScorecardView scorecard={sc} />
-        ) : (
-          <Card className="grid place-items-center p-6">
-            <p className="text-sm text-muted-foreground">
-              Scorecard will be available once the match begins.
-            </p>
-          </Card>
         )}
-      </section>
 
-      {/* Match Info */}
-      <section>
-        <div className="mb-3 flex items-center gap-2">
-          <span className="h-5 w-1 rounded-full bg-red-600" />
-          <h2 className="text-sm font-extrabold uppercase tracking-tight sm:text-base">
-            Match Information
-          </h2>
-        </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <InfoCard
-            icon={MapPin}
-            label="Venue"
-            value={`${match.venue}${match.city ? `, ${match.city}` : ""}`}
-          />
-          <InfoCard
-            icon={Trophy}
-            label="Toss"
-            value="To be announced"
-          />
-          <InfoCard
-            icon={Users}
-            label="Match Officials"
-            value="To be announced"
-          />
-          <InfoCard
-            icon={Trophy}
-            label="Series"
-            value={
-              match.series?.name || match.series?.shortName || "—"
-            }
-          />
-        </div>
-      </section>
-    </div>
+        {/* Scorecard */}
+        <section>
+          <div className="mb-3 flex items-center gap-2">
+            <span className="h-5 w-1 rounded-full bg-red-600" />
+            <h2 className="text-sm font-extrabold uppercase tracking-tight sm:text-base">
+              Full Scorecard
+            </h2>
+          </div>
+          {sc ? (
+            <ScorecardView scorecard={sc} />
+          ) : (
+            <Card className="grid place-items-center p-6">
+              <p className="text-sm text-muted-foreground">
+                Scorecard will be available once the match begins.
+              </p>
+            </Card>
+          )}
+        </section>
+      </div>
+    </InnerPageLayout>
   )
 }

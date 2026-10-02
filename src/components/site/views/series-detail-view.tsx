@@ -6,6 +6,11 @@ import { useSeriesItem, useMatches } from "@/lib/use-data"
 import { useAppStore } from "@/lib/store"
 import { StatusPill, formatMatchDate } from "@/components/cricket/ui"
 import { MiniScorecard } from "@/components/cricket/mini-scorecard"
+import { InnerPageLayout } from "@/components/site/inner-layout"
+import {
+  SeriesInfoWidget,
+  SeriesMatchesWidget,
+} from "@/components/site/sidebar-widgets"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -56,77 +61,88 @@ export function SeriesDetailView() {
   }
 
   return (
-    <section className="space-y-5">
-      <Button
-        variant="ghost"
-        size="sm"
-        className="-ml-2"
-        onClick={() => navigate("series")}
-      >
-        <ArrowLeft className="size-4" /> Back to Series
-      </Button>
-
-      {/* Header card */}
-      <Card className="gap-0 overflow-hidden py-0">
-        <div className="bg-gradient-to-br from-emerald-700 via-emerald-800 to-slate-900 px-5 py-5 text-white sm:px-6">
-          <div className="flex flex-wrap items-center gap-2">
-            <Trophy className="size-5 text-amber-300" />
-            <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
-              {series.name}
-            </h1>
-          </div>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-            <span className="inline-flex items-center rounded bg-white/15 px-1.5 py-0.5 text-[10px] font-bold text-white ring-1 ring-white/30">
-              {series.format}
-            </span>
-            <StatusPill status={series.status} />
-            <span className="text-white/80">·</span>
-            <span className="font-medium text-white/90">{series.season}</span>
-          </div>
-          <div className="mt-3 flex items-center gap-1.5 text-xs text-white/80">
-            <CalendarDays className="size-3.5" />
-            {formatMatchDate(series.startDate)} — {formatMatchDate(series.endDate)}
-          </div>
-        </div>
-        <CardContent className="p-5 sm:p-6">
-          {series.description && (
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              {series.description}
-            </p>
+    <InnerPageLayout
+      sidebar={
+        <>
+          <SeriesInfoWidget series={series} />
+          {seriesMatches.length > 0 && (
+            <SeriesMatchesWidget matches={seriesMatches} />
           )}
-          <Separator className="my-4" />
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-medium text-muted-foreground">Matches in series</span>
-            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 font-bold text-emerald-700">
-              {seriesMatches.length}
-            </span>
-          </div>
-        </CardContent>
-      </Card>
+        </>
+      }
+    >
+      <div className="space-y-5">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="-ml-2"
+          onClick={() => navigate("series")}
+        >
+          <ArrowLeft className="size-4" /> Back to Series
+        </Button>
 
-      {/* Matches list */}
-      <div>
-        <h2 className="mb-3 text-lg font-bold">Matches</h2>
-        {matchesLoading ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-40 w-full rounded-lg" />
-            ))}
+        {/* Header card */}
+        <Card className="gap-0 overflow-hidden py-0">
+          <div className="bg-gradient-to-br from-emerald-700 via-emerald-800 to-slate-900 px-5 py-5 text-white sm:px-6">
+            <div className="flex flex-wrap items-center gap-2">
+              <Trophy className="size-5 text-amber-300" />
+              <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+                {series.name}
+              </h1>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+              <span className="inline-flex items-center rounded bg-white/15 px-1.5 py-0.5 text-[10px] font-bold text-white ring-1 ring-white/30">
+                {series.format}
+              </span>
+              <StatusPill status={series.status} />
+              <span className="text-white/80">·</span>
+              <span className="font-medium text-white/90">{series.season}</span>
+            </div>
+            <div className="mt-3 flex items-center gap-1.5 text-xs text-white/80">
+              <CalendarDays className="size-3.5" />
+              {formatMatchDate(series.startDate)} — {formatMatchDate(series.endDate)}
+            </div>
           </div>
-        ) : seriesMatches.length === 0 ? (
-          <Card>
-            <CardContent className="py-10 text-center text-sm text-muted-foreground">
-              No matches scheduled in this series yet.
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {seriesMatches.map((m) => (
-              <MiniScorecard key={m.id} match={m} />
-            ))}
-          </div>
-        )}
+          <CardContent className="p-5 sm:p-6">
+            {series.description && (
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {series.description}
+              </p>
+            )}
+            <Separator className="my-4" />
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-medium text-muted-foreground">Matches in series</span>
+              <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 font-bold text-emerald-700">
+                {seriesMatches.length}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Matches list */}
+        <div>
+          <h2 className="mb-3 text-lg font-bold">Matches</h2>
+          {matchesLoading ? (
+            <div className="grid grid-cols-1 gap-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-40 w-full rounded-lg" />
+              ))}
+            </div>
+          ) : seriesMatches.length === 0 ? (
+            <Card>
+              <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                No matches scheduled in this series yet.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {seriesMatches.map((m) => (
+                <MiniScorecard key={m.id} match={m} />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    </section>
+    </InnerPageLayout>
   )
 }

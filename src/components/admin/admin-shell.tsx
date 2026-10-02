@@ -13,6 +13,7 @@ import {
   UserSearch,
   Users,
   Trophy,
+  Radio,
   Plus,
 } from "lucide-react"
 import type { ViewKey } from "@/lib/types"
@@ -29,6 +30,7 @@ const navItems: { label: string; view: ViewKey; icon: React.ElementType }[] = [
   { label: "Dashboard", view: "admin-dashboard", icon: LayoutDashboard },
   { label: "Articles", view: "admin-articles", icon: FileText },
   { label: "Matches", view: "admin-matches", icon: Activity },
+  { label: "Live Scorer", view: "live-scorer", icon: Radio },
   { label: "Players", view: "admin-players", icon: UserSearch },
   { label: "Teams", view: "admin-teams", icon: Users },
   { label: "Series", view: "admin-series", icon: Trophy },

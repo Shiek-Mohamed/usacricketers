@@ -16,6 +16,8 @@ import {
   MatchInfoWidget,
   RecentResultsWidget,
 } from "@/components/site/sidebar-widgets"
+import { useLiveScore } from "@/lib/use-live-score"
+import { stateToScorecard } from "@/lib/scoring"
 import { useMatches } from "@/lib/use-data"
 import {
   Card,
@@ -150,6 +152,7 @@ export function MatchDetailView() {
   const navigate = useAppStore((s) => s.navigate)
   const { data, loading, error } = useMatch(id)
   const { data: allMatches } = useMatches()
+  const { liveState, connected } = useLiveScore(id)
 
   if (loading) return <MatchDetailSkeleton />
 
@@ -176,7 +179,18 @@ export function MatchDetailView() {
   }
 
   const match = data
-  const sc = match.scorecard
+  // When a live scoring session is broadcasting, prefer the live scorecard +
+  // status over the persisted DB copy so this public view updates instantly.
+  const match_ = liveState
+    ? {
+        ...match,
+        scorecard: stateToScorecard(liveState),
+        status: liveState.status,
+        result: liveState.result || match.result,
+      }
+    : match
+  const sc = match_.scorecard
+  const isLive = match_.status === "live"
 
   return (
     <InnerPageLayout
@@ -191,21 +205,39 @@ export function MatchDetailView() {
             <ChevronLeft className="h-4 w-4" /> Back to matches
           </Button>
 
-          <MatchHeaderCard match={match} />
+          <MatchHeaderCard match={match_} />
 
-          {match.status === "completed" && match.result && (
+          {isLive && (
+            <div className="flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-4 py-2.5 text-red-800">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-red-600" />
+              </span>
+              <span className="text-xs font-bold uppercase tracking-wide text-red-700">
+                Live scoring in progress
+              </span>
+              {connected ? (
+                <span className="text-[11px] text-red-600/80">· connected</span>
+              ) : null}
+              <span className="ml-auto text-[11px] text-muted-foreground">
+                Updates in real time as balls are scored
+              </span>
+            </div>
+          )}
+
+          {match_.status === "completed" && match_.result && (
             <div className="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-emerald-900">
               <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-emerald-700">
                 <Trophy className="h-4 w-4" /> Result
               </div>
-              <p className="mt-1 text-sm font-semibold">{match.result}</p>
+              <p className="mt-1 text-sm font-semibold">{match_.result}</p>
             </div>
           )}
         </>
       }
       sidebar={
         <>
-          <MatchInfoWidget match={match} />
+          <MatchInfoWidget match={match_} />
           <RecentResultsWidget matches={allMatches ?? []} />
         </>
       }

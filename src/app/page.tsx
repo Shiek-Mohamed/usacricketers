@@ -22,6 +22,7 @@ import { AdminMatchesView } from "@/components/admin/views/matches-view"
 import { AdminPlayersView } from "@/components/admin/views/players-view"
 import { AdminTeamsView } from "@/components/admin/views/teams-view"
 import { AdminSeriesView } from "@/components/admin/views/series-view"
+import { LiveScorerView } from "@/components/admin/views/live-scorer-view"
 
 export default function Home() {
   const view = useAppStore((s) => s.view)
@@ -69,6 +70,8 @@ export default function Home() {
         return <AdminTeamsView />
       case "admin-series":
         return <AdminSeriesView />
+      case "live-scorer":
+        return <LiveScorerView />
       default:
         return <HomeView />
     }

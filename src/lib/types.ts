@@ -170,6 +170,7 @@ export type ViewKey =
   | "admin-players"
   | "admin-teams"
   | "admin-series"
+  | "live-scorer"
 
 export interface NavState {
   view: ViewKey

@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useMatches, useTeams, useSeries } from "@/lib/use-data"
+import { useAppStore } from "@/lib/store"
 import { api } from "@/lib/api"
 import { AdminShell } from "@/components/admin/admin-shell"
 import { Card, CardContent } from "@/components/ui/card"
@@ -48,7 +49,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Plus, Pencil, Trash2, Search, Info } from "lucide-react"
+import { Plus, Pencil, Trash2, Search, Info, Radio } from "lucide-react"
 import { toast } from "sonner"
 import type { Match, Scorecard } from "@/lib/types"
 
@@ -96,6 +97,7 @@ export function AdminMatchesView() {
   const { data, loading, refetch } = useMatches()
   const teams = useTeams()
   const series = useSeries()
+  const navigate = useAppStore((s) => s.navigate)
   const [search, setSearch] = useState("")
   const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -274,6 +276,16 @@ export function AdminMatchesView() {
                         {formatMatchDate(m.startDate)}
                       </TableCell>
                       <TableCell className="text-right whitespace-nowrap">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => navigate("live-scorer", m.id)}
+                          className="mr-1 gap-1 border-red-300 text-red-700 hover:bg-red-50"
+                          aria-label="Score live"
+                        >
+                          <Radio className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">Score</span>
+                        </Button>
                         <Button
                           size="icon"
                           variant="ghost"

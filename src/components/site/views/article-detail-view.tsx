@@ -5,13 +5,8 @@ import ReactMarkdown from "react-markdown"
 import { useAppStore } from "@/lib/store"
 import { useArticle, useArticles } from "@/lib/use-data"
 import type { Article } from "@/lib/types"
+import { ArticleCard } from "@/components/cricket/article-card"
 import { timeAgo } from "@/components/cricket/ui"
-import { InnerPageLayout } from "@/components/site/inner-layout"
-import {
-  ArticleListWidget,
-  FeaturedArticlesWidget,
-  NewsletterWidget,
-} from "@/components/site/sidebar-widgets"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -216,26 +211,15 @@ export function ArticleDetailView() {
     : []
 
   return (
-    <InnerPageLayout
-      sidebar={
-        <>
-          {related.length > 0 && (
-            <ArticleListWidget title="Related Stories" articles={related} />
-          )}
-          <FeaturedArticlesWidget articles={allArticles ?? []} />
-          <NewsletterWidget />
-        </>
-      }
-    >
-      <div className="space-y-5">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate("news")}
-          className="gap-1 self-start"
-        >
-          <ChevronLeft className="h-4 w-4" /> Back to news
-        </Button>
+    <div className="space-y-5">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => navigate("news")}
+        className="gap-1 self-start"
+      >
+        <ChevronLeft className="h-4 w-4" /> Back to news
+      </Button>
 
         <article className="space-y-4">
           {/* Hero */}
@@ -287,6 +271,23 @@ export function ArticleDetailView() {
           )}
         </article>
 
+        {/* Related */}
+        {related.length > 0 && (
+          <section className="border-t pt-5">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="h-5 w-1 rounded-full bg-red-600" />
+              <h2 className="text-sm font-extrabold uppercase tracking-tight sm:text-base">
+                Related Stories
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {related.map((a) => (
+                <ArticleCard key={a.id} article={a} variant="compact" />
+              ))}
+            </div>
+          </section>
+        )}
+
         <Button
           variant="outline"
           size="sm"
@@ -296,6 +297,5 @@ export function ArticleDetailView() {
           <ArrowLeft className="h-4 w-4" /> More news
         </Button>
       </div>
-    </InnerPageLayout>
   )
 }

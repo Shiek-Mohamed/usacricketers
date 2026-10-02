@@ -17,15 +17,9 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-import { usePlayer, usePlayers } from "@/lib/use-data"
+import { usePlayer } from "@/lib/use-data"
 import { useAppStore } from "@/lib/store"
 import { PlayerAvatar, TeamBadge } from "@/components/cricket/ui"
-import { InnerPageLayout } from "@/components/site/inner-layout"
-import {
-  PlayerSummaryWidget,
-  PlayerInfoWidget,
-  TeammatesWidget,
-} from "@/components/site/sidebar-widgets"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -45,7 +39,6 @@ export function PlayerDetailView() {
   const id = useAppStore((s) => s.id)
   const navigate = useAppStore((s) => s.navigate)
   const { data: player, loading } = usePlayer(id)
-  const { data: teammates } = usePlayers(player?.teamId)
 
   const battingChartData = useMemo(() => {
     if (!player) return []
@@ -96,26 +89,15 @@ export function PlayerDetailView() {
   }
 
   return (
-    <InnerPageLayout
-      sidebar={
-        <>
-          <PlayerSummaryWidget player={player} />
-          <PlayerInfoWidget player={player} />
-          {teammates && teammates.length > 1 && (
-            <TeammatesWidget players={teammates} excludeId={id ?? undefined} />
-          )}
-        </>
-      }
-    >
-      <div className="space-y-5">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="-ml-2"
-          onClick={() => navigate("players")}
-        >
-          <ArrowLeft className="size-4" /> Back to Players
-        </Button>
+    <section className="space-y-5">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="-ml-2"
+        onClick={() => navigate("players")}
+      >
+        <ArrowLeft className="size-4" /> Back to Players
+      </Button>
 
         {/* Header */}
         <Card className="gap-0 overflow-hidden py-0">
@@ -310,12 +292,11 @@ export function PlayerDetailView() {
           </>
         )}
 
-        <Separator />
-        <p className="text-[11px] text-muted-foreground">
-          All stats are career aggregates across formats as maintained by the CMS.
-        </p>
-      </div>
-    </InnerPageLayout>
+      <Separator />
+      <p className="text-[11px] text-muted-foreground">
+        All stats are career aggregates across formats as maintained by the CMS.
+      </p>
+    </section>
   )
 }
 

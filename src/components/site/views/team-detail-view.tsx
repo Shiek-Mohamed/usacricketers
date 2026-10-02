@@ -6,12 +6,6 @@ import { useTeam, usePlayers, useMatches } from "@/lib/use-data"
 import { useAppStore } from "@/lib/store"
 import { TeamBadge, PlayerAvatar } from "@/components/cricket/ui"
 import { MiniScorecard } from "@/components/cricket/mini-scorecard"
-import { InnerPageLayout } from "@/components/site/inner-layout"
-import {
-  TeamInfoWidget,
-  SquadSummaryWidget,
-  RecentResultsWidget,
-} from "@/components/site/sidebar-widgets"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -99,26 +93,15 @@ export function TeamDetailView() {
   }
 
   return (
-    <InnerPageLayout
-      sidebar={
-        <>
-          <TeamInfoWidget team={team} />
-          {players && players.length > 0 && (
-            <SquadSummaryWidget players={players} />
-          )}
-          <RecentResultsWidget matches={recentMatches} title="Team Results" />
-        </>
-      }
-    >
-      <div className="space-y-5">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="-ml-2"
-          onClick={() => navigate("teams")}
-        >
-          <ArrowLeft className="size-4" /> Back to Teams
-        </Button>
+    <section className="space-y-5">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="-ml-2"
+        onClick={() => navigate("teams")}
+      >
+        <ArrowLeft className="size-4" /> Back to Teams
+      </Button>
 
         {/* Header */}
         <Card className="gap-0 overflow-hidden py-0">
@@ -197,34 +180,33 @@ export function TeamDetailView() {
           </CardContent>
         </Card>
 
-        {/* Recent matches */}
-        <div>
-          <h2 className="mb-3 flex items-center gap-2 text-lg font-bold">
-            <CalendarClock className="size-5 text-emerald-600" />
-            Recent Matches
-          </h2>
-          {matchesLoading ? (
-            <div className="grid grid-cols-1 gap-4">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-40 w-full rounded-lg" />
-              ))}
-            </div>
-          ) : recentMatches.length === 0 ? (
-            <Card>
-              <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                No recent matches for this team.
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 gap-4">
-              {recentMatches.map((m) => (
-                <MiniScorecard key={m.id} match={m} />
-              ))}
-            </div>
-          )}
-        </div>
+      {/* Recent matches */}
+      <div>
+        <h2 className="mb-3 flex items-center gap-2 text-lg font-bold">
+          <CalendarClock className="size-5 text-emerald-600" />
+          Recent Matches
+        </h2>
+        {matchesLoading ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-40 w-full rounded-lg" />
+            ))}
+          </div>
+        ) : recentMatches.length === 0 ? (
+          <Card>
+            <CardContent className="py-10 text-center text-sm text-muted-foreground">
+              No recent matches for this team.
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {recentMatches.map((m) => (
+              <MiniScorecard key={m.id} match={m} />
+            ))}
+          </div>
+        )}
       </div>
-    </InnerPageLayout>
+    </section>
   )
 }
 

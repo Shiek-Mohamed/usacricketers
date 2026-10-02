@@ -1,0 +1,77 @@
+"use client"
+
+import { useCallback, useEffect, useState } from "react"
+import { api } from "./api"
+import type { Article, Match, Player, Series, Team } from "./types"
+
+interface FetchState<T> {
+  data: T | null
+  loading: boolean
+  error: string | null
+  refetch: () => void
+}
+
+function useFetch<T>(fn: () => Promise<T>, deps: unknown[] = []): FetchState<T> {
+  const [nonce, setNonce] = useState(0)
+  const [doneNonce, setDoneNonce] = useState(-1)
+  const [data, setData] = useState<T | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  // loading is derived: a request is in-flight when its nonce hasn't completed yet
+  const loading = nonce !== doneNonce
+
+  const refetch = useCallback(() => setNonce((n) => n + 1), [])
+
+  useEffect(() => {
+    let active = true
+    fn()
+      .then((d) => {
+        if (!active) return
+        setData(d)
+        setError(null)
+        setDoneNonce(nonce)
+      })
+      .catch((e) => {
+        if (!active) return
+        setError(e?.message || "Failed to load")
+        setDoneNonce(nonce)
+      })
+    return () => {
+      active = false
+    }
+  }, [...deps, nonce])
+
+  return { data, loading, error, refetch }
+}
+
+export const useTeams = () => useFetch<Team[]>(() => api.teams.list())
+export const useTeam = (id: string | null) =>
+  useFetch<Team>(() => (id ? api.teams.get(id) : Promise.reject()), [id])
+export const usePlayers = (teamId?: string) =>
+  useFetch<Player[]>(() => api.players.list(teamId), [teamId])
+export const usePlayer = (id: string | null) =>
+  useFetch<Player>(() => (id ? api.players.get(id) : Promise.reject()), [id])
+export const useMatches = (status?: string) =>
+  useFetch<Match[]>(() => api.matches.list(status), [status])
+export const useMatch = (id: string | null) =>
+  useFetch<Match>(() => (id ? api.matches.get(id) : Promise.reject()), [id])
+export const useSeries = () => useFetch<Series[]>(() => api.series.list())
+export const useSeriesItem = (id: string | null) =>
+  useFetch<Series>(() => (id ? api.series.get(id) : Promise.reject()), [id])
+export const useArticles = (params?: { category?: string; featured?: boolean }) =>
+  useFetch<Article[]>(() => api.articles.list(params), [
+    params?.category,
+    params?.featured,
+  ])
+export const useArticle = (id: string | null) =>
+  useFetch<Article>(() => (id ? api.articles.get(id) : Promise.reject()), [id])
+
+// Combined: matches + teams + players for cross-entity stats dashboards
+export function useAllData() {
+  const matches = useMatches()
+  const teams = useTeams()
+  const players = usePlayers()
+  const series = useSeries()
+  const articles = useArticles()
+  return { matches, teams, players, series, articles }
+}

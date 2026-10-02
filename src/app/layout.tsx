@@ -1,0 +1,63 @@
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+import { Toaster } from "@/components/ui/toaster";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "cricinfo — Live Cricket Scores, News, Stats & Series",
+  description:
+    "The definitive home of cricket. Live scores, match scorecards, news, series, team & player stats, schedules and records — all in one place.",
+  keywords: [
+    "cricket",
+    "live cricket scores",
+    "cricket news",
+    "cricinfo",
+    "ICC rankings",
+    "cricket stats",
+    "scorecard",
+    "series",
+  ],
+  authors: [{ name: "Cricinfo CMS" }],
+  icons: {
+    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+  },
+  openGraph: {
+    title: "cricinfo — Live Cricket Scores, News, Stats & Series",
+    description:
+      "The definitive home of cricket. Live scores, scorecards, news, player stats and records.",
+    siteName: "cricinfo",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "cricinfo — Live Cricket Scores & News",
+    description: "The definitive home of cricket.",
+  },
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
+      >
+        {children}
+        <Toaster />
+      </body>
+    </html>
+  );
+}

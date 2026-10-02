@@ -1,0 +1,93 @@
+// Cricket CMS schema - inspired by ESPNcricinfo
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Article {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  excerpt     String
+  content     String
+  imageUrl    String?
+  category    String   @default("news") // news, feature, analysis, interview, opinion
+  author      String   @default("ESPNcricinfo staff")
+  tags        String   @default("")
+  featured    Boolean  @default(false)
+  published   Boolean  @default(true)
+  publishedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Team {
+  id           String   @id @default(cuid())
+  name         String
+  shortName    String   @unique
+  country      String
+  primaryColor String   @default("#1e3a8a")
+  accentColor  String   @default("#f59e0b")
+  description  String   @default("")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  players      Player[]
+  matchesAsT1  Match[]  @relation("Team1Matches")
+  matchesAsT2  Match[]  @relation("Team2Matches")
+}
+
+model Player {
+  id            String   @id @default(cuid())
+  name          String
+  teamId        String
+  team          Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  role          String   @default("Batsman") // Batsman, Bowler, All-rounder, Wicket-keeper
+  battingStyle  String   @default("Right-hand bat")
+  bowlingStyle  String   @default("")
+  battingStats  String   @default("{}") // JSON
+  bowlingStats  String   @default("{}") // JSON
+  bio           String   @default("")
+  imageUrl      String   @default("")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Series {
+  id          String   @id @default(cuid())
+  name        String
+  shortName   String
+  format      String   @default("ODI") // Test, ODI, T20I
+  season      String   @default("2024-25")
+  startDate   DateTime
+  endDate     DateTime
+  status      String   @default("ongoing") // upcoming, ongoing, completed
+  description String   @default("")
+  matches      Match[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Match {
+  id          String   @id @default(cuid())
+  seriesId    String?
+  series      Series?  @relation(fields: [seriesId], references: [id], onDelete: SetNull)
+  team1Id     String
+  team1       Team     @relation("Team1Matches", fields: [team1Id], references: [id])
+  team2Id     String
+  team2       Team     @relation("Team2Matches", fields: [team2Id], references: [id])
+  format      String   @default("ODI") // Test, ODI, T20I
+  matchNo     String   @default("1st Match")
+  status      String   @default("upcoming") // upcoming, live, completed, abandoned
+  venue       String
+  city        String   @default("")
+  startDate   DateTime
+  result      String   @default("")
+  scorecard   String   @default("") // JSON
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

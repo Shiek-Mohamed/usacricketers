@@ -6,11 +6,15 @@ const SCROLLBAR_CLASS =
   "[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent"
 
 /**
- * Fixed-width inner-page layout:
- *  - Main text column: 450px
+ * Inner-page layout that keeps the page at its original (full) width while
+ * constraining the readable content to a fixed text column + sidebar:
+ *  - Main text column: 650px
  *  - Sidebar widget column: 300px
- * On screens smaller than `lg` the two columns stack (main first, sidebar below)
- * and fill the available width.
+ * The 650 + 300 block is centred within the page's original wide content area
+ * so the inner page keeps the original width it had before the sidebar was
+ * added (no artificial narrow cap).
+ * On screens smaller than `lg` the two columns stack (main first, sidebar
+ * below) and fill the available width.
  */
 export function InnerPageLayout({
   children,
@@ -22,8 +26,8 @@ export function InnerPageLayout({
   className?: string
 }) {
   return (
-    <div className={cn("mx-auto w-full max-w-[782px]", className)}>
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[450px_300px] lg:gap-8">
+    <div className={cn("w-full", className)}>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[650px_300px] lg:justify-center lg:gap-8">
         <main className="min-w-0 max-w-full">{children}</main>
         {sidebar && (
           <aside

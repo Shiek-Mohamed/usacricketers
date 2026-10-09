@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import {
   Dialog,
   DialogContent,
@@ -29,7 +30,10 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
+  Loader2,
+  Upload,
 } from "lucide-react"
+import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
 const LIBRARY_IMAGES = [
@@ -65,14 +69,18 @@ export function MarkdownEditor({
   rows?: number
 }) {
   const taRef = useRef<HTMLTextAreaElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
   const pendingSel = useRef<PendingSel | null>(null)
+
   const [imgOpen, setImgOpen] = useState(false)
-  const [imgChoice, setImgChoice] = useState<string>(LIBRARY_IMAGES[0])
+  const [tab, setTab] = useState<"library" | "upload">("library")
+  const [libChoice, setLibChoice] = useState<string>(LIBRARY_IMAGES[0])
   const [customUrl, setCustomUrl] = useState("")
+  const [uploadedUrl, setUploadedUrl] = useState("")
+  const [uploading, setUploading] = useState(false)
   const [imgCaption, setImgCaption] = useState("")
 
-  // After the textarea value updates (from a toolbar action), restore the
-  // computed selection so the cursor/wrap stays correct.
+  // Restore textarea selection after a toolbar action updates the value.
   useLayoutEffect(() => {
     const ta = taRef.current
     const sel = pendingSel.current
@@ -119,17 +127,53 @@ export function MarkdownEditor({
   }
 
   const resolvedUrl =
-    imgChoice === CUSTOM ? customUrl.trim() : imgChoice
+    tab === "upload"
+      ? uploadedUrl.trim()
+      : libChoice === CUSTOM
+        ? customUrl.trim()
+        : libChoice
   const canInsert = resolvedUrl.length > 0
+
+  function resetImageState() {
+    setLibChoice(LIBRARY_IMAGES[0])
+    setCustomUrl("")
+    setUploadedUrl("")
+    setImgCaption("")
+    setTab("library")
+    if (fileRef.current) fileRef.current.value = ""
+  }
+
+  async function handleUpload() {
+    const file = fileRef.current?.files?.[0]
+    if (!file) {
+      toast.error("Choose a file first")
+      return
+    }
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append("file", file)
+      const res = await fetch("/api/upload", { method: "POST", body: fd })
+      const data = await res.json()
+      if (!res.ok || !data.url) {
+        toast.error(data.error || "Upload failed")
+        return
+      }
+      setUploadedUrl(data.url)
+      toast.success("Photo uploaded")
+    } catch (e) {
+      toast.error("Upload failed", { description: String(e) })
+    } finally {
+      setUploading(false)
+    }
+  }
 
   function insertImage() {
     if (!canInsert) return
     const caption = imgCaption.trim()
     const md = `![${caption}](${resolvedUrl})\n\n`
     setImgOpen(false)
-    setImgCaption("")
-    setImgChoice(LIBRARY_IMAGES[0])
-    setCustomUrl("")
+    resetImageState()
     applyInsert(md)
   }
 
@@ -182,44 +226,107 @@ export function MarkdownEditor({
       />
 
       {/* Insert image dialog */}
-      <Dialog open={imgOpen} onOpenChange={setImgOpen}>
+      <Dialog
+        open={imgOpen}
+        onOpenChange={(o) => {
+          setImgOpen(o)
+          if (!o) resetImageState()
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Insert photo</DialogTitle>
           </DialogHeader>
           <div className="grid gap-3 py-2">
-            <div className="grid gap-1.5">
-              <Label>Photo</Label>
-              <Select value={imgChoice} onValueChange={(v) => { setImgChoice(v); if (v !== CUSTOM) setCustomUrl("") }}>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {LIBRARY_IMAGES.map((p) => (
-                    <SelectItem key={p} value={p}>
-                      {p.replace("/cricket/", "").replace(".png", "")}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value={CUSTOM}>Custom URL…</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {imgChoice === CUSTOM && (
-              <div className="grid gap-1.5">
-                <Label htmlFor="imgUrl">Image URL</Label>
-                <Input
-                  id="imgUrl"
-                  value={customUrl}
-                  onChange={(e) => setCustomUrl(e.target.value)}
-                  placeholder="https://… or /cricket/your-image.png"
+            <Tabs
+              value={tab}
+              onValueChange={(v) => setTab(v as "library" | "upload")}
+            >
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="library">Library</TabsTrigger>
+                <TabsTrigger value="upload">Upload</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="library" className="mt-3">
+                <div className="grid gap-1.5">
+                  <Label>Choose a photo</Label>
+                  <Select
+                    value={libChoice}
+                    onValueChange={(v) => {
+                      setLibChoice(v)
+                      if (v !== CUSTOM) setCustomUrl("")
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LIBRARY_IMAGES.map((p) => (
+                        <SelectItem key={p} value={p}>
+                          {p.replace("/cricket/", "").replace(".png", "")}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value={CUSTOM}>Custom URL…</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {libChoice === CUSTOM && (
+                  <div className="mt-3 grid gap-1.5">
+                    <Label htmlFor="imgUrl">Image URL</Label>
+                    <Input
+                      id="imgUrl"
+                      value={customUrl}
+                      onChange={(e) => setCustomUrl(e.target.value)}
+                      placeholder="https://… or /uploads/your-image.png"
+                    />
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="upload" className="mt-3">
+                <div className="grid gap-2">
+                  <Label htmlFor="imgFile">Upload from your computer</Label>
+                  <Input
+                    id="imgFile"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+                    ref={fileRef}
+                    onChange={() => {
+                      // clear any previous upload when a new file is picked
+                      setUploadedUrl("")
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleUpload}
+                    disabled={uploading}
+                    className="w-full gap-2"
+                  >
+                    {uploading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Upload className="h-4 w-4" />
+                    )}
+                    {uploadedUrl ? "Re-upload" : "Upload"}
+                  </Button>
+                  <p className="text-[11px] text-muted-foreground">
+                    PNG, JPEG, WebP, GIF or SVG · max 5 MB. Saved to <code>/uploads/</code>.
+                  </p>
+                </div>
+              </TabsContent>
+            </Tabs>
+
+            {resolvedUrl && (
+              <div className="aspect-[16/9] w-full overflow-hidden rounded-md border bg-muted">
+                <img
+                  src={resolvedUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
                 />
               </div>
             )}
-            {resolvedUrl && (
-              <div className="aspect-[16/9] w-full overflow-hidden rounded-md border bg-muted">
-                <img src={resolvedUrl} alt="" className="h-full w-full object-cover" />
-              </div>
-            )}
+
             <div className="grid gap-1.5">
               <Label htmlFor="imgCaption">Caption (optional)</Label>
               <Input
@@ -234,7 +341,13 @@ export function MarkdownEditor({
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setImgOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setImgOpen(false)
+                resetImageState()
+              }}
+            >
               Cancel
             </Button>
             <Button onClick={insertImage} disabled={!canInsert}>

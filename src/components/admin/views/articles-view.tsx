@@ -5,6 +5,7 @@ import { useArticles } from "@/lib/use-data"
 import { api } from "@/lib/api"
 import { AdminShell } from "@/components/admin/admin-shell"
 import { MarkdownEditor } from "@/components/admin/markdown-editor"
+import { UploadButton } from "@/components/admin/upload-button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -452,8 +453,16 @@ export function AdminArticlesView() {
                 onChange={(e) =>
                   setForm((f) => ({ ...f, imageUrl: e.target.value }))
                 }
-                placeholder="https://..."
+                placeholder="https://… or /uploads/your-image.png"
               />
+              <div className="mt-1">
+                <UploadButton
+                  label="Upload hero photo"
+                  onUploaded={(url) =>
+                    setForm((f) => ({ ...f, imageUrl: url }))
+                  }
+                />
+              </div>
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="imageCaption">Image caption (optional)</Label>

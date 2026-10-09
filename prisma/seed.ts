@@ -624,6 +624,8 @@ A stunning 137 off 120 balls against India in Ahmedabad sealed the 2023 World Cu
 
 His 141 against India in the second Test of the 2024-25 Border-Gavaskar Trophy was the innings that turned the series.
 
+![Head raises his bat after a series-defining century during the Adelaide Test. Photo: Cricket Australia](/cricket/border-gavaskar.png)
+
 > "I just love the big moments," Head told ESPNcricinfo. "The bigger the game, the more it sharpens my focus."
 
 Head has become Australia's indisposable match-winner.`,

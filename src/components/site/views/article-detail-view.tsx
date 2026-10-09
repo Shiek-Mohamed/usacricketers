@@ -152,6 +152,25 @@ function ArticleMarkdown({ content }: { content: string }) {
           td: ({ children }) => (
             <td className="border border-border px-3 py-2">{children}</td>
           ),
+          img: ({ src, alt }) => {
+            const caption = alt && alt.trim() ? alt : ""
+            return (
+              <figure className="my-6">
+                {/* next/image not used to keep this a runtime-only image */}
+                <img
+                  src={typeof src === "string" ? src : undefined}
+                  alt={caption}
+                  className="w-full rounded-lg"
+                />
+                {caption ? (
+                  <figcaption className="mt-2 flex items-start gap-1.5 text-xs leading-relaxed text-muted-foreground">
+                    <Camera className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+                    <span>{caption}</span>
+                  </figcaption>
+                ) : null}
+              </figure>
+            )
+          },
         }}
       >
         {content}

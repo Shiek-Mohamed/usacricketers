@@ -23,6 +23,7 @@ import { AdminPlayersView } from "@/components/admin/views/players-view"
 import { AdminTeamsView } from "@/components/admin/views/teams-view"
 import { AdminSeriesView } from "@/components/admin/views/series-view"
 import { AdminSidebarView } from "@/components/admin/views/admin-sidebar-view"
+import { AdminImportView } from "@/components/admin/views/admin-import-view"
 import { LiveScorerView } from "@/components/admin/views/live-scorer-view"
 
 export default function Home() {
@@ -73,6 +74,8 @@ export default function Home() {
         return <AdminSeriesView />
       case "admin-sidebar":
         return <AdminSidebarView />
+      case "admin-import":
+        return <AdminImportView />
       case "live-scorer":
         return <LiveScorerView />
       default:

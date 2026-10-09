@@ -15,6 +15,7 @@ import {
   Trophy,
   Radio,
   PanelRight,
+  DownloadCloud,
   Plus,
 } from "lucide-react"
 import type { ViewKey } from "@/lib/types"
@@ -36,6 +37,7 @@ const navItems: { label: string; view: ViewKey; icon: React.ElementType }[] = [
   { label: "Teams", view: "admin-teams", icon: Users },
   { label: "Series", view: "admin-series", icon: Trophy },
   { label: "Sidebar", view: "admin-sidebar", icon: PanelRight },
+  { label: "Import", view: "admin-import", icon: DownloadCloud },
 ]
 
 export function AdminShell({

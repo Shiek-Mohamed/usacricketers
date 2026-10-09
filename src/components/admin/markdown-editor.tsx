@@ -1,0 +1,248 @@
+"use client"
+
+import { useLayoutEffect, useRef, useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Bold,
+  Italic,
+  Heading2,
+  Quote,
+  Link as LinkIcon,
+  Image as ImageIcon,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+} from "lucide-react"
+import { cn } from "@/lib/utils"
+
+const LIBRARY_IMAGES = [
+  "/cricket/hero-trophy.png",
+  "/cricket/bumrah-bowling.png",
+  "/cricket/border-gavaskar.png",
+  "/cricket/travis-head.png",
+  "/cricket/inline-stadium-crowd.png",
+  "/cricket/inline-batsman-pull.png",
+  "/cricket/inline-spin-bowler.png",
+  "/cricket/inline-keeper-dive.png",
+  "/cricket/inline-fielding-celebrate.png",
+  "/cricket/inline-captain-trophy.png",
+  "/cricket/inline-fast-bowler-roar.png",
+  "/cricket/inline-nets-training.png",
+]
+const CUSTOM = "__custom__"
+
+interface PendingSel {
+  start: number
+  end: number
+}
+
+export function MarkdownEditor({
+  value,
+  onChange,
+  placeholder,
+  rows = 12,
+}: {
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+  rows?: number
+}) {
+  const taRef = useRef<HTMLTextAreaElement>(null)
+  const pendingSel = useRef<PendingSel | null>(null)
+  const [imgOpen, setImgOpen] = useState(false)
+  const [imgChoice, setImgChoice] = useState<string>(LIBRARY_IMAGES[0])
+  const [customUrl, setCustomUrl] = useState("")
+  const [imgCaption, setImgCaption] = useState("")
+
+  // After the textarea value updates (from a toolbar action), restore the
+  // computed selection so the cursor/wrap stays correct.
+  useLayoutEffect(() => {
+    const ta = taRef.current
+    const sel = pendingSel.current
+    if (ta && sel) {
+      ta.focus()
+      ta.setSelectionRange(sel.start, sel.end)
+      pendingSel.current = null
+    }
+  }, [value])
+
+  function applyWrap(before: string, after: string, placeholder: string) {
+    const ta = taRef.current
+    if (!ta) return
+    const start = ta.selectionStart
+    const end = ta.selectionEnd
+    const selected = value.slice(start, end) || placeholder
+    const next =
+      value.slice(0, start) + before + selected + after + value.slice(end)
+    pendingSel.current = {
+      start: start + before.length,
+      end: start + before.length + selected.length,
+    }
+    onChange(next)
+  }
+
+  function applyLinePrefix(prefix: string) {
+    const ta = taRef.current
+    if (!ta) return
+    const start = ta.selectionStart
+    const lineStart = value.lastIndexOf("\n", start - 1) + 1
+    const next = value.slice(0, lineStart) + prefix + value.slice(lineStart)
+    pendingSel.current = { start: start + prefix.length, end: start + prefix.length }
+    onChange(next)
+  }
+
+  function applyInsert(text: string) {
+    const ta = taRef.current
+    if (!ta) return
+    const start = ta.selectionStart
+    const end = ta.selectionEnd
+    const next = value.slice(0, start) + text + value.slice(end)
+    pendingSel.current = { start: start + text.length, end: start + text.length }
+    onChange(next)
+  }
+
+  const resolvedUrl =
+    imgChoice === CUSTOM ? customUrl.trim() : imgChoice
+  const canInsert = resolvedUrl.length > 0
+
+  function insertImage() {
+    if (!canInsert) return
+    const caption = imgCaption.trim()
+    const md = `![${caption}](${resolvedUrl})\n\n`
+    setImgOpen(false)
+    setImgCaption("")
+    setImgChoice(LIBRARY_IMAGES[0])
+    setCustomUrl("")
+    applyInsert(md)
+  }
+
+  const btn = "h-8 w-8 p-0"
+
+  return (
+    <div className="rounded-md border">
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center gap-1 border-b bg-muted/40 px-2 py-1.5">
+        <Button type="button" variant="ghost" size="icon" className={btn} title="Bold" onClick={() => applyWrap("**", "**", "bold text")}>
+          <Bold className="h-4 w-4" />
+        </Button>
+        <Button type="button" variant="ghost" size="icon" className={btn} title="Italic" onClick={() => applyWrap("*", "*", "italic text")}>
+          <Italic className="h-4 w-4" />
+        </Button>
+        <Button type="button" variant="ghost" size="icon" className={btn} title="Heading" onClick={() => applyLinePrefix("## ")}>
+          <Heading2 className="h-4 w-4" />
+        </Button>
+        <Button type="button" variant="ghost" size="icon" className={btn} title="Quote" onClick={() => applyLinePrefix("> ")}>
+          <Quote className="h-4 w-4" />
+        </Button>
+        <Button type="button" variant="ghost" size="icon" className={btn} title="Link" onClick={() => applyWrap("[", "](https://)", "link text")}>
+          <LinkIcon className="h-4 w-4" />
+        </Button>
+        <Button type="button" variant="ghost" size="icon" className={btn} title="Insert photo" onClick={() => setImgOpen(true)}>
+          <ImageIcon className="h-4 w-4" />
+        </Button>
+        <span className="mx-1 h-5 w-px bg-border" />
+        <Button type="button" variant="ghost" size="icon" className={cn(btn)} title="Align left" onClick={() => applyWrap('<div style="text-align:left">', "</div>", "Left-aligned text")}>
+          <AlignLeft className="h-4 w-4" />
+        </Button>
+        <Button type="button" variant="ghost" size="icon" className={cn(btn)} title="Align center" onClick={() => applyWrap('<div style="text-align:center">', "</div>", "Centered text")}>
+          <AlignCenter className="h-4 w-4" />
+        </Button>
+        <Button type="button" variant="ghost" size="icon" className={cn(btn)} title="Align right" onClick={() => applyWrap('<div style="text-align:right">', "</div>", "Right-aligned text")}>
+          <AlignRight className="h-4 w-4" />
+        </Button>
+        <span className="ml-auto pr-1 text-[10px] text-muted-foreground">
+          Markdown
+        </span>
+      </div>
+      {/* Textarea */}
+      <Textarea
+        ref={taRef}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={rows}
+        className="rounded-none border-0 font-mono text-sm focus-visible:ring-0"
+      />
+
+      {/* Insert image dialog */}
+      <Dialog open={imgOpen} onOpenChange={setImgOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Insert photo</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3 py-2">
+            <div className="grid gap-1.5">
+              <Label>Photo</Label>
+              <Select value={imgChoice} onValueChange={(v) => { setImgChoice(v); if (v !== CUSTOM) setCustomUrl("") }}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {LIBRARY_IMAGES.map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {p.replace("/cricket/", "").replace(".png", "")}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value={CUSTOM}>Custom URL…</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {imgChoice === CUSTOM && (
+              <div className="grid gap-1.5">
+                <Label htmlFor="imgUrl">Image URL</Label>
+                <Input
+                  id="imgUrl"
+                  value={customUrl}
+                  onChange={(e) => setCustomUrl(e.target.value)}
+                  placeholder="https://… or /cricket/your-image.png"
+                />
+              </div>
+            )}
+            {resolvedUrl && (
+              <div className="aspect-[16/9] w-full overflow-hidden rounded-md border bg-muted">
+                <img src={resolvedUrl} alt="" className="h-full w-full object-cover" />
+              </div>
+            )}
+            <div className="grid gap-1.5">
+              <Label htmlFor="imgCaption">Caption (optional)</Label>
+              <Input
+                id="imgCaption"
+                value={imgCaption}
+                onChange={(e) => setImgCaption(e.target.value)}
+                placeholder="e.g. India celebrate the wicket. Photo: Getty Images"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Shown beneath the photo on the article page.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setImgOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={insertImage} disabled={!canInsert}>
+              Insert
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}

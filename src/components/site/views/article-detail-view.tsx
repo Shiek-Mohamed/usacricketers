@@ -2,6 +2,7 @@
 
 import { useMemo } from "react"
 import ReactMarkdown from "react-markdown"
+import rehypeRaw from "rehype-raw"
 import { useAppStore } from "@/lib/store"
 import { useArticle, useArticles } from "@/lib/use-data"
 import type { Article } from "@/lib/types"
@@ -172,6 +173,7 @@ function ArticleMarkdown({ content }: { content: string }) {
             )
           },
         }}
+        rehypePlugins={[rehypeRaw]}
       >
         {content}
       </ReactMarkdown>

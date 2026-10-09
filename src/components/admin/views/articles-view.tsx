@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useArticles } from "@/lib/use-data"
 import { api } from "@/lib/api"
 import { AdminShell } from "@/components/admin/admin-shell"
+import { MarkdownEditor } from "@/components/admin/markdown-editor"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -379,15 +380,11 @@ export function AdminArticlesView() {
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="content">Content</Label>
-              <Textarea
-                id="content"
+              <MarkdownEditor
                 value={form.content}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, content: e.target.value }))
-                }
-                rows={6}
-                className="font-mono text-xs"
-                placeholder="Full article body (plain text / markdown)"
+                onChange={(v) => setForm((f) => ({ ...f, content: v }))}
+                placeholder="Write the article body. Use the toolbar for bold, italic, alignment, headings, links and photos."
+                rows={14}
               />
             </div>
             <div className="grid sm:grid-cols-2 gap-3">

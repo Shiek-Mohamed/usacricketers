@@ -610,7 +610,7 @@ Each great offers something distinct. Root's hunger for runs, Smith's unorthodox
       excerpt: "From World Cup final centuries to Ashes heroics, Travis Head has made a habit of delivering when it matters most.",
       content: `# Travis Head: The big-match player
 
-There are players who accumulate, and players who decide matches. **Travis Head** is emphatically the latter.
+There are players who *accumulate*, and players who decide matches. **Travis Head** is emphatically the latter.
 
 ## The WTC Final
 
@@ -627,6 +627,8 @@ His 141 against India in the second Test of the 2024-25 Border-Gavaskar Trophy w
 ![Head raises his bat after a series-defining century during the Adelaide Test. Photo: Cricket Australia](/cricket/border-gavaskar.png)
 
 > "I just love the big moments," Head told ESPNcricinfo. "The bigger the game, the more it sharpens my focus."
+
+<div style="text-align:center;">A defining figure of Australia's golden run.</div>
 
 Head has become Australia's indisposable match-winner.`,
       imageUrl: "/cricket/travis-head.png",

@@ -13,6 +13,9 @@ const SCROLLBAR_CLASS =
  *  - `header`: full-width top section (back button, title, hero image, etc.)
  *  - `children`: main body column (fills remaining width next to the sidebar)
  *  - `sidebar`: 300px widget column, begins below the header/large image
+ *  - `mainWidth` (px): optional — caps the main column to a readable width
+ *    (e.g. articles want a narrower text column). When set, the grid uses
+ *    fixed `[mainWidth 300px]` columns and the whole block is centred.
  *
  * On screens smaller than `lg` the body and sidebar stack (body first, sidebar
  * below).
@@ -21,17 +24,35 @@ export function InnerPageLayout({
   header,
   children,
   sidebar,
+  mainWidth,
   className,
 }: {
   header?: React.ReactNode
   children: React.ReactNode
   sidebar?: React.ReactNode
+  mainWidth?: number
   className?: string
 }) {
   return (
     <div className={cn("space-y-6", className)}>
       {header}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_300px]">
+      <div
+        className={cn(
+          "grid grid-cols-1 gap-8",
+          mainWidth
+            ? "mx-auto w-full lg:grid-cols-[var(--inner-main-w)_300px]"
+            : "lg:grid-cols-[1fr_300px]"
+        )}
+        style={
+          mainWidth
+            ? ({
+                // CSS var read by the lg:grid-cols-[...] above; also cap + centre the block.
+                ["--inner-main-w" as string]: `${mainWidth}px`,
+                maxWidth: `${mainWidth + 300 + 32}px`,
+              } as React.CSSProperties)
+            : undefined
+        }
+      >
         <main className="min-w-0 max-w-full">{children}</main>
         {sidebar && (
           <aside

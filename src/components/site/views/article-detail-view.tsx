@@ -216,6 +216,7 @@ export function ArticleDetailView() {
 
   return (
     <InnerPageLayout
+      mainWidth={680}
       header={
         <>
           <Button

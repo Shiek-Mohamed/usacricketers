@@ -8,6 +8,7 @@ import { useArticle, useArticles } from "@/lib/use-data"
 import type { Article } from "@/lib/types"
 import { timeAgo } from "@/components/cricket/ui"
 import { InnerPageLayout } from "@/components/site/inner-layout"
+import { CustomSidebarBlocks } from "@/components/site/custom-sidebar-blocks"
 import {
   ArticleListWidget,
   NewsletterWidget,
@@ -299,6 +300,7 @@ export function ArticleDetailView() {
             <ArticleListWidget title="Related Stories" articles={related} />
           )}
           <NewsletterWidget />
+          <CustomSidebarBlocks placement="article" />
         </>
       }
     >

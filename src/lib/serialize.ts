@@ -1,5 +1,5 @@
 import { parseBattingStats, parseBowlingStats, parseScorecard } from "./types"
-import type { Article, Match, Player, Series, Team } from "./types"
+import type { Article, Match, Player, Series, SidebarBlock, Team } from "./types"
 import type { Prisma } from "@prisma/client"
 
 export function serializeTeam(t: Prisma.TeamGetPayload<Record<string, never>>): Team {
@@ -93,5 +93,20 @@ export function serializeArticle(a: Prisma.ArticleGetPayload<Record<string, neve
     publishedAt: a.publishedAt.toISOString(),
     createdAt: a.createdAt.toISOString(),
     updatedAt: a.updatedAt.toISOString(),
+  }
+}
+
+export function serializeSidebarBlock(
+  b: Prisma.SidebarBlockGetPayload<Record<string, never>>
+): SidebarBlock {
+  return {
+    id: b.id,
+    title: b.title,
+    content: b.content,
+    placement: b.placement,
+    order: b.order,
+    published: b.published,
+    createdAt: b.createdAt.toISOString(),
+    updatedAt: b.updatedAt.toISOString(),
   }
 }

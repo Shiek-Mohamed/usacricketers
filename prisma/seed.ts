@@ -723,6 +723,35 @@ When the dust settles, the all-rounder will be remembered as the player who, for
     articles.map((a) => db.article.create({ data: a }))
   )
 
+  // ===== SIDEBAR BLOCKS (admin-managed custom widgets) =====
+  await db.sidebarBlock.deleteMany()
+  const sidebarBlocks = [
+    {
+      title: "Follow cricinfo",
+      content: "Get live scores, breaking news and analysis in your inbox. **[Subscribe to the newsletter](#)** for the daily cricket briefing.",
+      placement: "all",
+      order: 10,
+      published: true,
+    },
+    {
+      title: "Series spotlight",
+      content: "India tour of England 2025 — five Tests across the English summer. [View series](#) · [Schedule](#)",
+      placement: "article,match",
+      order: 20,
+      published: true,
+    },
+    {
+      title: "Top run-scorers",
+      content: "**Virat Kohli** leads the all-time run charts — *26,942* international runs at *53.6*. [Full stats](#)",
+      placement: "player",
+      order: 30,
+      published: true,
+    },
+  ]
+  await Promise.all(
+    sidebarBlocks.map((b) => db.sidebarBlock.create({ data: b }))
+  )
+
   console.log("✅ Seed complete!")
   const counts = {
     teams: await db.team.count(),
@@ -730,6 +759,7 @@ When the dust settles, the all-rounder will be remembered as the player who, for
     series: await db.series.count(),
     matches: await db.match.count(),
     articles: await db.article.count(),
+    sidebarBlocks: await db.sidebarBlock.count(),
   }
   console.log(counts)
 }

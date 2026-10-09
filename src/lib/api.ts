@@ -1,6 +1,6 @@
 "use client"
 
-import type { Article, Match, PaginatedArticles, Player, Series, Team } from "./types"
+import type { Article, Match, PaginatedArticles, Player, Series, SidebarBlock, Team } from "./types"
 
 async function jsonOrThrow<T>(res: Response): Promise<T> {
   if (!res.ok) throw new Error(`Request failed: ${res.status}`)
@@ -120,5 +120,27 @@ export const api = {
       }).then(jsonOrThrow<Article>),
     remove: (id: string) =>
       fetch(`/api/articles/${id}`, { method: "DELETE" }).then(jsonOrThrow),
+  },
+  sidebarBlocks: {
+    list: (placement?: string, drafts = false) =>
+      fetch(
+        `/api/sidebar-blocks?${placement ? `placement=${placement}` : ""}${drafts ? `${placement ? "&" : ""}drafts=true` : ""}`
+      ).then(jsonOrThrow<SidebarBlock[]>),
+    get: (id: string) =>
+      fetch(`/api/sidebar-blocks/${id}`).then(jsonOrThrow<SidebarBlock>),
+    create: (data: Partial<SidebarBlock>) =>
+      fetch("/api/sidebar-blocks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }).then(jsonOrThrow<SidebarBlock>),
+    update: (id: string, data: Partial<SidebarBlock>) =>
+      fetch(`/api/sidebar-blocks/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }).then(jsonOrThrow<SidebarBlock>),
+    remove: (id: string) =>
+      fetch(`/api/sidebar-blocks/${id}`, { method: "DELETE" }).then(jsonOrThrow),
   },
 }

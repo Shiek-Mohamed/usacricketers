@@ -171,6 +171,7 @@ export type ViewKey =
   | "admin-players"
   | "admin-teams"
   | "admin-series"
+  | "admin-sidebar"
   | "live-scorer"
 
 export interface NavState {
@@ -184,6 +185,17 @@ export interface PaginatedArticles {
   page: number
   pageSize: number
   totalPages: number
+}
+
+export interface SidebarBlock {
+  id: string
+  title: string
+  content: string
+  placement: string // "all" or comma-separated page types
+  order: number
+  published: boolean
+  createdAt: string
+  updatedAt: string
 }
 
 export function parseBattingStats(json: string): BattingStat {

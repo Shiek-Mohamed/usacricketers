@@ -21,6 +21,7 @@ import { usePlayer, usePlayers } from "@/lib/use-data"
 import { useAppStore } from "@/lib/store"
 import { PlayerAvatar, TeamBadge } from "@/components/cricket/ui"
 import { InnerPageLayout } from "@/components/site/inner-layout"
+import { CustomSidebarBlocks } from "@/components/site/custom-sidebar-blocks"
 import {
   PlayerSummaryWidget,
   PlayerInfoWidget,
@@ -176,6 +177,7 @@ export function PlayerDetailView() {
           {teammates && teammates.length > 1 && (
             <TeammatesWidget players={teammates} excludeId={id ?? undefined} />
           )}
+          <CustomSidebarBlocks placement="player" />
         </>
       }
     >

@@ -12,6 +12,7 @@ import {
 } from "@/components/cricket/ui"
 import { ScorecardView } from "@/components/cricket/scorecard"
 import { InnerPageLayout } from "@/components/site/inner-layout"
+import { CustomSidebarBlocks } from "@/components/site/custom-sidebar-blocks"
 import {
   MatchInfoWidget,
   RecentResultsWidget,
@@ -239,6 +240,7 @@ export function MatchDetailView() {
         <>
           <MatchInfoWidget match={match_} />
           <RecentResultsWidget matches={allMatches ?? []} />
+          <CustomSidebarBlocks placement="match" />
         </>
       }
     >

@@ -7,6 +7,7 @@ import { useAppStore } from "@/lib/store"
 import { StatusPill, formatMatchDate } from "@/components/cricket/ui"
 import { MiniScorecard } from "@/components/cricket/mini-scorecard"
 import { InnerPageLayout } from "@/components/site/inner-layout"
+import { CustomSidebarBlocks } from "@/components/site/custom-sidebar-blocks"
 import {
   SeriesInfoWidget,
   SeriesMatchesWidget,
@@ -121,6 +122,7 @@ export function SeriesDetailView() {
           {seriesMatches.length > 0 && (
             <SeriesMatchesWidget matches={seriesMatches} />
           )}
+          <CustomSidebarBlocks placement="series" />
         </>
       }
     >

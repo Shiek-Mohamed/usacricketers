@@ -7,6 +7,7 @@ import { useAppStore } from "@/lib/store"
 import { TeamBadge, PlayerAvatar } from "@/components/cricket/ui"
 import { MiniScorecard } from "@/components/cricket/mini-scorecard"
 import { InnerPageLayout } from "@/components/site/inner-layout"
+import { CustomSidebarBlocks } from "@/components/site/custom-sidebar-blocks"
 import {
   TeamInfoWidget,
   SquadSummaryWidget,
@@ -144,6 +145,7 @@ export function TeamDetailView() {
             <SquadSummaryWidget players={players} />
           )}
           <RecentResultsWidget matches={recentMatches} title="Team Results" />
+          <CustomSidebarBlocks placement="team" />
         </>
       }
     >

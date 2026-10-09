@@ -105,3 +105,19 @@ model Match {
   @@index([team1Id])
   @@index([team2Id])
 }
+
+// Admin-managed custom widgets that render into the inner-page sidebars.
+// `placement` is "all" or a comma-separated list of page types
+// (article,match,player,team,series). `content` is markdown.
+model SidebarBlock {
+  id         String   @id @default(cuid())
+  title      String
+  content    String   @default("")
+  placement  String   @default("all")
+  order      Int      @default(0)
+  published  Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([published, order])
+}

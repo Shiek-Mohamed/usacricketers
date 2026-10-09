@@ -56,6 +56,7 @@ interface ArticleFormState {
   excerpt: string
   content: string
   imageUrl: string
+  imageCaption: string
   category: string
   author: string
   tags: string
@@ -71,6 +72,7 @@ function emptyForm(): ArticleFormState {
     excerpt: "",
     content: "",
     imageUrl: "",
+    imageCaption: "",
     category: "news",
     author: "",
     tags: "",
@@ -135,6 +137,7 @@ export function AdminArticlesView() {
       excerpt: a.excerpt,
       content: a.content,
       imageUrl: a.imageUrl || "",
+      imageCaption: a.imageCaption || "",
       category: a.category,
       author: a.author,
       tags: a.tags,
@@ -454,6 +457,20 @@ export function AdminArticlesView() {
                 }
                 placeholder="https://..."
               />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="imageCaption">Image caption (optional)</Label>
+              <Input
+                id="imageCaption"
+                value={form.imageCaption}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, imageCaption: e.target.value }))
+                }
+                placeholder="e.g. India celebrate with the Champions Trophy in Dubai. Photo: Getty Images"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Shown as a small caption beneath the hero image on the article page.
+              </p>
             </div>
             <div className="flex items-center gap-6 pt-1">
               <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">

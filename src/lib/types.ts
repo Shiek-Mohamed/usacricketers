@@ -78,6 +78,7 @@ export interface Article {
   excerpt: string
   content: string
   imageUrl: string | null
+  imageCaption: string | null
   category: string
   author: string
   tags: string

@@ -84,6 +84,7 @@ export function serializeArticle(a: Prisma.ArticleGetPayload<Record<string, neve
     excerpt: a.excerpt,
     content: a.content,
     imageUrl: a.imageUrl,
+    imageCaption: a.imageCaption,
     category: a.category,
     author: a.author,
     tags: a.tags,

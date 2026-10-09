@@ -23,6 +23,7 @@ import {
   User,
   Info,
   ArrowLeft,
+  Camera,
 } from "lucide-react"
 
 function estimateReadTime(content: string) {
@@ -31,17 +32,28 @@ function estimateReadTime(content: string) {
   return Math.max(1, Math.round(words / 200))
 }
 
-function ArticleHeroImage({ url }: { url: string | null }) {
+function ArticleHeroImage({
+  url,
+  caption,
+}: {
+  url: string | null
+  caption?: string | null
+}) {
+  const hasCaption = !!caption && caption.trim().length > 0
   if (url) {
     return (
-      <div className="aspect-[16/9] w-full overflow-hidden rounded-lg">
-        {/* next/image not used to keep this a runtime-only image */}
-        <img
-          src={url}
-          alt=""
-          className="h-full w-full object-cover"
-        />
-      </div>
+      <figure className="w-full">
+        <div className="aspect-[16/9] w-full overflow-hidden rounded-lg">
+          {/* next/image not used to keep this a runtime-only image */}
+          <img src={url} alt={caption ?? ""} className="h-full w-full object-cover" />
+        </div>
+        {hasCaption && (
+          <figcaption className="mt-2 flex items-start gap-1.5 text-xs leading-relaxed text-muted-foreground">
+            <Camera className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+            <span>{caption}</span>
+          </figcaption>
+        )}
+      </figure>
     )
   }
   return (
@@ -256,7 +268,7 @@ export function ArticleDetailView() {
               </div>
             </header>
 
-            <ArticleHeroImage url={article.imageUrl} />
+            <ArticleHeroImage url={article.imageUrl} caption={article.imageCaption} />
           </article>
         </>
       }

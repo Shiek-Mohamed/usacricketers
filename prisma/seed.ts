@@ -498,6 +498,7 @@ Captain **Kane Williamson** praised New Zealand's fight: "Credit to India, they 
 
 The triumph caps a remarkable turnaround for an Indian side that had not won an ICC ODI event since 2013.`,
       imageUrl: "/cricket/hero-trophy.png",
+      imageCaption: "India celebrate with the Champions Trophy after their four-wicket win over New Zealand in the final at the Dubai International Stadium. Photo: Getty Images",
       category: "news",
       author: "ESPNcricinfo staff",
       tags: "India,New Zealand,Champions Trophy,Rohit Sharma,Shami",
@@ -532,6 +533,7 @@ In white-ball cricket, Bumrah's yorker is the gold standard. He lands it on a si
 
 The India spearhead remains the benchmark by which fast bowling in this era is measured.`,
       imageUrl: "/cricket/bumrah-bowling.png",
+      imageCaption: "Jasprit Bumrah in his delivery stride — the premier fast bowler of the era. Photo: AFP via Getty Images",
       category: "analysis",
       author: "Sampath Bandarupadhy",
       tags: "India,Bumrah,analysis,fast bowling",
@@ -566,6 +568,7 @@ With an ageing top order and a fledgling middle order, India showed flashes but 
 
 For sheer theatre, there is nothing in Test cricket quite like an Australia-India series contested over five Tests.`,
       imageUrl: "/cricket/border-gavaskar.png",
+      imageCaption: "Travis Head raises his bat after a series-defining century during the Adelaide Test. Photo: Cricket Australia",
       category: "feature",
       author: "Daniel Brettig",
       tags: "Australia,India,Border-Gavaskar,Test cricket",
@@ -625,6 +628,7 @@ His 141 against India in the second Test of the 2024-25 Border-Gavaskar Trophy w
 
 Head has become Australia's indisposable match-winner.`,
       imageUrl: "/cricket/travis-head.png",
+      imageCaption: "Travis Head plays a cover drive on his way to another match-winning innings. Photo: Getty Images",
       category: "feature",
       author: "Tristan Lavalette",
       tags: "Australia,Head,feature,World Cup",

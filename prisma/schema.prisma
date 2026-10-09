@@ -16,6 +16,7 @@ model Article {
   excerpt     String
   content     String
   imageUrl    String?
+  imageCaption String?
   category    String   @default("news") // news, feature, analysis, interview, opinion
   author      String   @default("ESPNcricinfo staff")
   tags        String   @default("")

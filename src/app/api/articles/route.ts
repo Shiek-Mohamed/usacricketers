@@ -85,6 +85,7 @@ export async function POST(req: NextRequest) {
       excerpt: body.excerpt || "",
       content: body.content || "",
       imageUrl: body.imageUrl || null,
+      imageCaption: body.imageCaption || null,
       category: body.category || "news",
       author: body.author || "ESPNcricinfo staff",
       tags: body.tags || "",

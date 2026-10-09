@@ -27,6 +27,7 @@ export async function PUT(
       excerpt: body.excerpt,
       content: body.content,
       imageUrl: body.imageUrl || null,
+      imageCaption: body.imageCaption ?? null,
       category: body.category,
       author: body.author,
       tags: body.tags,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { serializeArticle } from "@/lib/serialize"
+import { cacheDelPrefix } from "@/lib/cache"
 
 export async function GET(
   _req: NextRequest,
@@ -34,6 +35,7 @@ export async function PUT(
       publishedAt: body.publishedAt ? new Date(body.publishedAt) : undefined,
     },
   })
+  cacheDelPrefix("articles:list:")
   return NextResponse.json(serializeArticle(article))
 }
 
@@ -47,5 +49,6 @@ export async function DELETE(
   } catch {
     return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
+  cacheDelPrefix("articles:list:")
   return NextResponse.json({ ok: true })
 }

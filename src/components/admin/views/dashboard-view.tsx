@@ -93,7 +93,7 @@ export function DashboardView() {
     },
     {
       label: "Articles",
-      count: articles.data?.length ?? 0,
+      count: articles.data?.total ?? 0,
       icon: FileText,
       color: "text-slate-700",
       bg: "bg-slate-100",
@@ -101,7 +101,7 @@ export function DashboardView() {
     },
   ]
 
-  const recentArticles = (articles.data ?? []).slice(0, 5)
+  const recentArticles = (articles.data?.items ?? []).slice(0, 5)
   const recentMatches = (matches.data ?? []).slice(0, 5)
   const loading =
     teams.loading ||

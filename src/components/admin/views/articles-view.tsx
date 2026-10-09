@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useArticles } from "@/lib/use-data"
 import { api } from "@/lib/api"
 import { AdminShell } from "@/components/admin/admin-shell"
@@ -97,22 +97,29 @@ function toLocalInput(iso: string) {
 }
 
 export function AdminArticlesView() {
-  const { data, loading, refetch } = useArticles()
   const [search, setSearch] = useState("")
+  const [debouncedQ, setDebouncedQ] = useState("")
+  const [page, setPage] = useState(1)
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(search.trim()), 350)
+    return () => clearTimeout(t)
+  }, [search])
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedQ])
+
+  const { data, loading, refetch } = useArticles({
+    q: debouncedQ || undefined,
+    page,
+    pageSize: 20,
+  })
+  const items = data?.items ?? []
+  const totalPages = data?.totalPages ?? 1
   const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<ArticleFormState>(emptyForm())
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-
-  const filtered = (data ?? []).filter((a) => {
-    const q = search.toLowerCase()
-    return (
-      a.title.toLowerCase().includes(q) ||
-      a.author.toLowerCase().includes(q) ||
-      a.category.toLowerCase().includes(q)
-    )
-  })
 
   function openCreate() {
     setEditingId(null)
@@ -179,7 +186,7 @@ export function AdminArticlesView() {
   return (
     <AdminShell
       title="Manage Articles"
-      count={data?.length}
+      count={data?.total}
       actionLabel="+ New Article"
       onAction={openCreate}
     >
@@ -217,7 +224,7 @@ export function AdminArticlesView() {
                       </TableCell>
                     </TableRow>
                   ))
-                ) : filtered.length === 0 ? (
+                ) : items.length === 0 ? (
                   <TableRow>
                     <TableCell
                       colSpan={7}
@@ -227,7 +234,7 @@ export function AdminArticlesView() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filtered.map((a) => (
+                  items.map((a) => (
                     <TableRow key={a.id}>
                       <TableCell className="max-w-[220px] truncate font-medium">
                         {a.title}
@@ -290,6 +297,34 @@ export function AdminArticlesView() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground">
+            Page {page} of {totalPages}
+            {data ? ` · ${data.total} total` : ""}
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1 || loading}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages || loading}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Create / Edit dialog */}
       <Dialog open={open} onOpenChange={setOpen}>

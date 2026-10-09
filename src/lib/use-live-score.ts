@@ -5,6 +5,14 @@ import { io, type Socket } from "socket.io-client"
 import type { LiveMatchState } from "./scoring"
 
 /**
+ * Demo-grade operator token. Shipped to the browser, so it only stops casual
+ * spoofing — for production, swap for a server-issued short-lived JWT.
+ * Must match `SCORER_TOKEN` in the score-service.
+ */
+const SCORER_TOKEN =
+  process.env.NEXT_PUBLIC_SCORER_TOKEN || "cric-cms-live-scorer-v1"
+
+/**
  * Subscribe to a match's live scoring state and (for the operator) push new
  * states as balls are scored. Connects to the score-service mini service via
  * the Caddy gateway using the XTransformPort query param.
@@ -48,7 +56,7 @@ export function useLiveScore(matchId: string | null) {
     (state: LiveMatchState) => {
       const socket = socketRef.current
       if (!socket || !matchId) return
-      socket.emit("operator:state", { matchId, state })
+      socket.emit("operator:state", { matchId, state, token: SCORER_TOKEN })
     },
     [matchId]
   )
@@ -56,7 +64,7 @@ export function useLiveScore(matchId: string | null) {
   const clearState = useCallback(() => {
     const socket = socketRef.current
     if (!socket || !matchId) return
-    socket.emit("operator:clear", matchId)
+    socket.emit("operator:clear", { matchId, token: SCORER_TOKEN })
   }, [matchId])
 
   return { liveState, connected, pushState, clearState }

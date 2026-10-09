@@ -238,8 +238,8 @@ export function HomeView() {
   const navigate = useAppStore((s) => s.navigate)
   const { data: matchesData, loading: matchesLoading } = useMatches()
   const { data: featuredArticles, loading: articlesLoadingFeatured } =
-    useArticles({ featured: true })
-  const { data: allArticles, loading: articlesLoadingAll } = useArticles()
+    useArticles({ featured: true, pageSize: 12 })
+  const { data: allArticles, loading: articlesLoadingAll } = useArticles({ pageSize: 12 })
 
   const matches = matchesData ?? []
   const liveMatch = matches.find((m) => m.status === "live")
@@ -253,14 +253,17 @@ export function HomeView() {
     [matches]
   )
 
+  const featuredItems = featuredArticles?.items ?? []
+  const latestItems = allArticles?.items ?? []
+
   // Featured hero = most recent article that has a hero image; secondary = next 3 with images.
   const withImages = useMemo(
-    () => (allArticles ?? []).filter((a) => a.imageUrl),
-    [allArticles]
+    () => latestItems.filter((a) => a.imageUrl),
+    [latestItems]
   )
-  const heroStory = withImages[0] ?? featuredArticles?.[0] ?? allArticles?.[0] ?? null
+  const heroStory = withImages[0] ?? featuredItems[0] ?? latestItems[0] ?? null
   const secondaryStories = withImages.slice(1, 4)
-  const latestNews = (allArticles ?? []).slice(0, 8)
+  const latestNews = latestItems.slice(0, 8)
 
   const heroLoading = articlesLoadingFeatured && articlesLoadingAll
 

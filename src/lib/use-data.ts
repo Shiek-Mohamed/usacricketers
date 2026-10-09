@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { api } from "./api"
-import type { Article, Match, Player, Series, Team } from "./types"
+import type { Article, Match, PaginatedArticles, Player, Series, Team } from "./types"
 
 interface FetchState<T> {
   data: T | null
@@ -58,10 +58,19 @@ export const useMatch = (id: string | null) =>
 export const useSeries = () => useFetch<Series[]>(() => api.series.list())
 export const useSeriesItem = (id: string | null) =>
   useFetch<Series>(() => (id ? api.series.get(id) : Promise.reject()), [id])
-export const useArticles = (params?: { category?: string; featured?: boolean }) =>
-  useFetch<Article[]>(() => api.articles.list(params), [
+export const useArticles = (params?: {
+  category?: string
+  featured?: boolean
+  page?: number
+  pageSize?: number
+  q?: string
+}) =>
+  useFetch<PaginatedArticles>(() => api.articles.list(params), [
     params?.category,
     params?.featured,
+    params?.page,
+    params?.pageSize,
+    params?.q,
   ])
 export const useArticle = (id: string | null) =>
   useFetch<Article>(() => (id ? api.articles.get(id) : Promise.reject()), [id])

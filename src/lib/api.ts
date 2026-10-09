@@ -1,6 +1,6 @@
 "use client"
 
-import type { Article, Match, Player, Series, Team } from "./types"
+import type { Article, Match, PaginatedArticles, Player, Series, Team } from "./types"
 
 async function jsonOrThrow<T>(res: Response): Promise<T> {
   if (!res.ok) throw new Error(`Request failed: ${res.status}`)
@@ -87,13 +87,22 @@ export const api = {
       fetch(`/api/series/${id}`, { method: "DELETE" }).then(jsonOrThrow),
   },
   articles: {
-    list: (params?: { category?: string; featured?: boolean }) => {
+    list: (params?: {
+      category?: string
+      featured?: boolean
+      page?: number
+      pageSize?: number
+      q?: string
+    }) => {
       const qs = new URLSearchParams()
       if (params?.category) qs.set("category", params.category)
       if (params?.featured) qs.set("featured", "true")
+      if (params?.page) qs.set("page", String(params.page))
+      if (params?.pageSize) qs.set("pageSize", String(params.pageSize))
+      if (params?.q) qs.set("q", params.q)
       const q = qs.toString()
       return fetch(`/api/articles${q ? `?${q}` : ""}`).then(
-        jsonOrThrow<Article[]>
+        jsonOrThrow<PaginatedArticles>
       )
     },
     get: (id: string) => fetch(`/api/articles/${id}`).then(jsonOrThrow<Article>),

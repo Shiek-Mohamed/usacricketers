@@ -171,16 +171,16 @@ export function ArticleDetailView() {
   const id = useAppStore((s) => s.id)
   const navigate = useAppStore((s) => s.navigate)
   const { data, loading, error } = useArticle(id)
-  const { data: allArticles } = useArticles()
+  const { data: articlesPage } = useArticles({ pageSize: 10 })
 
   const content = data?.content ?? ""
   const readTime = useMemo(() => estimateReadTime(content), [content])
   const related = useMemo(() => {
-    if (!allArticles) return []
-    return allArticles
+    const items = articlesPage?.items ?? []
+    return items
       .filter((a) => a.id !== id)
       .slice(0, 4)
-  }, [allArticles, id])
+  }, [articlesPage, id])
 
   if (loading) return <ArticleDetailSkeleton />
 

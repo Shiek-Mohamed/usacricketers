@@ -177,6 +177,14 @@ export interface NavState {
   id: string | null
 }
 
+export interface PaginatedArticles {
+  items: Article[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
+
 export function parseBattingStats(json: string): BattingStat {
   try {
     const p = JSON.parse(json || "{}")

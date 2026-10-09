@@ -34,21 +34,27 @@ export function InnerPageLayout({
   className?: string
 }) {
   return (
-    <div className={cn("space-y-6", className)}>
+    <div
+      className={cn("space-y-6", mainWidth && "mx-auto w-full", className)}
+      style={
+        mainWidth
+          ? ({ maxWidth: `${mainWidth + 300 + 32}px` } as React.CSSProperties)
+          : undefined
+      }
+    >
       {header}
       <div
         className={cn(
           "grid grid-cols-1 gap-8",
           mainWidth
-            ? "mx-auto w-full lg:grid-cols-[var(--inner-main-w)_300px]"
+            ? "lg:grid-cols-[var(--inner-main-w)_300px]"
             : "lg:grid-cols-[1fr_300px]"
         )}
         style={
           mainWidth
             ? ({
-                // CSS var read by the lg:grid-cols-[...] above; also cap + centre the block.
+                // CSS var read by the lg:grid-cols-[...] above.
                 ["--inner-main-w" as string]: `${mainWidth}px`,
-                maxWidth: `${mainWidth + 300 + 32}px`,
               } as React.CSSProperties)
             : undefined
         }

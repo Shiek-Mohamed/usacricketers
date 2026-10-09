@@ -34,7 +34,7 @@ function estimateReadTime(content: string) {
 function ArticleHeroImage({ url }: { url: string | null }) {
   if (url) {
     return (
-      <div className="aspect-[16/9] w-full overflow-hidden rounded-lg">
+      <div className="aspect-[16/9] w-full max-w-[750px] mx-auto overflow-hidden rounded-lg">
         {/* next/image not used to keep this a runtime-only image */}
         <img
           src={url}
@@ -45,7 +45,7 @@ function ArticleHeroImage({ url }: { url: string | null }) {
     )
   }
   return (
-    <div className="grid aspect-[16/9] w-full place-items-center rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 text-slate-300">
+    <div className="grid aspect-[16/9] w-full max-w-[750px] mx-auto place-items-center rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 text-slate-300">
       <Newspaper className="h-12 w-12" />
     </div>
   )
@@ -216,7 +216,7 @@ export function ArticleDetailView() {
 
   return (
     <InnerPageLayout
-      mainWidth={680}
+      mainWidth={600}
       header={
         <>
           <Button

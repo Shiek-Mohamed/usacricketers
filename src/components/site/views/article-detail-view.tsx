@@ -47,10 +47,10 @@ function ArticleHeroImage({
       <figure className="w-full">
         <div className="aspect-[16/9] w-full overflow-hidden rounded-lg">
           {/* next/image not used to keep this a runtime-only image */}
-          <img src={url} alt={caption ?? ""} className="h-full w-full object-cover" />
+          <img src={url} alt={caption ?? ""} className="block h-full w-full object-cover" />
         </div>
         {hasCaption && (
-          <figcaption className="mt-2 flex items-start gap-1.5 text-xs leading-relaxed text-muted-foreground">
+          <figcaption className="mt-1 flex items-start gap-1.5 text-xs leading-relaxed text-muted-foreground">
             <Camera className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
             <span>{caption}</span>
           </figcaption>
@@ -162,10 +162,10 @@ function ArticleMarkdown({ content }: { content: string }) {
                 <img
                   src={typeof src === "string" ? src : undefined}
                   alt={caption}
-                  className="w-full rounded-lg"
+                  className="block w-full rounded-lg"
                 />
                 {caption ? (
-                  <figcaption className="mt-2 flex items-start gap-1.5 text-xs leading-relaxed text-muted-foreground">
+                  <figcaption className="mt-1 flex items-start gap-1.5 text-xs leading-relaxed text-muted-foreground">
                     <Camera className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
                     <span>{caption}</span>
                   </figcaption>

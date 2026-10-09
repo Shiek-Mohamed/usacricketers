@@ -53,10 +53,10 @@ function BlockCard({ block }: { block: SidebarBlock }) {
                   <img
                     src={typeof src === "string" ? src : undefined}
                     alt={caption}
-                    className="w-full rounded-md"
+                    className="block w-full rounded-md"
                   />
                   {caption ? (
-                    <figcaption className="mt-1 flex items-start gap-1 text-[11px] leading-relaxed text-muted-foreground">
+                    <figcaption className="mt-0.5 flex items-start gap-1 text-[11px] leading-relaxed text-muted-foreground">
                       <Camera className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground/60" />
                       <span>{caption}</span>
                     </figcaption>

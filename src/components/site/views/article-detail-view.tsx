@@ -25,7 +25,6 @@ import {
   User,
   Info,
   ArrowLeft,
-  Camera,
 } from "lucide-react"
 
 function estimateReadTime(content: string) {
@@ -50,8 +49,7 @@ function ArticleHeroImage({
           <img src={url} alt={caption ?? ""} className="block h-full w-full object-cover" />
         </div>
         {hasCaption && (
-          <figcaption className="mt-0.5 flex items-start gap-1.5 text-[0.8rem] leading-[1.525] text-black">
-            <Camera className="mt-0.5 h-3.5 w-3.5 shrink-0 text-black/60" />
+          <figcaption className="mt-0.5 text-[0.8rem] leading-[1.525] text-black">
             <span>{caption}</span>
           </figcaption>
         )}
@@ -165,8 +163,7 @@ function ArticleMarkdown({ content }: { content: string }) {
                   className="block w-full rounded-lg"
                 />
                 {caption ? (
-                  <figcaption className="mt-0.5 flex items-start gap-1.5 text-[0.8rem] leading-[1.525] text-black">
-                    <Camera className="mt-0.5 h-3.5 w-3.5 shrink-0 text-black/60" />
+                  <figcaption className="mt-0.5 text-[0.8rem] leading-[1.525] text-black">
                     <span>{caption}</span>
                   </figcaption>
                 ) : null}

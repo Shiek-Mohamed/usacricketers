@@ -4,7 +4,6 @@ import ReactMarkdown from "react-markdown"
 import rehypeRaw from "rehype-raw"
 import { useSidebarBlocks } from "@/lib/use-data"
 import { SidebarWidget } from "@/components/site/inner-layout"
-import { Camera } from "lucide-react"
 import type { SidebarBlock } from "@/lib/types"
 
 /**
@@ -56,8 +55,7 @@ function BlockCard({ block }: { block: SidebarBlock }) {
                     className="block w-full rounded-md"
                   />
                   {caption ? (
-                    <figcaption className="mt-0.5 flex items-start gap-1.5 text-[0.8rem] leading-[1.525] text-black">
-                      <Camera className="mt-0.5 h-3.5 w-3.5 shrink-0 text-black/60" />
+                    <figcaption className="mt-0.5 text-[0.8rem] leading-[1.525] text-black">
                       <span>{caption}</span>
                     </figcaption>
                   ) : null}

@@ -7,6 +7,7 @@ import { HomeView } from "@/components/site/views/home-view"
 import { MatchesView } from "@/components/site/views/matches-view"
 import { MatchDetailView } from "@/components/site/views/match-detail-view"
 import { NewsView } from "@/components/site/views/news-view"
+import { InterviewsView } from "@/components/site/views/interviews-view"
 import { ArticleDetailView } from "@/components/site/views/article-detail-view"
 import { SeriesView } from "@/components/site/views/series-view"
 import { SeriesDetailView } from "@/components/site/views/series-detail-view"
@@ -41,6 +42,8 @@ export default function Home() {
         return <MatchDetailView />
       case "news":
         return <NewsView />
+      case "interviews":
+        return <InterviewsView />
       case "article-detail":
         return <ArticleDetailView />
       case "series":

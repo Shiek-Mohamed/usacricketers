@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
+import { cn } from "@/lib/utils"
 import { useAppStore } from "@/lib/store"
 import { useMatches, useArticles } from "@/lib/use-data"
 import type { Match, Article } from "@/lib/types"
@@ -240,6 +241,7 @@ export function HomeView() {
   const { data: featuredArticles, loading: articlesLoadingFeatured } =
     useArticles({ featured: true, pageSize: 12 })
   const { data: allArticles, loading: articlesLoadingAll } = useArticles({ pageSize: 12 })
+  const { data: interviewData } = useArticles({ category: "interview", pageSize: 6 })
 
   const matches = matchesData ?? []
   const liveMatch = matches.find((m) => m.status === "live")
@@ -377,6 +379,139 @@ export function HomeView() {
           </Card>
         )}
       </section>
+
+      {/* Interviews — styled per the provided sample design */}
+      <InterviewsSection articles={interviewData?.items ?? []} />
     </div>
+  )
+}
+
+/* ---- Interviews section (sample-design: navy header + gradient cards + popular sidebar) ---- */
+
+function InterviewsSection({ articles }: { articles: Article[] }) {
+  const navigate = useAppStore((s) => s.navigate)
+  if (!articles.length) return null
+  const hero = articles[0]
+  const secondary = articles.slice(1, 3)
+  const popular = articles.slice(0, 3)
+
+  return (
+    <section className="space-y-6">
+      {/* Section header — navy "Interviews" + See More link */}
+      <div className="flex items-center gap-4">
+        <h2 className="text-2xl font-extrabold tracking-tight uppercase text-[#1e2a5e] sm:text-3xl">
+          Interviews
+        </h2>
+        <button
+          onClick={() => navigate("interviews")}
+          className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-[#1e2a5e] hover:opacity-70 transition-opacity"
+        >
+          See More Interviews
+          <ChevronRight className="h-3 w-3" />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
+        {/* Left: hero card (spans 2 cols) + 2 secondary cards */}
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:col-span-8">
+          {hero && (
+            <InterviewCard
+              article={hero}
+              variant="hero"
+              onClick={() => navigate("article-detail", hero.id)}
+            />
+          )}
+          {secondary.map((a) => (
+            <InterviewCard
+              key={a.id}
+              article={a}
+              variant="secondary"
+              onClick={() => navigate("article-detail", a.id)}
+            />
+          ))}
+        </div>
+
+        {/* Right: Popular Interviews numbered list */}
+        <aside className="lg:col-span-4">
+          <div className="mb-5 border-b pb-4">
+            <h3 className="text-lg font-bold uppercase tracking-wide text-[#1e2a5e] sm:text-xl">
+              Popular Interviews
+            </h3>
+          </div>
+          <ul className="space-y-5">
+            {popular.map((a, i) => (
+              <li key={a.id}>
+                <button
+                  onClick={() => navigate("article-detail", a.id)}
+                  className="group flex items-start gap-4 text-left"
+                >
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-gray-300 pt-0.5 text-base font-bold text-[#1e2a5e]">
+                    {i + 1}
+                  </span>
+                  <div className="pt-1">
+                    <span className="mb-1 block text-xs font-medium text-gray-500">
+                      Interview
+                    </span>
+                    <p className="font-bold leading-snug text-gray-900 transition-colors group-hover:text-[#1e2a5e]">
+                      {a.title}
+                    </p>
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </aside>
+      </div>
+    </section>
+  )
+}
+
+function InterviewCard({
+  article,
+  variant,
+  onClick,
+}: {
+  article: Article
+  variant: "hero" | "secondary"
+  onClick: () => void
+}) {
+  const hero = variant === "hero"
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "group relative block w-full overflow-hidden rounded-xl bg-black text-left",
+        hero ? "aspect-[16/9] md:col-span-2 md:aspect-[21/9]" : "aspect-[4/3]"
+      )}
+    >
+      {article.imageUrl ? (
+        <img
+          src={article.imageUrl}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover opacity-90 transition-transform duration-500 ease-out group-hover:scale-105"
+        />
+      ) : (
+        <div className="absolute inset-0 bg-slate-800" />
+      )}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 flex h-full w-full flex-col justify-end p-5 md:p-6">
+        <div className="mt-auto">
+          <span className="mb-2 inline-block text-sm font-medium text-white/90">
+            Interview
+          </span>
+          <h3
+            className={cn(
+              "mb-2 font-bold leading-tight text-white transition-colors group-hover:text-blue-200",
+              hero ? "text-2xl md:text-3xl" : "text-lg line-clamp-2"
+            )}
+          >
+            {article.title}
+          </h3>
+          <time className="text-sm font-medium text-gray-300">
+            {timeAgo(article.publishedAt)}
+          </time>
+        </div>
+      </div>
+    </button>
   )
 }

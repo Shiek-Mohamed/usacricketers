@@ -157,6 +157,7 @@ export type ViewKey =
   | "match-detail"
   | "news"
   | "article-detail"
+  | "interviews"
   | "series"
   | "series-detail"
   | "teams"

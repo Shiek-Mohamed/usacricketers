@@ -717,6 +717,141 @@ When the dust settles, the all-rounder will be remembered as the player who, for
       featured: false,
       publishedAt: new Date("2025-01-20T07:00:00"),
     },
+    // ===== INTERVIEWS =====
+    {
+      title: "In conversation with Pat Cummins: leading Australia's golden era",
+      slug: "in-conversation-with-pat-cummins",
+      excerpt: "The Australia captain on leadership, the World Cup highs, and what drives the most feared pace attack in world cricket.",
+      content: `# In conversation with Pat Cummins
+
+We sat down with **Pat Cummins** to talk about captaining Australia, his fast-bowling craft, and the mentality behind a golden era.
+
+## On captaincy
+
+> "I think the biggest thing I've learned is that you don't have to be the loudest voice in the room. Sometimes the best leadership is just setting the standard with the ball in your hand."
+
+Cummins took over the one-day captaincy at a time of transition and has since lifted both the ODI World Cup and the World Test Championship mace.
+
+## On the World Cup final
+
+> "Ahmedabad was the pinnacle. To chase 240 on that wicket, with the whole of India willing us to lose — that's the kind of day you play cricket for."
+
+## On his bowling
+
+He remains the benchmark for accuracy and pace. His economy rate in white-ball cricket is among the best in the game's history.
+
+> "The yorker is my reset button. When the batter is on top, I go back to what I know I can land nine times out of ten."
+
+## What's next
+
+With a home summer and an away tour of England looming, Cummins is focused on keeping the group hungry.
+
+> "The danger isn't losing — it's thinking you've made it."`,
+      imageUrl: "/cricket/inline-captain-trophy.png",
+      imageCaption: "Pat Cummins lifts the trophy after another triumph. Photo: Getty Images",
+      category: "interview",
+      author: "ESPNcricinfo staff",
+      tags: "Australia,Cummins,interview,captaincy",
+      featured: false,
+      publishedAt: new Date("2025-02-28T10:00:00"),
+    },
+    {
+      title: "Babar Azam: 'I want to be remembered as Pakistan's greatest batter'",
+      slug: "babar-azam-pakistan-greatest-batter-interview",
+      excerpt: "Pakistan's batting talisman on chasing greatness, handling expectation, and the weight of a nation's hopes.",
+      content: `# Babar Azam: chasing greatness
+
+**Babar Azam** is the batting heartbeat of Pakistan. We spoke to him about his craft, the pressure of carrying a nation, and his ambitions.
+
+## On his technique
+
+> "People talk about elegance, but for me it's about efficiency. Every movement has a purpose. I don't want to waste energy at the crease."
+
+## On the pressure
+
+> "When you walk out in Karachi or Lahore, you're not just playing for yourself. Every person in the stadium has an opinion on your shot selection. You learn to block it out."
+
+## On his goals
+
+Babar's ODI average hovers above 47, with 31 international hundreds. He is blunt about where he wants to end up.
+
+> "I want to be remembered as Pakistan's greatest batter. Not for the averages or the hundreds — for the matches I won."
+
+## On the next generation
+
+> "The young boys coming through — they're fearless. My job is to give them a platform at the top of the order so they can express themselves."`,
+      imageUrl: "/cricket/inline-batsman-pull.png",
+      imageCaption: "Babar Azam in his trademark fluent stride. Photo: AFP",
+      category: "interview",
+      author: "ESPNcricinfo staff",
+      tags: "Pakistan,Babar Azam,interview",
+      featured: false,
+      publishedAt: new Date("2025-02-10T09:00:00"),
+    },
+    {
+      title: "Jasprit Bumrah on the art of the yorker and handling pressure",
+      slug: "bumrah-yorker-pressure-interview",
+      excerpt: "India's pace spearhead on the delivery that defines him, the mindset for the death overs, and learning to trust his body again.",
+      content: `# Bumrah on the yorker
+
+**Jasprit Bumrah** is the most feared fast bowler in the world. We caught up with him to dissect his craft.
+
+## The yorker
+
+> "It's the one ball a batter can't score off if you land it. Everyone talks about pace and bounce, but the yorker is the great equaliser."
+
+## Handling the death overs
+
+> "In the last over, I don't think about the batter. I think about the ball I want to bowl and where my field is. The rest is execution."
+
+## The injury comeback
+
+A stress fracture kept him out for much of 2022. He is candid about the mental toll.
+
+> "When you can't bowl, you question everything. But it taught me patience — to respect my body, to come back smarter, not just harder."
+
+## On captaincy and leadership
+
+> "I don't need the armband to lead. When a young quick comes to me for advice, that's leadership."`,
+      imageUrl: "/cricket/inline-fast-bowler-roar.png",
+      imageCaption: "Bumrah celebrates another wicket. Photo: BCCI",
+      category: "interview",
+      author: "ESPNcricinfo staff",
+      tags: "India,Bumrah,interview,fast bowling",
+      featured: false,
+      publishedAt: new Date("2025-01-15T08:00:00"),
+    },
+    {
+      title: "Kane Williamson: the calmest man in cricket",
+      slug: "kane-williamson-calmest-man-interview",
+      excerpt: "New Zealand's former captain on serenity at the crease, the World Cup heartbreak, and why temperament trumps talent.",
+      content: `# The calmest man in cricket
+
+**Kane Williamson** has built a career on composure. We spoke about the mindset behind the man.
+
+## On staying calm
+
+> "I think it comes from acceptance. You're going to get out. You're going to have bad days. The trick is not to let one ball cost you two."
+
+## The 2019 World Cup final
+
+> "That day in London — I don't think any of us will ever fully process it. The rules were the rules. We walked off as runners-up, and I was proud of how we carried ourselves."
+
+## On temperament vs talent
+
+> "Talent gets you to the team. Temperament keeps you there. The best batters I've played with aren't always the most gifted — they're the ones who find a way."
+
+## What's next for New Zealand
+
+> "The next generation is ready. My role now is to help them believe they belong at this level."`,
+      imageUrl: "/cricket/inline-stadium-crowd.png",
+      imageCaption: "Williamson walks out to a packed house. Photo: Getty Images",
+      category: "interview",
+      author: "ESPNcricinfo staff",
+      tags: "New Zealand,Williamson,interview",
+      featured: false,
+      publishedAt: new Date("2025-01-10T11:00:00"),
+    },
   ]
 
   await Promise.all(

@@ -2,9 +2,6 @@
 
 import { cn } from "@/lib/utils"
 
-const SCROLLBAR_CLASS =
-  "[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent"
-
 /**
  * Inner-page layout where the top header section (including any large hero
  * image) renders full-width, and the 300px sidebar starts BELOW that header
@@ -61,12 +58,7 @@ export function InnerPageLayout({
       >
         <main className="min-w-0 max-w-full">{children}</main>
         {sidebar && (
-          <aside
-            className={cn(
-              "space-y-6 lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pr-1",
-              SCROLLBAR_CLASS
-            )}
-          >
+          <aside className="space-y-6 lg:sticky lg:top-20 lg:self-start">
             {sidebar}
           </aside>
         )}

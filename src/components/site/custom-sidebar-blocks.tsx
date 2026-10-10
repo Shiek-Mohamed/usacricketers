@@ -56,8 +56,8 @@ function BlockCard({ block }: { block: SidebarBlock }) {
                     className="block w-full rounded-md"
                   />
                   {caption ? (
-                    <figcaption className="mt-0.5 flex items-start gap-1 text-[11px] leading-relaxed text-muted-foreground">
-                      <Camera className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground/60" />
+                    <figcaption className="mt-0.5 flex items-start gap-1.5 text-xs leading-relaxed text-muted-foreground">
+                      <Camera className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
                       <span>{caption}</span>
                     </figcaption>
                   ) : null}

@@ -48,26 +48,26 @@ export function Footer() {
   const navigate = useAppStore((s) => s.navigate)
 
   return (
-    <footer className="mt-auto border-t border-border/60 bg-card">
+    <footer className="mt-auto bg-[#1e2a5e] text-white">
       <div className="mx-auto max-w-7xl px-4 py-8">
         <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4">
           <div className="col-span-2 sm:col-span-1">
             <div className="flex items-center gap-2">
-              <span className="grid h-8 w-8 place-items-center rounded-md bg-primary text-primary-foreground font-extrabold text-lg">
+              <span className="grid h-8 w-8 place-items-center rounded-md bg-white text-[#1e2a5e] font-extrabold text-lg">
                 c
               </span>
-              <span className="font-extrabold text-lg tracking-tight">
+              <span className="font-extrabold text-lg tracking-tight text-white">
                 cricinfo
               </span>
             </div>
-            <p className="mt-2 text-xs text-muted-foreground max-w-xs">
+            <p className="mt-2 max-w-xs text-xs text-white/70">
               The definitive home of cricket. Live scores, news, stats and analysis
               from every corner of the cricket world.
             </p>
           </div>
           {footerNav.map((section) => (
             <div key={section.title}>
-              <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-foreground">
+              <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-white">
                 {section.title}
               </h3>
               <ul className="space-y-1.5">
@@ -77,7 +77,7 @@ export function Footer() {
                     <li key={link.label}>
                       <button
                         onClick={() => navigate(link.view)}
-                        className="text-xs text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1.5"
+                        className="inline-flex items-center gap-1.5 text-xs text-white/70 transition-colors hover:text-white"
                       >
                         <Icon className="h-3 w-3" />
                         {link.label}
@@ -89,12 +89,12 @@ export function Footer() {
             </div>
           ))}
         </div>
-        <div className="mt-6 flex flex-col items-center justify-between gap-2 border-t border-border/60 pt-4 sm:flex-row">
-          <p className="text-[11px] text-muted-foreground">
+        <div className="mt-6 flex flex-col items-center justify-between gap-2 border-t border-white/10 pt-4 sm:flex-row">
+          <p className="text-[11px] text-white/60">
             © {new Date().getFullYear()} Cricinfo CMS Demo. Built with Next.js 16.
             Data is illustrative.
           </p>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[11px] text-white/60">
             Made with ♥ for cricket lovers
           </p>
         </div>

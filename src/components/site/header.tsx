@@ -46,7 +46,7 @@ export function Header() {
   const [open, setOpen] = useState(false)
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-primary text-primary-foreground shadow-md">
+    <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#1e2a5e] text-white shadow-md">
       <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-3 sm:px-4">
         {/* Mobile menu */}
         <Sheet open={open} onOpenChange={setOpen}>
@@ -54,7 +54,7 @@ export function Header() {
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden text-primary-foreground hover:bg-primary-foreground/10"
+              className="lg:hidden text-white hover:bg-white/10"
               aria-label="Open menu"
             >
               <Menu className="h-5 w-5" />
@@ -106,7 +106,7 @@ export function Header() {
           onClick={() => navigate(mode === "public" ? "home" : "admin-dashboard")}
           className="flex items-center gap-2 shrink-0"
         >
-          <span className="grid h-8 w-8 place-items-center rounded-md bg-primary-foreground text-primary font-extrabold text-lg">
+          <span className="grid h-8 w-8 place-items-center rounded-md bg-white text-[#1e2a5e] font-extrabold text-lg">
             c
           </span>
           <span className="hidden sm:block font-extrabold text-lg tracking-tight">
@@ -121,8 +121,8 @@ export function Header() {
               key={item.view}
               onClick={() => navigate(item.view)}
               className={cn(
-                "px-3 py-1.5 text-sm font-medium rounded-md transition-colors hover:bg-primary-foreground/10",
-                view === item.view && "bg-primary-foreground/15 font-semibold"
+                "px-3 py-1.5 text-sm font-medium rounded-md transition-colors hover:bg-white/10",
+                view === item.view && "bg-white/15 font-semibold"
               )}
             >
               {item.label}
@@ -133,10 +133,10 @@ export function Header() {
         <div className="ml-auto flex items-center gap-2">
           {/* Search */}
           <div className="relative hidden md:block">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-primary-foreground/60" />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/60" />
             <Input
               placeholder="Search players, teams..."
-              className="h-8 w-44 bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50 pl-8 text-sm focus-visible:bg-primary-foreground/15"
+              className="h-8 w-44 bg-white/10 border-white/20 text-white placeholder:text-white/50 pl-8 text-sm focus-visible:bg-white/15"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   navigate("players")

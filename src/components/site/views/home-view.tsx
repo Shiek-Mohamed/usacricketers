@@ -3,8 +3,8 @@
 import { useMemo } from "react"
 import { cn } from "@/lib/utils"
 import { useAppStore } from "@/lib/store"
-import { useMatches, useArticles } from "@/lib/use-data"
-import type { Match, Article } from "@/lib/types"
+import { useMatches, useArticles, useGalleries } from "@/lib/use-data"
+import type { Gallery, Match, Article } from "@/lib/types"
 import {
   TeamBadge,
   FormatPill,
@@ -24,7 +24,18 @@ import {
   Clock,
   User,
   ArrowRight,
+  Images,
 } from "lucide-react"
+
+/** Format an ISO date as "Mon DD" (e.g. "Mar 10"). */
+function formatShortDate(iso: string): string {
+  try {
+    const d = new Date(iso)
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+  } catch {
+    return ""
+  }
+}
 
 function SectionTitle({
   title,
@@ -382,6 +393,9 @@ export function HomeView() {
 
       {/* Interviews — styled per the provided sample design */}
       <InterviewsSection articles={interviewData?.items ?? []} />
+
+      {/* Photo Galleries — 4-column card grid (sample design) */}
+      <GalleriesSection />
     </div>
   )
 }
@@ -511,6 +525,101 @@ function InterviewCard({
             {timeAgo(article.publishedAt)}
           </time>
         </div>
+      </div>
+    </button>
+  )
+}
+
+/* ---- Galleries section (4-column card grid per the provided sample design) ---- */
+
+function GalleriesSection() {
+  const navigate = useAppStore((s) => s.navigate)
+  const { data, loading } = useGalleries()
+  const galleries = useMemo(() => (data ?? []).slice(0, 4), [data])
+
+  if (!loading && galleries.length === 0) return null
+
+  return (
+    <section>
+      <SectionTitle
+        title="Photo Galleries"
+        icon={Images}
+        actionLabel="View all"
+        onAction={() => navigate("photos")}
+      />
+      {loading ? (
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="space-y-2">
+              <Skeleton className="aspect-[16/9] w-full rounded-lg" />
+              <Skeleton className="h-3 w-1/3" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+          {galleries.map((g) => (
+            <GalleryCard
+              key={g.id}
+              gallery={g}
+              onClick={() => navigate("gallery-detail", g.id)}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+/**
+ * Gallery card — matches the provided sample layout:
+ * 16:9 landscape image (light-gray placeholder with an Images icon when empty),
+ * an uppercase category label, a bold headline, and a "Mon DD" date.
+ * Transparent card body (content sits directly on the white page background).
+ */
+function GalleryCard({
+  gallery,
+  onClick,
+}: {
+  gallery: Gallery
+  onClick: () => void
+}) {
+  // Prefer the explicit cover image; fall back to the first photo.
+  const cover = gallery.coverImage || gallery.photos[0]?.src || ""
+  const photoCount = gallery.photos.length
+
+  return (
+    <button
+      onClick={onClick}
+      className="group flex w-full flex-col text-left"
+    >
+      {/* Image / placeholder */}
+      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-lg bg-muted">
+        {cover ? (
+          <img
+            src={cover}
+            alt={gallery.title}
+            className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+          />
+        ) : (
+          <div className="grid h-full w-full place-items-center bg-gray-100 text-gray-400">
+            <Images className="h-10 w-10" />
+          </div>
+        )}
+      </div>
+      {/* Text content (transparent body, sits on white) */}
+      <div className="mt-3">
+        <span className="text-[11px] font-extrabold uppercase tracking-wide text-black">
+          {photoCount > 0 ? `Photos · ${photoCount}` : "Photos"}
+        </span>
+        <h3 className="mt-1 line-clamp-2 text-base font-bold leading-snug text-black transition-colors group-hover:text-red-600">
+          {gallery.title}
+        </h3>
+        <time className="mt-1.5 block text-[13px] font-normal text-gray-500">
+          {formatShortDate(gallery.createdAt)}
+        </time>
       </div>
     </button>
   )

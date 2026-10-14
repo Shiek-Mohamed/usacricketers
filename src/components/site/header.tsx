@@ -104,12 +104,9 @@ export function Header() {
         {/* Logo */}
         <button
           onClick={() => navigate(mode === "public" ? "home" : "admin-dashboard")}
-          className="flex items-center gap-2 shrink-0"
+          className="flex items-center shrink-0"
         >
-          <span className="grid h-8 w-8 place-items-center rounded-md bg-white text-[#1e2a5e] font-extrabold text-lg">
-            c
-          </span>
-          <span className="hidden sm:block font-extrabold text-lg tracking-tight">
+          <span className="font-extrabold text-lg tracking-tight">
             usacricketers
           </span>
         </button>

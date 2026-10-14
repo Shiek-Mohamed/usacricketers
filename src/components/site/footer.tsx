@@ -52,10 +52,7 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-4 py-8">
         <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4">
           <div className="col-span-2 sm:col-span-1">
-            <div className="flex items-center gap-2">
-              <span className="grid h-8 w-8 place-items-center rounded-md bg-white text-[#1e2a5e] font-extrabold text-lg">
-                c
-              </span>
+            <div className="flex items-center">
               <span className="font-extrabold text-lg tracking-tight text-white">
                 usacricketers
               </span>

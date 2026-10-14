@@ -4,6 +4,7 @@ import { useState } from "react"
 import { usePlayers, useTeams } from "@/lib/use-data"
 import { api } from "@/lib/api"
 import { AdminShell } from "@/components/admin/admin-shell"
+import { UploadButton } from "@/components/admin/upload-button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -438,15 +439,52 @@ export function AdminPlayersView() {
               </div>
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="imageUrl">Image URL (optional)</Label>
-              <Input
-                id="imageUrl"
-                value={form.imageUrl}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, imageUrl: e.target.value }))
-                }
-                placeholder="https://..."
-              />
+              <Label>Photo</Label>
+              <div className="flex items-center gap-3">
+                {form.imageUrl ? (
+                  <img
+                    src={form.imageUrl}
+                    alt=""
+                    className="h-16 w-16 rounded-full object-cover border"
+                  />
+                ) : (
+                  <div className="grid h-16 w-16 place-items-center rounded-full border bg-muted text-muted-foreground text-xs">
+                    No photo
+                  </div>
+                )}
+                <div className="flex-1 space-y-1.5">
+                  <Input
+                    id="imageUrl"
+                    value={form.imageUrl}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, imageUrl: e.target.value }))
+                    }
+                    placeholder="URL or upload →"
+                  />
+                  <div className="flex gap-2">
+                    <UploadButton
+                      label="Upload photo"
+                      resize={300}
+                      onUploaded={(url) =>
+                        setForm((f) => ({ ...f, imageUrl: url }))
+                      }
+                    />
+                    {form.imageUrl && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setForm((f) => ({ ...f, imageUrl: "" }))}
+                      >
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Uploaded photos are auto-resized to 300×300 (optimal for avatars).
+              </p>
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="bio">Bio</Label>

@@ -7,16 +7,21 @@ import { toast } from "sonner"
 
 /**
  * A small "Upload" button that posts a chosen image file to /api/upload and
- * calls `onUploaded(url)` with the returned path. Used wherever an image path
- * is needed (hero image, etc.).
+ * calls `onUploaded(url)` with the returned path.
+ *
+ * Pass `resize={300}` to automatically resize the image to 300×300 square
+ * (cover-cropped, JPEG q85) — ideal for player avatars / headshots where you
+ * don't need the full-resolution original.
  */
 export function UploadButton({
   onUploaded,
   label = "Upload",
+  resize,
   className,
 }: {
   onUploaded: (url: string) => void
   label?: string
+  resize?: number
   className?: string
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
@@ -27,7 +32,8 @@ export function UploadButton({
     try {
       const fd = new FormData()
       fd.append("file", file)
-      const res = await fetch("/api/upload", { method: "POST", body: fd })
+      const endpoint = resize ? `/api/upload?resize=${resize}` : "/api/upload"
+      const res = await fetch(endpoint, { method: "POST", body: fd })
       const data = await res.json()
       if (!res.ok || !data.url) {
         toast.error(data.error || "Upload failed")
@@ -47,7 +53,7 @@ export function UploadButton({
       <input
         ref={fileRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+        accept="image/png,image/jpeg,image/webp,image/gif"
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0]

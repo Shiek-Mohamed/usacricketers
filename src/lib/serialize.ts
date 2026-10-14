@@ -37,7 +37,7 @@ export function serializePlayer(
 }
 
 export function serializeSeries(
-  s: Prisma.SeriesGetPayload<{ include: { tournamentTeams: { include: { team: true } } } }>
+  s: Prisma.SeriesGetPayload<{ include?: { tournamentTeams?: { include: { team: true } } } }>
 ): Series {
   return {
     id: s.id,
@@ -49,7 +49,7 @@ export function serializeSeries(
     endDate: s.endDate.toISOString(),
     status: s.status,
     description: s.description,
-    teams: s.tournamentTeams.map((tt) => serializeTeam(tt.team)),
+    teams: (s as any).tournamentTeams?.map((tt: any) => serializeTeam(tt.team)) ?? [],
     createdAt: s.createdAt.toISOString(),
     updatedAt: s.updatedAt.toISOString(),
   }

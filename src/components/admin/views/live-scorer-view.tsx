@@ -18,6 +18,7 @@ import {
 } from "@/lib/scoring"
 import { ScorecardView } from "@/components/cricket/scorecard"
 import { AdminShell } from "@/components/admin/admin-shell"
+import { ScorerShell } from "@/components/admin/scorer-shell"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -48,11 +49,15 @@ const RUN_BUTTONS = [0, 1, 2, 3, 4, 6] as const
 export function LiveScorerView() {
   const id = useAppStore((s) => s.id)
   const navigate = useAppStore((s) => s.navigate)
+  const mode = useAppStore((s) => s.mode)
   const { data: match, loading } = useMatch(id)
   const { data: t1Players } = usePlayers(match?.team1Id ?? null)
   const { data: t2Players } = usePlayers(match?.team2Id ?? null)
   const { refetch } = useMatches()
   const { liveState, connected, pushState } = useLiveScore(id)
+
+  // Use the minimal ScorerShell (no admin sidebar) in scorer mode, AdminShell otherwise.
+  const Shell = mode === "scorer" ? ScorerShell : AdminShell
 
   // History stack for undo
   const [history, setHistory] = useState<LiveMatchState[]>([])
@@ -69,15 +74,15 @@ export function LiveScorerView() {
 
   if (loading) {
     return (
-      <AdminShell title="Live Scorer">
+      <Shell title="Live Scorer">
         <Skeleton className="h-72 w-full rounded-xl" />
-      </AdminShell>
+      </Shell>
     )
   }
 
   if (!match) {
     return (
-      <AdminShell title="Live Scorer">
+      <Shell title="Live Scorer">
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
             No match selected.{" "}
@@ -90,7 +95,7 @@ export function LiveScorerView() {
             </Button>
           </CardContent>
         </Card>
-      </AdminShell>
+      </Shell>
     )
   }
 
@@ -199,10 +204,8 @@ export function LiveScorerView() {
   const isComplete = liveState?.status === "completed"
 
   return (
-    <AdminShell
+    <Shell
       title="Live Scorer"
-      actionLabel={undefined}
-      onAction={undefined}
     >
       {/* Match header */}
       <Card className="overflow-hidden p-0">
@@ -338,7 +341,7 @@ export function LiveScorerView() {
           )}
         </CardContent>
       </Card>
-    </AdminShell>
+    </Shell>
   )
 }
 

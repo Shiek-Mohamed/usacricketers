@@ -29,6 +29,8 @@ import { AdminSidebarView } from "@/components/admin/views/admin-sidebar-view"
 import { AdminImportView } from "@/components/admin/views/admin-import-view"
 import { AdminGalleriesView } from "@/components/admin/views/admin-galleries-view"
 import { LiveScorerView } from "@/components/admin/views/live-scorer-view"
+import { ScorerHomeView } from "@/components/site/views/scorer-home-view"
+import { ScorerShell } from "@/components/admin/scorer-shell"
 
 export default function Home() {
   const view = useAppStore((s) => s.view)
@@ -90,9 +92,20 @@ export default function Home() {
         return <AdminGalleriesView />
       case "live-scorer":
         return <LiveScorerView />
+      case "scorer-home":
+        return (
+          <ScorerShell title="Select a Match to Score">
+            <ScorerHomeView />
+          </ScorerShell>
+        )
       default:
         return <HomeView />
     }
+  }
+
+  // Scorer mode: minimal shell, no regular header/footer
+  if (mode === "scorer") {
+    return <>{renderView()}</>
   }
 
   return (

@@ -176,6 +176,7 @@ export type ViewKey =
   | "admin-series"
   | "admin-sidebar"
   | "admin-import"
+  | "admin-galleries"
   | "live-scorer"
 
 export interface NavState {

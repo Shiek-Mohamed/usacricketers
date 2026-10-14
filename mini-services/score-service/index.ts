@@ -1,5 +1,6 @@
 import { createServer } from "http"
 import { Server } from "socket.io"
+import { createHmac, timingSafeEqual } from "crypto"
 
 const httpServer = createServer()
 const io = new Server(httpServer, {
@@ -8,39 +9,106 @@ const io = new Server(httpServer, {
   cors: { origin: "*", methods: ["GET", "POST"] },
   pingTimeout: 60000,
   pingInterval: 25000,
-  // Keep connection memory bounded under load.
-  maxHttpBufferSize: 1e6, // 1MB max per message (full scorecard fits easily)
+  maxHttpBufferSize: 1e6,
 })
 
-/**
- * Lightweight operator auth.
- *
- * Operator events (operator:state / operator:clear) must carry this token.
- * NOTE: this is a demo-grade safeguard — the token is shipped to the browser,
- * so it only stops *casual* spoofing, not a determined attacker. For real
- * production, swap this for a server-issued short-lived JWT validated here.
- */
-const SCORER_TOKEN = process.env.SCORER_TOKEN || "cric-cms-live-scorer-v1"
+/* ------------------------------ configuration ------------------------------ */
 
-// Hard caps to keep a single instance healthy under load.
+const SCORER_SECRET = process.env.SCORER_SECRET || "cric-cms-scorer-secret-change-me"
+const INTERNAL_SECRET = process.env.INTERNAL_SECRET || "cric-cms-internal-change-me"
+const APP_ORIGIN = process.env.APP_ORIGIN || "http://localhost:3000"
+
 const MAX_TOTAL_CONNECTIONS = Number(process.env.MAX_TOTAL_CONNECTIONS) || 5000
 const MAX_PER_MATCH = Number(process.env.MAX_PER_MATCH) || 2000
-// Min gap between broadcasts for the same match (ms) — protects against a
-// runaway operator flooding viewers. ~12 broadcasts/sec is plenty for ball-by-ball.
 const MIN_BROADCAST_GAP_MS = Number(process.env.MIN_BROADCAST_GAP_MS) || 80
 
 // matchId -> latest live state
 const cache = new Map<string, unknown>()
 // matchId -> last broadcast timestamp (throttle)
 const lastBroadcast = new Map<string, number>()
+// matchId -> seriesId (resolved once from the app; cached for the process life)
+const matchSeries = new Map<string, string | null>()
+// matchId -> inflight series-resolution promise (dedupe concurrent lookups)
+const matchSeriesPending = new Map<string, Promise<string | null>>()
 
 function roomSize(matchId: string): number {
   const room = io.sockets.adapter.rooms.get(`match:${matchId}`)
   return room ? room.size : 0
 }
 
+/* --------------------------- token verification --------------------------- */
+
+interface TokenPayload {
+  scorerId: string
+  name?: string
+  username?: string
+  tournamentIds: string[]
+  exp: number
+}
+
+function b64urlDecode(s: string): Buffer {
+  // Node 18+ Buffer supports base64url
+  return Buffer.from(s, "base64url")
+}
+
+function verifyToken(token: string | undefined | null): TokenPayload | null {
+  if (!token || typeof token !== "string") return null
+  const [payload, sig] = token.split(".")
+  if (!payload || !sig) return null
+  const expected = createHmac("sha256", SCORER_SECRET).update(payload).digest("base64url")
+  try {
+    const a = Buffer.from(sig)
+    const b = Buffer.from(expected)
+    if (a.length !== b.length || !timingSafeEqual(a, b)) return null
+  } catch {
+    return null
+  }
+  let body: TokenPayload
+  try {
+    body = JSON.parse(b64urlDecode(payload).toString("utf8"))
+  } catch {
+    return null
+  }
+  if (!body || typeof body.exp !== "number" || body.exp < Date.now()) return null
+  if (!body.scorerId || !Array.isArray(body.tournamentIds)) return null
+  return body
+}
+
+/* ----------------------- match -> series resolution ----------------------- */
+
+async function resolveMatchSeries(matchId: string): Promise<string | null> {
+  if (matchSeries.has(matchId)) return matchSeries.get(matchId)!
+  // Dedupe concurrent resolutions for the same match.
+  const inflight = matchSeriesPending.get(matchId)
+  if (inflight) return inflight
+  const p = (async () => {
+    try {
+      const res = await fetch(
+        `${APP_ORIGIN}/api/internal/match-series?matchId=${encodeURIComponent(matchId)}`,
+        { headers: { "x-internal-secret": INTERNAL_SECRET } }
+      )
+      if (!res.ok) {
+        // 404 means unknown match — treat as "no series" (deny).
+        matchSeries.set(matchId, null)
+        return null
+      }
+      const data = (await res.json()) as { seriesId: string | null }
+      matchSeries.set(matchId, data.seriesId)
+      return data.seriesId
+    } catch {
+      // Network error — don't cache a negative; let the next attempt retry.
+      return null
+    } finally {
+      matchSeriesPending.delete(matchId)
+    }
+  })()
+  matchSeriesPending.set(matchId, p)
+  return p
+}
+
+/* ------------------------------- connection ------------------------------- */
+
 io.on("connection", (socket) => {
-  // Global connection cap
   if (io.engine.clientsCount > MAX_TOTAL_CONNECTIONS) {
     socket.emit("error", { message: "Server at capacity. Try again shortly." })
     socket.disconnect(true)
@@ -66,16 +134,28 @@ io.on("connection", (socket) => {
   })
 
   // The operator pushes a new full state (after each ball/event).
+  // The token MUST be a valid signed scorer token whose tournamentIds include
+  // the series this match belongs to.
   socket.on(
     "operator:state",
-    (payload: { matchId?: string; state?: unknown; token?: string }) => {
+    async (payload: { matchId?: string; state?: unknown; token?: string }) => {
       if (!payload || typeof payload !== "object") return
       const { matchId, state, token } = payload
       if (!matchId || typeof matchId !== "string") return
-      if (token !== SCORER_TOKEN) {
-        socket.emit("error", { message: "Unauthorized: invalid scorer token" })
+
+      const session = verifyToken(token)
+      if (!session) {
+        socket.emit("error", { message: "Unauthorized: invalid or expired scorer token" })
         return
       }
+
+      // Resolve the match's series (cached after first lookup).
+      const seriesId = await resolveMatchSeries(matchId)
+      if (!seriesId || !session.tournamentIds.includes(seriesId)) {
+        socket.emit("error", { message: "Forbidden: this match is not in your tournaments" })
+        return
+      }
+
       // Throttle: drop broadcasts faster than MIN_BROADCAST_GAP_MS for this match
       const now = Date.now()
       const last = lastBroadcast.get(matchId) ?? 0
@@ -89,15 +169,22 @@ io.on("connection", (socket) => {
   // The operator clears the live state.
   socket.on(
     "operator:clear",
-    (payload: { matchId?: string; token?: string } | string) => {
-      // Accept either a bare matchId (legacy) or { matchId, token }
+    async (payload: { matchId?: string; token?: string } | string) => {
       const matchId = typeof payload === "string" ? payload : payload?.matchId
       const token = typeof payload === "string" ? undefined : payload?.token
       if (!matchId) return
-      if (token !== SCORER_TOKEN) {
-        socket.emit("error", { message: "Unauthorized: invalid scorer token" })
+
+      const session = verifyToken(token)
+      if (!session) {
+        socket.emit("error", { message: "Unauthorized: invalid or expired scorer token" })
         return
       }
+      const seriesId = await resolveMatchSeries(matchId)
+      if (!seriesId || !session.tournamentIds.includes(seriesId)) {
+        socket.emit("error", { message: "Forbidden: this match is not in your tournaments" })
+        return
+      }
+
       cache.delete(matchId)
       lastBroadcast.delete(matchId)
       io.to(`match:${matchId}`).emit("state", { matchId, state: null })
@@ -113,8 +200,7 @@ io.on("connection", (socket) => {
 setInterval(() => {
   for (const matchId of Array.from(cache.keys())) {
     if (roomSize(matchId) === 0) {
-      // only evict if truly idle; keep for late reconnects within the window
-      // (cheap to retain; Map stays small for a handful of live matches)
+      // Eviction is cheap; keep the match->series map (bounded by #matches).
     }
   }
 }, 30 * 60 * 1000).unref?.()
@@ -123,6 +209,7 @@ const PORT = 3003
 httpServer.listen(PORT, () => {
   console.log(`✅ Score service (socket.io) running on port ${PORT}`)
   console.log(`   caps: total=${MAX_TOTAL_CONNECTIONS} per-match=${MAX_PER_MATCH} gap=${MIN_BROADCAST_GAP_MS}ms`)
+  console.log(`   auth: signed scorer tokens (HMAC-SHA256) + match->series guard via ${APP_ORIGIN}`)
 })
 
 process.on("SIGTERM", () => httpServer.close(() => process.exit(0)))

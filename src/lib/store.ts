@@ -14,6 +14,7 @@ interface AppState {
   toggleMode: () => void
   setMode: (mode: Mode) => void
   enterScorerMode: () => void
+  enterScorerLogin: () => void
   exitScorerMode: () => void
 }
 
@@ -37,5 +38,6 @@ export const useAppStore = create<AppState>((set) => ({
   setMode: (mode) =>
     set({ mode, view: mode === "public" ? "home" : mode === "admin" ? "admin-dashboard" : "scorer-home", id: null }),
   enterScorerMode: () => set({ mode: "scorer", view: "scorer-home", id: null }),
+  enterScorerLogin: () => set({ mode: "scorer", view: "scorer-login", id: null }),
   exitScorerMode: () => set({ mode: "public", view: "home", id: null }),
 }))

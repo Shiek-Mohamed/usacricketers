@@ -28,13 +28,17 @@ import { AdminSeriesView } from "@/components/admin/views/series-view"
 import { AdminSidebarView } from "@/components/admin/views/admin-sidebar-view"
 import { AdminImportView } from "@/components/admin/views/admin-import-view"
 import { AdminGalleriesView } from "@/components/admin/views/admin-galleries-view"
+import { AdminScorerView } from "@/components/admin/views/admin-scorers-view"
 import { LiveScorerView } from "@/components/admin/views/live-scorer-view"
+import { ScorerLoginView } from "@/components/site/views/scorer-login-view"
 import { ScorerHomeView } from "@/components/site/views/scorer-home-view"
 import { ScorerShell } from "@/components/admin/scorer-shell"
+import { useScorerSession } from "@/lib/scorer-session"
 
 export default function Home() {
   const view = useAppStore((s) => s.view)
   const mode = useAppStore((s) => s.mode)
+  const session = useScorerSession((s) => s.session)
 
   const renderView = () => {
     switch (view) {
@@ -90,9 +94,16 @@ export default function Home() {
         return <AdminImportView />
       case "admin-galleries":
         return <AdminGalleriesView />
+      case "admin-scorers":
+        return <AdminScorerView />
+      // Scorer add-on
       case "live-scorer":
         return <LiveScorerView />
+      case "scorer-login":
+        return <ScorerLoginView />
       case "scorer-home":
+        // Gate on session: if none, show the login screen instead.
+        if (!session) return <ScorerLoginView />
         return (
           <ScorerShell title="Select a Match to Score">
             <ScorerHomeView />
@@ -103,7 +114,8 @@ export default function Home() {
     }
   }
 
-  // Scorer mode: minimal shell, no regular header/footer
+  // Scorer mode: minimal shell, no regular header/footer. The login view is
+  // full-screen; everything else (home + live-scorer) renders bare.
   if (mode === "scorer") {
     return <>{renderView()}</>
   }

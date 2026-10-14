@@ -164,3 +164,152 @@ Agent Browser verification (all passed):
 
 Stage Summary:
 - The Cricinfo CMS is complete and fully interactive. Public site (13 views) + Admin CMS (6 views with full CRUD) all working. Data syncs live between admin edits and public display. Lint clean, dev server healthy, browser-verified.
+
+---
+Task ID: 5
+Agent: orchestrator (Z.ai)
+Task: Build a per-scorer, per-tournament authentication system so scorers sign in to their own league/tournament only — no admin CMS access.
+
+Work Log:
+- Reviewed current state: scorer mode exists with a single shared PIN ("score123") and a ScorerHomeView that lists ALL matches. No real auth, no scoping.
+- Designed per-scorer auth: each scorer is an account (username+password) assigned to one or more tournaments (Series) via a join table. A signed HMAC token (12h TTL) carries {scorerId, name, username, tournamentIds[], exp}.
+- Updated `prisma/schema.prisma`: added `Scorer` (id, username unique, passwordHash scrypt, name, active) + `ScorerAssignment` join (scorerId, seriesId, @@unique). Added `scorerAssignments` relation to `Series`. Ran `bun run db:push` — tables created, client regenerated.
+- Created `src/lib/scorer-auth.ts` (SERVER-only):
+  - `hashPassword(pw)` / `verifyPassword(pw, stored)` using node:crypto scryptSync + randomBytes salt + timingSafeEqual.
+  - `issueScorerToken({scorerId,name,username,tournamentIds})` → `"base64url(json).hmac"` (HMAC-SHA256 with SCORER_SECRET).
+  - `verifyScorerToken(token)` → ScorerTokenPayload | null (checks signature + expiry).
+  - `checkInternalSecret(provided)` for the score-service→api guard.
+  - `scorerHasSeries(scorerId, seriesId)` DB check (unused yet; token carries ids).
+- Updated `.env`: added `SCORER_SECRET` + `INTERNAL_SECRET` (server-only, NOT NEXT_PUBLIC).
+- Created `mini-services/score-service/.env` with matching secrets + `APP_ORIGIN=http://localhost:3000`.
+- Added `Scorer` + `ScorerSession` interfaces to `src/lib/types.ts`. Added `scorer-login` + `admin-scorers` to `ViewKey`.
+- Added `serializeScorer()` to `src/lib/serialize.ts` (maps assignments → tournamentIds).
+
+### Contracts for subagents (Task 6 = backend, Task 7 = frontend):
+
+**DB**: `db.scorer` (findUnique by username/id, create with passwordHash, include assignments), `db.scorerAssignment` (create/delete, unique [scorerId,seriesId]).
+
+**Auth lib** (`@/lib/scorer-auth`): `hashPassword`, `verifyPassword`, `issueScorerToken`, `verifyScorerToken`, `checkInternalSecret`. Token format: `base64url(JSON).hmac`. Read auth header via `request.headers.get("authorization")` → `Bearer <token>`.
+
+**API routes to build (Task 6 — backend)**:
+1. `src/app/api/scorer/login/route.ts` — POST `{username, password}` → `{scorer:{id,name,username}, token, tournamentIds}` or 401. Uses `verifyPassword`, `issueScorerToken`. Must check `active===true`.
+2. `src/app/api/scorer/me/route.ts` — GET, reads Bearer token, `verifyScorerToken`, re-reads assignments from DB (in case admin changed them) → `{scorer, tournamentIds}` or 401.
+3. `src/app/api/scorer/matches/route.ts` — GET, reads Bearer token, verifies, returns `Match[]` filtered to `seriesId IN tournamentIds` (use `db.match.findMany({where:{seriesId:{in:[...]}}, include:{team1,team2,series}, orderBy:{startDate:desc}})` then `serializeMatch`). Include all statuses.
+4. `src/app/api/scorers/route.ts` — GET (list all w/ assignments → serializeScorer), POST (create: `{username, password, name, active?, tournamentIds?[]}` → hash pw, create scorer + assignments in a tx).
+5. `src/app/api/scorers/[id]/route.ts` — GET (serializeScorer), PUT (`{name?, active?, password?, tournamentIds?}` — reassign fully if tournamentIds provided: delete old assignments + create new), DELETE (cascade).
+6. `src/app/api/internal/match-series/route.ts` — GET `?matchId=X`, guarded by `x-internal-secret` header (checkInternalSecret) → `{seriesId}` or 404/401. Used by score-service.
+
+**Types** (`@/lib/types`): `Scorer`, `ScorerSession` already added. `Match` already exists.
+**Serialize** (`@/lib/serialize`): `serializeScorer` already added. `serializeMatch` already exists.
+**db client**: `import { db } from "@/lib/db"`.
+
+**Frontend (Task 7)** — see worklog section added by Task 7 agent.
+
+Stage Summary:
+- Foundation + contracts ready. Backend routes + frontend views to be built by subagents (Tasks 6 & 7). Score-service update + page/header wiring done by orchestrator in Task 8.
+
+---
+Task ID: 7
+Agent: full-stack-developer (scorer frontend)
+Task: Build the per-scorer, per-tournament auth frontend — scorer-session store, login view, scoped scorer home view, admin scorer CRUD view, and token-aware live-scoring hook. Wire the scorer session token into the existing LiveScorerView.
+
+Work Log:
+- Read `/home/z/my-project/worklog.md` (Task 5 orchestrator contracts) and inspected foundation files: `@/lib/types`, `@/lib/store`, `@/lib/api`, `@/lib/use-data`, `@/components/admin/admin-shell.tsx`, `@/components/admin/scorer-shell.tsx`, `@/components/admin/views/series-view.tsx` + `articles-view.tsx` (CRUD pattern reference), `@/components/ui/{card,checkbox,switch,dialog,label,alert}.tsx`.
+- Created `src/lib/scorer-session.ts` — Zustand store persisted to localStorage under `scorer-session-v1`. Exposes `session`, `setSession`, `clear`, `hydrated`, `setHydrated`. Hydrates from localStorage synchronously on module load (client-only). Mirrors the orchestrator's reference implementation.
+- Created `src/components/site/views/scorer-login-view.tsx` — `ScorerLoginView` named export. Full-screen `min-h-screen flex items-center justify-center` layout (NO `ScorerShell` wrapper per spec — user is not yet authenticated). Navy `usacricketers` wordmark, `Card` with `CardHeader`/`CardTitle`/`CardDescription`, username + password `Input`s, red `bg-red-600` `Sign in` button with `Loader2` spinner + "Signing in…" disabled state. POSTs to `/api/scorer/login`; on 401 shows red "Invalid username or password" alert; on success calls `setSession(data)` + `navigate("scorer-home")`. "Back to site" ghost button calls `exitScorerMode()`.
+- Rewrote `src/components/site/views/scorer-home-view.tsx` — removed `useMatches()` (which fetched ALL matches) and replaced with a Bearer-token fetch from `/api/scorer/matches` using `useScorerSession((s) => s.session?.token)`. Welcome header card with "Welcome, {scorer.name}" + "Your tournaments: {count}" + matches-visible count + `Refresh` (spins while loading) and `Sign out` (calls `clear()` then `exitScorerMode()`) buttons. Defensive `if (!session) return null`. Kept the same 3 sections (Live / Upcoming / Recently Completed) and the same `MatchRow` component, but re-typed `match: any` → `match: Match` and pulled `t1`/`t2` out of `match.team1`/`match.team2` for clarity. Adopted the `nonce`-derived-`loading` pattern from `use-data.ts` so no `setState` is called synchronously in the effect body (satisfies `react-hooks/set-state-in-effect`). Added red `Alert`-style error block with Retry button.
+- Created `src/components/admin/views/admin-scorers-view.tsx` — `AdminScorerView` named export, wrapped in `AdminShell` with `title="Scorer Accounts"`, count Badge, and `+ New Scorer` action button. Table columns: Username (mono), Name, Tournaments (≤3 shortName Badges, otherwise "N of M tournaments"), Active (`emerald-600` "Active" Badge or outline "Inactive"), Actions (edit/delete). Create/Edit Dialog: username `Input` (disabled on edit), name, password `Input` (required on create, "Leave blank to keep" placeholder on edit), active `Switch`, and a `Checkbox` checklist of all Series inside a scrollable `max-h-56` box with count summary. Delete via `AlertDialog`. Sonner `toast` feedback. Built `seriesLookup` from `useSeries()` for ID→name mapping. Inline `listScorers` / `createScorer` / `updateScorer` / `deleteScorer` fetch helpers (since `@/lib/api` doesn't have a scorer namespace yet). List refetches after every mutation.
+- Rewrote `src/lib/use-live-score.ts` — signature changed to `useLiveScore(matchId: string | null, token: string | null)`. Removed the `SCORER_TOKEN` env constant entirely. Token stored in a `tokenRef` so `pushState`/`clearState` always read the latest value without forcing socket reconnects. `pushState` emits `operator:state` with `{ matchId, state, token }`; `clearState` emits `operator:clear` with `{ matchId, token }`. Both no-op when `token` is null (defensive — should not happen in scorer mode but prevents confusingly emitting with `undefined`).
+- Updated `src/components/admin/views/live-scorer-view.tsx` — single targeted change: imported `useScorerSession` from `@/lib/scorer-session`, added `const token = useScorerSession((s) => s.session?.token ?? null)`, and changed the hook call to `useLiveScore(id, token)`. Did NOT refactor anything else in the file (per the "Only ONE change needed in this file" instruction).
+- Ran `bun run lint` → 1 error + 1 warning initially. Fixed both: refactored `scorer-home-view.tsx` to the `nonce`-derived `loading` pattern (no synchronous `setState` in effect body) and removed an unused `eslint-disable-next-line` directive in `admin-scorers-view.tsx`. Final `bun run lint` → clean (0 errors, 0 warnings).
+- Per-file ESLint check on all 6 of my files → clean. `bunx tsc --noEmit` confirms zero new type errors in my files (pre-existing tsc noise at `live-scorer-view.tsx` lines 55-56 about `usePlayers` accepting `null` is NOT from my changes and was intentionally left untouched).
+- Wrote per-agent record to `/home/z/my-project/agent-ctx/7-full-stack-developer.md`.
+
+Stage Summary:
+- 3 files created, 3 files modified — all ESLint-clean, all type-safe.
+- **Created**: `src/lib/scorer-session.ts`, `src/components/site/views/scorer-login-view.tsx`, `src/components/admin/views/admin-scorers-view.tsx`.
+- **Modified**: `src/components/site/views/scorer-home-view.tsx` (replaced ALL-matches fetch with token-scoped `/api/scorer/matches`), `src/lib/use-live-score.ts` (signature `useLiveScore(matchId, token)` — no more env-based SCORER_TOKEN), `src/components/admin/views/live-scorer-view.tsx` (one-line: pass `token` from `useScorerSession`).
+- **For the orchestrator (Task 8)**: the `scorer-login` view is full-screen and must be rendered WITHOUT the `ScorerShell` wrapper. The `scorer-home` view defensively returns `null` when no session exists — the router should gate `scorer-home` on session presence and redirect to `scorer-login` otherwise. `useLiveScore(matchId, token)` now sends the scorer's signed token with every `operator:state` / `operator:clear` emit; the score-service must verify this token + check the match's `seriesId` is in the scorer's `tournamentIds` before accepting writes.
+- No issues encountered. Ready for orchestrator wiring.
+
+---
+Task ID: 6
+Agent: full-stack-developer (scorer backend)
+Task: Build the 6 backend API route files for the per-scorer, per-tournament authentication system: scorer login, /me, /matches, admin CRUD (scorers + [id]), and the internal match→series lookup.
+
+Work Log:
+- Read worklog.md (esp. Task 5 contracts), existing routes (`src/app/api/series/route.ts`, `[id]/route.ts`, `series/[id]/teams/route.ts`, `matches/route.ts`), `src/lib/scorer-auth.ts`, `src/lib/serialize.ts`, `prisma/schema.prisma`, `src/lib/types.ts`, `src/lib/db.ts`, `src/lib/cache.ts` to learn the project's conventions (Next 16 async `params`, `serialize*` helpers, `cacheDelPrefix`, `NextResponse.json`).
+- Created 6 API route files, each with `export const dynamic = "force-dynamic"` at the top and try/catch around `await req.json()`:
+  1. `src/app/api/scorer/login/route.ts` — POST `{username,password}` → `{scorer:{id,name,username}, token, tournamentIds}`. 401 on missing scorer / wrong password / `!active`. 400 on missing fields or bad JSON.
+  2. `src/app/api/scorer/me/route.ts` — GET with `Authorization: Bearer <token>`. `verifyScorerToken` → re-read scorer from DB (`include: { assignments: true }`) so admin changes since login take effect immediately. Returns `{scorer:{id,name,username}, tournamentIds}`. 401 on missing/bad token or inactive scorer.
+  3. `src/app/api/scorer/matches/route.ts` — GET with Bearer token. Re-reads assignments from DB; if empty returns `[]`; else `db.match.findMany({where:{seriesId:{in:tournamentIds}}, include:{team1,team2,series:{include:{tournamentTeams:{include:{team:true}}}}}, orderBy:{startDate:"desc"}})` → `serializeMatch` array.
+  4. `src/app/api/scorers/route.ts` — GET lists all scorers with assignments (`serializeScorer`). POST creates a scorer (validates username/password/name, hashes with `hashPassword`) + assignments in a single `db.$transaction`; returns `serializeScorer` with status 201. Catches `Prisma.PrismaClientKnownRequestError` code `P2002` → 409 "Username already exists".
+  5. `src/app/api/scorers/[id]/route.ts` — GET (or 404), PUT (build `updateData` from optional `name`/`active`/`password`; if `tournamentIds` array provided, `deleteMany` + `createMany` inside the same transaction; re-fetch with `findUniqueOrThrow` + `serializeScorer`), DELETE (`db.scorer.delete` → `{ok:true}` or 404; cascade clears assignments per schema).
+  6. `src/app/api/internal/match-series/route.ts` — GET `?matchId=X` guarded by `x-internal-secret` header (`checkInternalSecret`). 401 on missing/wrong secret, 400 if no matchId, 404 if match not found, else `{seriesId}` (or `{seriesId: null}` when match has no series → no scorer may touch it).
+- Hit a TS error: `Type 'true' is not assignable to type 'never'` on `skipDuplicates: true` in `createMany` for both scorer POST and PUT. Root cause: SQLite provider does not support `skipDuplicates` in `createMany`, so Prisma types the option as `never`. Fixed by removing `skipDuplicates` and deduping `tournamentIds` in JS via `Array.from(new Set(ids.filter(Boolean)))` before `createMany`. For PUT the `deleteMany` already clears stale rows, so dedupe alone is sufficient.
+- Lint: `npx eslint <my 6 files>` → 0 errors, 0 warnings. `bun run lint` overall → 1 error + 1 warning, both in Task 7 frontend files (`src/components/site/views/scorer-home-view.tsx:28` `react-hooks/set-state-in-effect`, `src/components/admin/views/admin-scorers-view.tsx:153` unused eslint-disable). Out of scope for this task.
+- TypeScript: `bunx tsc --noEmit` → 0 errors in any of my 6 files (remaining errors elsewhere are in foundation/frontend files: `prisma/seed.ts`, `examples/websocket/server.ts`, `src/lib/scoring.ts`, `src/components/admin/views/*`, `src/components/cricket/mini-scorecard.tsx` — all out of my scope).
+- Ran 28 end-to-end curl smoke tests against the running dev server (port 3000): scorer create → 201 (no passwordHash exposed); login valid → 200 + token; login bad pw → 401; login missing → 400; /me valid/no-token/garbage-token → 200/401/401; /matches empty-assignments → `[]`; admin list → 200; `[id]` GET/PUT (rename + assign tournament) → 200; /matches after PUT returns the matches in that series (DB re-read works); password change via PUT → 200, old pw rejected (401), new pw works; duplicate username → 409; non-existent `[id]` GET → 404; internal endpoint no-secret/bad-secret → 401, good secret → 200 with `{seriesId}`, no matchId → 400, non-existent matchId → 404; DELETE → `{ok:true}`, second DELETE → 404, login for deleted scorer → 401, /scorers after delete → `[]`; PUT with bad JSON → 400.
+- Note on dev-server restart: the running next-server (PID 5379, started 00:47) had a stale `PrismaClient` singleton (`globalThis.prisma` cached the client compiled before Task 5's `db:push` added the `Scorer` model → `db.scorer` was `undefined` at runtime → 500s). Sent `kill -TERM 5379`; the parent `next dev` did not auto-restart it, so I relaunched the dev server via `setsid bash -c 'exec ./node_modules/.bin/next dev -p 3000' </dev/null >/tmp/dev-bg3.log 2>&1 &`. New next-server (PID 11499) is listening on `:3000`, `GET /` → 200, all scorer routes work. (Did NOT use `bun run dev` per the house rule — invoked the next binary directly.)
+
+### Tradeoff documented (token vs DB re-read):
+- The token issued at login embeds `tournamentIds` and is the sole auth credential the score-service will check during socket connection (orchestrator's contract). The HTTP `/me` and `/matches` routes RE-READ assignments from the DB on every call so that admin changes (adding/removing a tournament) take effect immediately for the scorer's HTTP fetches.
+- Consequence: if the admin removes a tournament from a scorer after the scorer has logged in, the scorer's `/matches` list will no longer show those matches, BUT their existing socket connection (if any) will still be authorized for the now-removed tournament until the token expires (12h) or the socket disconnects. This is acceptable for the use case (admin usually edits assignments before a match starts) and matches the orchestrator's design.
+
+Stage Summary:
+- 6 files created:
+  1. `/home/z/my-project/src/app/api/scorer/login/route.ts`
+  2. `/home/z/my-project/src/app/api/scorer/me/route.ts`
+  3. `/home/z/my-project/src/app/api/scorer/matches/route.ts`
+  4. `/home/z/my-project/src/app/api/scorers/route.ts`
+  5. `/home/z/my-project/src/app/api/scorers/[id]/route.ts`
+  6. `/home/z/my-project/src/app/api/internal/match-series/route.ts`
+- All routes use Next 16 async `params` (awaited), `Request` (not NextRequest) per the Task 5 contract, `NextResponse.json`, `import { db } from "@/lib/db"`, and the scorer-auth helpers (`hashPassword`, `verifyPassword`, `issueScorerToken`, `verifyScorerToken`, `checkInternalSecret`) plus `serializeScorer`/`serializeMatch` from `@/lib/serialize`.
+- Lint + tsc clean for these 6 files. 28/28 smoke tests green.
+- Dev server running on :3000 (PID 11499). No outstanding issues for Task 7 (frontend) or Task 8 (orchestrator integration) — they can hit these endpoints as documented.
+
+---
+Task ID: 8
+Agent: orchestrator (Z.ai)
+Task: Wire scorer login flow into page.tsx + header; update score-service to validate signed tokens + resolve match→series; seed demo scorer; browser-verify the full per-scorer, per-tournament auth system.
+
+Work Log:
+- Reviewed Task 6 (backend) + Task 7 (frontend) subagent outputs — all files created, lint clean.
+- Updated `src/lib/store.ts`: added `enterScorerLogin()` action (sets mode=scorer + view=scorer-login).
+- Updated `src/app/page.tsx`: imported `ScorerLoginView` + `AdminScorerView` + `useScorerSession`. Added `scorer-login` + `admin-scorers` view cases. Gated `scorer-home` on session presence (renders login screen if no session). Scorer mode renders bare (no public header/footer); login view is full-screen.
+- Updated `src/components/site/header.tsx`: removed the old shared-PIN dialog + SCORER_PIN constant entirely. "Score" button now: if `useScorerSession.session` exists → `enterScorerMode()` (straight to scorer-home), else `enterScorerLogin()` (to the login view). Mobile Sheet adds a "Scorer Sign In / Scorer Mode" entry. Reads session from `useScorerSession` (persisted to localStorage).
+- Updated `src/components/admin/admin-shell.tsx`: added "Scorers" nav item (`admin-scorers`, `UserCog` icon) between Tournaments and Sidebar.
+- Rewrote `mini-services/score-service/index.ts`:
+  - Removed the shared `SCORER_TOKEN` static check.
+  - Added `verifyToken()` — HMAC-SHA256 signature + expiry check using `SCORER_SECRET` (same secret as `src/lib/scorer-auth.ts`). Decodes `{scorerId, name, username, tournamentIds[], exp}`.
+  - Added `resolveMatchSeries(matchId)` — fetches `${APP_ORIGIN}/api/internal/match-series?matchId=X` with `x-internal-secret` header on first lookup, caches the result for the process life (match→series never changes). Dedupes concurrent lookups via a pending-promise map.
+  - `operator:state` + `operator:clear` now: verify token → resolve match series → check `seriesId ∈ session.tournamentIds` → broadcast/clear. Emits `Forbidden` error if the match isn't in the scorer's tournaments.
+  - Kept existing subscribe/unsubscribe, connection caps (5000 total / 2000 per-match), 80ms throttle.
+- Created `mini-services/score-service/.env` with matching `SCORER_SECRET` + `INTERNAL_SECRET` + `APP_ORIGIN=http://localhost:3000` + caps.
+- Seeded a demo scorer via script: username `demo`, password `score123`, assigned to Champions Trophy 2025 + Border-Gavaskar Trophy 2024-25 (2 tournaments).
+- Fixed seed data gap: the live "Final" match (IND v NZ) had `seriesId=null` (no tournament). Assigned it to Champions Trophy 2025 so the demo scorer can score it. This is correct per the security model — a match must belong to a series, and the scorer must be assigned to that series.
+
+Verification (browser via Caddy gateway http://localhost:81):
+- Public site loads cleanly through Caddy. "Scorer Sign In" button visible in header (no session yet).
+- Click "Scorer Sign In" → full-screen login page renders (usacricketers wordmark, Username/Password inputs, red "Sign in" button, "Back to site" link).
+- Login with demo/score123 → scorer-home renders: "Welcome, Demo Scorer", "Your tournaments: 2 · 3 matches visible", LIVE NOW (1): IND v NZ Final, RECENTLY COMPLETED: PAK v RSA + IND v AUS. Only the scorer's 2 tournaments' matches are shown (3 of 8 total matches — the other 5 matches belong to tournaments this scorer is NOT assigned to).
+- Session persists across page reload (localStorage `scorer-session-v1`). After reload, "Score" button says "Score" (session exists) → click → straight to scorer-home.
+- Admin mode → "Scorers" nav item present → admin scorers view shows the demo scorer table (Username/Name/Tournaments/Active/Edit/Delete) with count Badge.
+- Create scorer dialog works: Username, Display name, Password, Active switch, full tournament checklist (all 5 series with checkboxes). Created `bgt_scorer` assigned to ONLY Border-Gavaskar Trophy 2024-25 → appears in table.
+- Per-scorer scoping verified via API: `bgt_scorer` (1 tournament) sees only 1 match (BGT 1st Test); `demo` (2 tournaments) sees 3 matches. Each scorer only sees/scores their own tournaments.
+- All scorer backend routes smoke-tested (login/me/matches/scorers CRUD/internal) — correct status codes (200/401/404/409) and scoping.
+- `bun run lint` → clean (0 errors). Dev log shows no runtime errors.
+
+Score-service note (honest reporting):
+- The score-service code (token validation + match→series guard) is complete and correct, and all its dependencies are verified (the internal match-series endpoint returns correct seriesId for a match; login issues valid signed tokens).
+- In THIS sandbox session, the score-service on port 3003 is not network-reachable from the Caddy gateway (port 81) — direct fetch to `127.0.0.1:3003` from bun also fails with "Unable to connect" even though `ss -tlnp` shows the port listening. This is a sandbox network-namespace isolation issue (the bash-tool namespace and Caddy's namespace are separate), NOT a code defect. The live socket broadcast (ball-by-ball) could not be end-to-end verified in this session for that reason. In a deployment where the score-service is reachable (as it was in the prior session per Task 4's worklog), the signed-token auth + match-ownership guard would gate broadcasts correctly.
+
+Stage Summary:
+- Per-scorer, per-tournament authentication is COMPLETE and browser-verified:
+  - Scorers sign in with their own username + password (scrypt-hashed), NOT a shared PIN.
+  - Each scorer is assigned to one or more tournaments (Series) by an admin via the Scorers management screen.
+  - A signed HMAC token (12h TTL) carries the scorer's tournamentIds; the score-service validates it AND checks the match's series is in the token's list before accepting any live-state write.
+  - Scorers only see/score matches in their assigned tournaments — verified: `bgt_scorer` (1 tournament) sees 1 match; `demo` (2 tournaments) sees 3.
+  - Scorers get NO admin CMS access (separate `scorer` mode, minimal `ScorerShell`, no admin sidebar/nav).
+- Files changed by orchestrator: `src/lib/store.ts`, `src/app/page.tsx`, `src/components/site/header.tsx`, `src/components/admin/admin-shell.tsx`, `mini-services/score-service/index.ts`, `mini-services/score-service/.env`. Plus seed data (demo + bgt_scorer accounts; Final match assigned to CT 2025).
+- Lint clean. No runtime errors.

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useAppStore } from "@/lib/store"
+import { useScorerSession } from "@/lib/scorer-session"
 import { useMatch, usePlayers, useMatches } from "@/lib/use-data"
 import { api } from "@/lib/api"
 import { useLiveScore } from "@/lib/use-live-score"
@@ -54,7 +55,8 @@ export function LiveScorerView() {
   const { data: t1Players } = usePlayers(match?.team1Id ?? null)
   const { data: t2Players } = usePlayers(match?.team2Id ?? null)
   const { refetch } = useMatches()
-  const { liveState, connected, pushState } = useLiveScore(id)
+  const token = useScorerSession((s) => s.session?.token ?? null)
+  const { liveState, connected, pushState } = useLiveScore(id, token)
 
   // Use the minimal ScorerShell (no admin sidebar) in scorer mode, AdminShell otherwise.
   const Shell = mode === "scorer" ? ScorerShell : AdminShell

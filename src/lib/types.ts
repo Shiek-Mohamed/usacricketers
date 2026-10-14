@@ -178,7 +178,9 @@ export type ViewKey =
   | "admin-sidebar"
   | "admin-import"
   | "admin-galleries"
+  | "admin-scorers"
   | "live-scorer"
+  | "scorer-login"
   | "scorer-home"
 
 export interface NavState {
@@ -274,4 +276,28 @@ export function parseScorecard(json: string | null | undefined): Scorecard | nul
   } catch {
     return null
   }
+}
+
+/* ------------------------------ Scorer add-on ------------------------------ */
+
+/** A scorer account (live-scoring operator). Scoped to tournaments via Series. */
+export interface Scorer {
+  id: string
+  username: string
+  name: string
+  active: boolean
+  tournamentIds: string[]
+  createdAt: string
+  updatedAt: string
+}
+
+/** Public-facing scorer session returned by the login API (no password hash). */
+export interface ScorerSession {
+  scorer: {
+    id: string
+    name: string
+    username: string
+  }
+  token: string
+  tournamentIds: string[]
 }

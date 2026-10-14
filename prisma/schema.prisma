@@ -79,6 +79,7 @@ model Series {
   description String   @default("")
   matches      Match[]
   tournamentTeams TournamentTeam[]
+  scorerAssignments ScorerAssignment[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -151,4 +152,35 @@ model Gallery {
   updatedAt   DateTime @updatedAt
 
   @@index([published, createdAt])
+}
+
+// Per-scorer accounts for the live scoring add-on. Each scorer is scoped to
+// one or more tournaments (Series) via ScorerAssignment. Scorers never get
+// access to the admin CMS — they only see/score matches in their tournaments.
+model Scorer {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String   // scrypt hash (salt embedded as "salt:hash" hex)
+  name         String
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  assignments  ScorerAssignment[]
+
+  @@index([active])
+}
+
+// Join: a scorer can be assigned to many tournaments, and a tournament can
+// have many scorers. Only scorers with an assignment to a match's Series may
+// push live state for that match.
+model ScorerAssignment {
+  id        String   @id @default(cuid())
+  scorerId  String
+  seriesId  String
+  scorer    Scorer   @relation(fields: [scorerId], references: [id], onDelete: Cascade)
+  series    Series   @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([scorerId, seriesId])
+  @@index([seriesId])
 }

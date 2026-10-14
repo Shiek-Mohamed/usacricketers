@@ -5,22 +5,28 @@ import { io, type Socket } from "socket.io-client"
 import type { LiveMatchState } from "./scoring"
 
 /**
- * Demo-grade operator token. Shipped to the browser, so it only stops casual
- * spoofing — for production, swap for a server-issued short-lived JWT.
- * Must match `SCORER_TOKEN` in the score-service.
- */
-const SCORER_TOKEN =
-  process.env.NEXT_PUBLIC_SCORER_TOKEN || "cric-cms-live-scorer-v1"
-
-/**
  * Subscribe to a match's live scoring state and (for the operator) push new
  * states as balls are scored. Connects to the score-service mini service via
  * the Caddy gateway using the XTransformPort query param.
+ *
+ * @param matchId  The match being scored (null when none is selected).
+ * @param token    The signed scorer session token. Sent with every
+ *                 `operator:state` / `operator:clear` emit so the
+ *                 score-service can verify the scorer is permitted to write
+ *                 to this match (token carries their tournamentIds).
+ *                 Pass null when not authenticated — emits will be no-ops.
  */
-export function useLiveScore(matchId: string | null) {
+export function useLiveScore(matchId: string | null, token: string | null) {
   const [liveState, setLiveState] = useState<LiveMatchState | null>(null)
   const [connected, setConnected] = useState(false)
   const socketRef = useRef<Socket | null>(null)
+  const tokenRef = useRef<string | null>(token)
+
+  // Keep the latest token available to pushState/clearState without forcing
+  // a socket reconnect on every token change.
+  useEffect(() => {
+    tokenRef.current = token
+  }, [token])
 
   useEffect(() => {
     if (!matchId) return
@@ -56,7 +62,9 @@ export function useLiveScore(matchId: string | null) {
     (state: LiveMatchState) => {
       const socket = socketRef.current
       if (!socket || !matchId) return
-      socket.emit("operator:state", { matchId, state, token: SCORER_TOKEN })
+      const tok = tokenRef.current
+      if (!tok) return
+      socket.emit("operator:state", { matchId, state, token: tok })
     },
     [matchId]
   )
@@ -64,7 +72,9 @@ export function useLiveScore(matchId: string | null) {
   const clearState = useCallback(() => {
     const socket = socketRef.current
     if (!socket || !matchId) return
-    socket.emit("operator:clear", { matchId, token: SCORER_TOKEN })
+    const tok = tokenRef.current
+    if (!tok) return
+    socket.emit("operator:clear", { matchId, token: tok })
   }, [matchId])
 
   return { liveState, connected, pushState, clearState }

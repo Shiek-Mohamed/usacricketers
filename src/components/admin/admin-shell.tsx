@@ -18,6 +18,7 @@ import {
   DownloadCloud,
   Images,
   Plus,
+  UserCog,
 } from "lucide-react"
 import type { ViewKey } from "@/lib/types"
 
@@ -37,6 +38,7 @@ const navItems: { label: string; view: ViewKey; icon: React.ElementType }[] = [
   { label: "Players", view: "admin-players", icon: UserSearch },
   { label: "Teams", view: "admin-teams", icon: Users },
   { label: "Tournaments", view: "admin-series", icon: Trophy },
+  { label: "Scorers", view: "admin-scorers", icon: UserCog },
   { label: "Sidebar", view: "admin-sidebar", icon: PanelRight },
   { label: "Import", view: "admin-import", icon: DownloadCloud },
   { label: "Galleries", view: "admin-galleries", icon: Images },

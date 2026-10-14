@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useAppStore } from "@/lib/store"
+import { useScorerSession } from "@/lib/scorer-session"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,10 +28,6 @@ import {
   Radio,
 } from "lucide-react"
 import type { ViewKey } from "@/lib/types"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-
-// Demo-grade scorer PIN. For production, use server-issued tokens / NextAuth.
-const SCORER_PIN = process.env.NEXT_PUBLIC_SCORER_PIN || "score123"
 
 const navItems: { label: string; view: ViewKey; icon: React.ElementType }[] = [
   { label: "Home", view: "home", icon: Home },
@@ -49,11 +46,17 @@ export function Header() {
   const navigate = useAppStore((s) => s.navigate)
   const mode = useAppStore((s) => s.mode)
   const toggleMode = useAppStore((s) => s.toggleMode)
+  const enterScorerLogin = useAppStore((s) => s.enterScorerLogin)
   const enterScorerMode = useAppStore((s) => s.enterScorerMode)
   const view = useAppStore((s) => s.view)
+  const scorerSession = useScorerSession((s) => s.session)
   const [open, setOpen] = useState(false)
-  const [pinOpen, setPinOpen] = useState(false)
-  const [pinInput, setPinInput] = useState("")
+
+  // "Score" button: go straight to scorer-home if a session exists, else to login.
+  const onScore = () => {
+    if (scorerSession) enterScorerMode()
+    else enterScorerLogin()
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#1e2a5e] text-white shadow-md">
@@ -97,6 +100,16 @@ export function Header() {
                 </button>
               ))}
               <div className="my-2 h-px bg-border" />
+              <button
+                onClick={() => {
+                  onScore()
+                  setOpen(false)
+                }}
+                className="flex items-center gap-2 px-3 py-2 text-left text-sm rounded-md hover:bg-muted text-red-600 font-semibold"
+              >
+                <Radio className="h-4 w-4" />
+                {scorerSession ? "Scorer Mode" : "Scorer Sign In"}
+              </button>
               <button
                 onClick={() => {
                   toggleMode()
@@ -166,63 +179,18 @@ export function Header() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setPinOpen(true)}
+              onClick={onScore}
               className="gap-1.5 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10"
               title="Score a match live"
             >
               <Radio className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Score</span>
+              <span className="hidden sm:inline">
+                {scorerSession ? "Score" : "Scorer Sign In"}
+              </span>
             </Button>
           )}
         </div>
       </div>
-
-      {/* Scorer PIN gate */}
-      <Dialog open={pinOpen} onOpenChange={setPinOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Radio className="h-5 w-5 text-red-600" />
-              Scorer Access
-            </DialogTitle>
-            <DialogDescription>
-              Enter the scorer PIN to access live scoring. This does not give
-              access to the admin CMS.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-2 py-2">
-            <Input
-              type="password"
-              placeholder="Scorer PIN"
-              value={pinInput}
-              onChange={(e) => setPinInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  if (pinInput.trim() === SCORER_PIN) {
-                    enterScorerMode()
-                    setPinOpen(false)
-                    setPinInput("")
-                  }
-                }
-              }}
-              className="text-center text-lg tracking-widest"
-              autoFocus
-            />
-            <Button
-              onClick={() => {
-                if (pinInput.trim() === SCORER_PIN) {
-                  enterScorerMode()
-                  setPinOpen(false)
-                  setPinInput("")
-                }
-              }}
-              className="w-full gap-1.5 bg-red-600 text-white hover:bg-red-700"
-            >
-              <Radio className="h-4 w-4" /> Enter Scorer Mode
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </header>
   )
 }

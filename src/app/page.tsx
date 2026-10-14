@@ -17,6 +17,8 @@ import { PlayersView } from "@/components/site/views/players-view"
 import { PlayerDetailView } from "@/components/site/views/player-detail-view"
 import { StatsView } from "@/components/site/views/stats-view"
 import { ScheduleView } from "@/components/site/views/schedule-view"
+import { PhotosView } from "@/components/site/views/photos-view"
+import { GalleryDetailView } from "@/components/site/views/gallery-detail-view"
 import { DashboardView } from "@/components/admin/views/dashboard-view"
 import { AdminArticlesView } from "@/components/admin/views/articles-view"
 import { AdminMatchesView } from "@/components/admin/views/matches-view"
@@ -62,6 +64,10 @@ export default function Home() {
         return <StatsView />
       case "schedule":
         return <ScheduleView />
+      case "photos":
+        return <PhotosView />
+      case "gallery-detail":
+        return <GalleryDetailView />
       // Admin
       case "admin-dashboard":
         return <DashboardView />

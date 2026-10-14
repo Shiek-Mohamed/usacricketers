@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { api } from "./api"
-import type { Article, Match, PaginatedArticles, Player, Series, SidebarBlock, Team } from "./types"
+import type { Article, Gallery, Match, PaginatedArticles, Player, Series, SidebarBlock, Team } from "./types"
 
 interface FetchState<T> {
   data: T | null
@@ -79,6 +79,9 @@ export const useSidebarBlocks = (placement?: string, drafts = false) =>
     () => api.sidebarBlocks.list(placement, drafts),
     [placement, drafts]
   )
+export const useGalleries = () => useFetch<Gallery[]>(() => api.galleries.list())
+export const useGallery = (id: string | null) =>
+  useFetch<Gallery>(() => (id ? api.galleries.get(id) : Promise.reject()), [id])
 
 // Combined: matches + teams + players for cross-entity stats dashboards
 export function useAllData() {

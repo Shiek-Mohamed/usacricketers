@@ -1,5 +1,5 @@
 import { parseBattingStats, parseBowlingStats, parseScorecard } from "./types"
-import type { Article, Match, Player, Series, SidebarBlock, Team } from "./types"
+import type { Article, Gallery, Match, PhotoItem, Player, Series, SidebarBlock, Team } from "./types"
 import type { Prisma } from "@prisma/client"
 
 export function serializeTeam(t: Prisma.TeamGetPayload<Record<string, never>>): Team {
@@ -108,5 +108,27 @@ export function serializeSidebarBlock(
     published: b.published,
     createdAt: b.createdAt.toISOString(),
     updatedAt: b.updatedAt.toISOString(),
+  }
+}
+
+export function serializeGallery(
+  g: Prisma.GalleryGetPayload<Record<string, never>>
+): Gallery {
+  let photos: PhotoItem[] = []
+  try {
+    photos = JSON.parse(g.photos || "[]")
+  } catch {
+    photos = []
+  }
+  return {
+    id: g.id,
+    title: g.title,
+    slug: g.slug,
+    description: g.description,
+    coverImage: g.coverImage,
+    photos,
+    published: g.published,
+    createdAt: g.createdAt.toISOString(),
+    updatedAt: g.updatedAt.toISOString(),
   }
 }

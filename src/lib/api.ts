@@ -1,6 +1,6 @@
 "use client"
 
-import type { Article, Match, PaginatedArticles, Player, Series, SidebarBlock, Team } from "./types"
+import type { Article, Gallery, Match, PaginatedArticles, Player, Series, SidebarBlock, Team } from "./types"
 
 async function jsonOrThrow<T>(res: Response): Promise<T> {
   if (!res.ok) throw new Error(`Request failed: ${res.status}`)
@@ -142,5 +142,15 @@ export const api = {
       }).then(jsonOrThrow<SidebarBlock>),
     remove: (id: string) =>
       fetch(`/api/sidebar-blocks/${id}`, { method: "DELETE" }).then(jsonOrThrow),
+  },
+  galleries: {
+    list: () => fetch("/api/galleries").then(jsonOrThrow<Gallery[]>),
+    get: (id: string) => fetch(`/api/galleries/${id}`).then(jsonOrThrow<Gallery>),
+    create: (data: Partial<Gallery>) =>
+      fetch("/api/galleries", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }).then(jsonOrThrow<Gallery>),
+    update: (id: string, data: Partial<Gallery>) =>
+      fetch(`/api/galleries/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }).then(jsonOrThrow<Gallery>),
+    remove: (id: string) =>
+      fetch(`/api/galleries/${id}`, { method: "DELETE" }).then(jsonOrThrow),
   },
 }

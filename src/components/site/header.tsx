@@ -23,6 +23,7 @@ import {
   Home,
   Activity,
   Mic,
+  Images,
 } from "lucide-react"
 import type { ViewKey } from "@/lib/types"
 
@@ -36,6 +37,7 @@ const navItems: { label: string; view: ViewKey; icon: React.ElementType }[] = [
   { label: "Schedule", view: "schedule", icon: CalendarDays },
   { label: "News", view: "news", icon: Newspaper },
   { label: "Interviews", view: "interviews", icon: Mic },
+  { label: "Photos", view: "photos", icon: Images },
 ]
 
 export function Header() {

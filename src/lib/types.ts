@@ -166,6 +166,8 @@ export type ViewKey =
   | "player-detail"
   | "stats"
   | "schedule"
+  | "photos"
+  | "gallery-detail"
   | "admin-dashboard"
   | "admin-articles"
   | "admin-matches"
@@ -195,6 +197,23 @@ export interface SidebarBlock {
   content: string
   placement: string // "all" or comma-separated page types
   order: number
+  published: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface PhotoItem {
+  src: string
+  caption: string
+}
+
+export interface Gallery {
+  id: string
+  title: string
+  slug: string
+  description: string
+  coverImage: string
+  photos: PhotoItem[]
   published: boolean
   createdAt: string
   updatedAt: string

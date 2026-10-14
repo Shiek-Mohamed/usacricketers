@@ -121,3 +121,19 @@ model SidebarBlock {
 
   @@index([published, order])
 }
+
+// Photo galleries — a collection of images with captions, browsable on the
+// public Photos page. `photos` is a JSON string array of {src, caption} objects.
+model Gallery {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  description String   @default("")
+  coverImage  String   @default("")
+  photos      String   @default("[]") // JSON: [{src, caption}]
+  published   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([published, createdAt])
+}

@@ -858,6 +858,64 @@ A stress fracture kept him out for much of 2022. He is candid about the mental t
     articles.map((a) => db.article.create({ data: a }))
   )
 
+  // ===== PHOTO GALLERIES =====
+  await db.gallery.deleteMany()
+  const galleries = [
+    {
+      title: "Champions Trophy 2025: India's Triumph",
+      slug: "champions-trophy-2025-india-triumph",
+      description: "India celebrate after beating New Zealand in the final at Dubai International Stadium.",
+      coverImage: "/cricket/hero-trophy.png",
+      photos: JSON.stringify([
+        { src: "/cricket/hero-trophy.png", caption: "India celebrate with the Champions Trophy. Photo: Getty Images" },
+        { src: "/cricket/inline-captain-trophy.png", caption: "The captain lifts the silverware. Photo: Getty Images" },
+        { src: "/cricket/inline-fielding-celebrate.png", caption: "Fielders erupt after a crucial wicket. Photo: AP" },
+        { src: "/cricket/inline-stadium-crowd.png", caption: "A packed Dubai crowd on final night. Photo: Getty Images" },
+      ]),
+      published: true,
+    },
+    {
+      title: "Bumrah: Anatomy of a Fast Bowler",
+      slug: "bumrah-anatomy-of-a-fast-bowler",
+      description: "Jasprit Bumrah in action — the delivery stride, the roar, and the celebration.",
+      coverImage: "/cricket/bumrah-bowling.png",
+      photos: JSON.stringify([
+        { src: "/cricket/bumrah-bowling.png", caption: "Bumrah in his delivery stride. Photo: AFP" },
+        { src: "/cricket/inline-fast-bowler-roar.png", caption: "The roar after another wicket. Photo: BCCI" },
+        { src: "/cricket/inline-keeper-dive.png", caption: "The keeper dives as Bumrah beats the edge. Photo: Getty Images" },
+      ]),
+      published: true,
+    },
+    {
+      title: "Border-Gavaskar Trophy: Adelaide Test",
+      slug: "border-gavaskar-trophy-adelaide-test",
+      description: "Action from the second Test between Australia and India at the Adelaide Oval.",
+      coverImage: "/cricket/border-gavaskar.png",
+      photos: JSON.stringify([
+        { src: "/cricket/border-gavaskar.png", caption: "Test cricket at its finest at Adelaide. Photo: Cricket Australia" },
+        { src: "/cricket/inline-batsman-pull.png", caption: "A batsman plays a commanding pull shot. Photo: Getty Images" },
+        { src: "/cricket/inline-spin-bowler.png", caption: "The spin bowler flights one. Photo: AP" },
+        { src: "/cricket/travis-head.png", caption: "Travis Head on his way to a match-winning innings. Photo: Getty Images" },
+      ]),
+      published: true,
+    },
+    {
+      title: "Training and Nets: Behind the Scenes",
+      slug: "training-and-nets-behind-the-scenes",
+      description: "Players put in the hard yards at training sessions and in the nets.",
+      coverImage: "/cricket/inline-nets-training.png",
+      photos: JSON.stringify([
+        { src: "/cricket/inline-nets-training.png", caption: "A player bats in the nets during a morning session. Photo: Getty Images" },
+        { src: "/cricket/inline-stadium-crowd.png", caption: "The empty stadium awaits match day. Photo: Getty Images" },
+        { src: "/cricket/inline-keeper-dive.png", caption: "Keeping drills — the dive. Photo: AP" },
+      ]),
+      published: true,
+    },
+  ]
+  await Promise.all(
+    galleries.map((g) => db.gallery.create({ data: g }))
+  )
+
   // ===== SIDEBAR BLOCKS (admin-managed custom widgets) =====
   await db.sidebarBlock.deleteMany()
   const sidebarBlocks = [
@@ -895,6 +953,7 @@ A stress fracture kept him out for much of 2022. He is candid about the mental t
     matches: await db.match.count(),
     articles: await db.article.count(),
     sidebarBlocks: await db.sidebarBlock.count(),
+    galleries: await db.gallery.count(),
   }
   console.log(counts)
 }

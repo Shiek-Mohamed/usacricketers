@@ -417,7 +417,7 @@ export function AdminArticlesView() {
                   onChange={(e) =>
                     setForm((f) => ({ ...f, author: e.target.value }))
                   }
-                  placeholder="e.g. ESPNcricinfo staff"
+                  placeholder="e.g. USA Cricketers staff"
                 />
               </div>
             </div>

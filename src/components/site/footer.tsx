@@ -57,7 +57,7 @@ export function Footer() {
                 c
               </span>
               <span className="font-extrabold text-lg tracking-tight text-white">
-                cricinfo
+                usacricketers
               </span>
             </div>
             <p className="mt-2 max-w-xs text-xs text-white/70">
@@ -91,7 +91,7 @@ export function Footer() {
         </div>
         <div className="mt-6 flex flex-col items-center justify-between gap-2 border-t border-white/10 pt-4 sm:flex-row">
           <p className="text-[11px] text-white/60">
-            © {new Date().getFullYear()} Cricinfo CMS Demo. Built with Next.js 16.
+            © {new Date().getFullYear()} USACricketers CMS Demo. Built with Next.js 16.
             Data is illustrative.
           </p>
           <p className="text-[11px] text-white/60">

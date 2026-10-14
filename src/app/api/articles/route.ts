@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
       imageUrl: body.imageUrl || null,
       imageCaption: body.imageCaption || null,
       category: body.category || "news",
-      author: body.author || "ESPNcricinfo staff",
+      author: body.author || "USA Cricketers staff",
       tags: body.tags || "",
       featured: !!body.featured,
       published: body.published !== false,

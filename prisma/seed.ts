@@ -500,7 +500,7 @@ The triumph caps a remarkable turnaround for an Indian side that had not won an 
       imageUrl: "/cricket/hero-trophy.png",
       imageCaption: "India celebrate with the Champions Trophy after their four-wicket win over New Zealand in the final at the Dubai International Stadium. Photo: Getty Images",
       category: "news",
-      author: "ESPNcricinfo staff",
+      author: "USA Cricketers staff",
       tags: "India,New Zealand,Champions Trophy,Rohit Sharma,Shami",
       featured: true,
       publishedAt: new Date("2025-03-09T20:30:00"),
@@ -626,7 +626,7 @@ His 141 against India in the second Test of the 2024-25 Border-Gavaskar Trophy w
 
 ![Head raises his bat after a series-defining century during the Adelaide Test. Photo: Cricket Australia](/cricket/border-gavaskar.png)
 
-> "I just love the big moments," Head told ESPNcricinfo. "The bigger the game, the more it sharpens my focus."
+> "I just love the big moments," Head told usacricketers. "The bigger the game, the more it sharpens my focus."
 
 <div style="text-align:center;">A defining figure of Australia's golden run.</div>
 
@@ -750,7 +750,7 @@ With a home summer and an away tour of England looming, Cummins is focused on ke
       imageUrl: "/cricket/inline-captain-trophy.png",
       imageCaption: "Pat Cummins lifts the trophy after another triumph. Photo: Getty Images",
       category: "interview",
-      author: "ESPNcricinfo staff",
+      author: "USA Cricketers staff",
       tags: "Australia,Cummins,interview,captaincy",
       featured: false,
       publishedAt: new Date("2025-02-28T10:00:00"),
@@ -783,7 +783,7 @@ Babar's ODI average hovers above 47, with 31 international hundreds. He is blunt
       imageUrl: "/cricket/inline-batsman-pull.png",
       imageCaption: "Babar Azam in his trademark fluent stride. Photo: AFP",
       category: "interview",
-      author: "ESPNcricinfo staff",
+      author: "USA Cricketers staff",
       tags: "Pakistan,Babar Azam,interview",
       featured: false,
       publishedAt: new Date("2025-02-10T09:00:00"),
@@ -816,7 +816,7 @@ A stress fracture kept him out for much of 2022. He is candid about the mental t
       imageUrl: "/cricket/inline-fast-bowler-roar.png",
       imageCaption: "Bumrah celebrates another wicket. Photo: BCCI",
       category: "interview",
-      author: "ESPNcricinfo staff",
+      author: "USA Cricketers staff",
       tags: "India,Bumrah,interview,fast bowling",
       featured: false,
       publishedAt: new Date("2025-01-15T08:00:00"),
@@ -847,7 +847,7 @@ A stress fracture kept him out for much of 2022. He is candid about the mental t
       imageUrl: "/cricket/inline-stadium-crowd.png",
       imageCaption: "Williamson walks out to a packed house. Photo: Getty Images",
       category: "interview",
-      author: "ESPNcricinfo staff",
+      author: "USA Cricketers staff",
       tags: "New Zealand,Williamson,interview",
       featured: false,
       publishedAt: new Date("2025-01-10T11:00:00"),
@@ -862,7 +862,7 @@ A stress fracture kept him out for much of 2022. He is candid about the mental t
   await db.sidebarBlock.deleteMany()
   const sidebarBlocks = [
     {
-      title: "Follow cricinfo",
+      title: "Follow usacricketers",
       content: "Get live scores, breaking news and analysis in your inbox. **[Subscribe to the newsletter](#)** for the daily cricket briefing.",
       placement: "all",
       order: 10,

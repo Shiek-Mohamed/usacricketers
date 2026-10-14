@@ -11,7 +11,7 @@ export const maxDuration = 300 // allow a long-ish import run
 const SITE = "https://usacricketers.com"
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads")
 const UA =
-  "Mozilla/5.0 (compatible; CricinfoCMS-Importer/1.0; +https://cricinfo.local)"
+  "Mozilla/5.0 (compatible; USACricketers-Importer/1.0; +https://usacricketers.local)"
 
 const turndown = new TurndownService({
   headingStyle: "atx",

@@ -14,34 +14,34 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "cricinfo — Live Cricket Scores, News, Stats & Series",
+  title: "usacricketers — Live Cricket Scores, News, Stats & Series",
   description:
-    "The definitive home of cricket. Live scores, match scorecards, news, series, team & player stats, schedules and records — all in one place.",
+    "The definitive home of USA cricket. Live scores, match scorecards, news, series, team & player stats, schedules and records — all in one place.",
   keywords: [
     "cricket",
     "live cricket scores",
     "cricket news",
-    "cricinfo",
+    "usacricketers",
     "ICC rankings",
     "cricket stats",
     "scorecard",
     "series",
   ],
-  authors: [{ name: "Cricinfo CMS" }],
+  authors: [{ name: "USACricketers" }],
   icons: {
     icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
   },
   openGraph: {
-    title: "cricinfo — Live Cricket Scores, News, Stats & Series",
+    title: "usacricketers — Live Cricket Scores, News, Stats & Series",
     description:
-      "The definitive home of cricket. Live scores, scorecards, news, player stats and records.",
-    siteName: "cricinfo",
+      "The definitive home of USA cricket. Live scores, scorecards, news, player stats and records.",
+    siteName: "usacricketers",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "cricinfo — Live Cricket Scores & News",
-    description: "The definitive home of cricket.",
+    title: "usacricketers — Live Cricket Scores & News",
+    description: "The definitive home of USA cricket.",
   },
 };
 

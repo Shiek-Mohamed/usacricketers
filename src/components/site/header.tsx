@@ -110,7 +110,7 @@ export function Header() {
             c
           </span>
           <span className="hidden sm:block font-extrabold text-lg tracking-tight">
-            cricinfo
+            usacricketers
           </span>
         </button>
 

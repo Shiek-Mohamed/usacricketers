@@ -30,21 +30,8 @@ const footerNav: { title: string; links: { label: string; view: ViewKey }[] }[] 
       { label: "Features", view: "news" },
       { label: "Analysis", view: "news" },
       { label: "Opinion", view: "news" },
-    ],
-  },
-  {
-    title: "Interviews",
-    links: [
-      { label: "All Interviews", view: "interviews" },
-      { label: "Featured", view: "interviews" },
-      { label: "Latest", view: "interviews" },
-    ],
-  },
-  {
-    title: "Photo Galleries",
-    links: [
-      { label: "All Galleries", view: "photos" },
-      { label: "Latest Photos", view: "photos" },
+      { label: "Interviews", view: "interviews" },
+      { label: "Photo Galleries", view: "photos" },
     ],
   },
 ]
@@ -67,8 +54,8 @@ export function Footer() {
   return (
     <footer className="mt-auto bg-[#1e2a5e] text-white">
       <div className="mx-auto max-w-7xl px-4 py-8">
-        <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-6">
-          <div className="col-span-2 sm:col-span-1 lg:col-span-2">
+        <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="col-span-2 sm:col-span-1">
             <div className="flex items-center">
               <span className="font-extrabold text-lg tracking-tight text-white">
                 usacricketers

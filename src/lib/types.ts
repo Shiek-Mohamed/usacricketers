@@ -127,6 +127,7 @@ export interface Series {
   endDate: string
   status: string
   description: string
+  teams: Team[]
   createdAt: string
   updatedAt: string
 }

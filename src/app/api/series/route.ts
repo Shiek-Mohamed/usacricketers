@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { serializeSeries } from "@/lib/serialize"
+import { serializeSeries, serializeTeam } from "@/lib/serialize"
+import { cacheDelPrefix } from "@/lib/cache"
 
 export async function GET() {
-  const series = await db.series.findMany({ orderBy: { startDate: "desc" } })
+  const series = await db.series.findMany({
+    orderBy: { startDate: "desc" },
+    include: { tournamentTeams: { include: { team: true } } },
+  })
   return NextResponse.json(series.map(serializeSeries))
 }
 
@@ -20,6 +24,8 @@ export async function POST(req: NextRequest) {
       status: body.status || "upcoming",
       description: body.description || "",
     },
+    include: { tournamentTeams: { include: { team: true } } },
   })
+  cacheDelPrefix("series:list")
   return NextResponse.json(serializeSeries(s), { status: 201 })
 }

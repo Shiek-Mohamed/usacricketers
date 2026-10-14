@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { serializeSeries } from "@/lib/serialize"
+import { serializeSeries, serializeTeam } from "@/lib/serialize"
+import { cacheDelPrefix } from "@/lib/cache"
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const s = await db.series.findUnique({ where: { id } })
+  const s = await db.series.findUnique({
+    where: { id },
+    include: { tournamentTeams: { include: { team: true } } },
+  })
   if (!s) return NextResponse.json({ error: "Not found" }, { status: 404 })
   return NextResponse.json(serializeSeries(s))
 }
@@ -30,7 +34,9 @@ export async function PUT(
       status: body.status,
       description: body.description,
     },
+    include: { tournamentTeams: { include: { team: true } } },
   })
+  cacheDelPrefix("series:list")
   return NextResponse.json(serializeSeries(s))
 }
 
@@ -44,5 +50,6 @@ export async function DELETE(
   } catch {
     return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
+  cacheDelPrefix("series:list")
   return NextResponse.json({ ok: true })
 }

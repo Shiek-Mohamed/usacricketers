@@ -45,6 +45,7 @@ model Team {
   players      Player[]
   matchesAsT1  Match[]  @relation("Team1Matches")
   matchesAsT2  Match[]  @relation("Team2Matches")
+  tournamentTeams TournamentTeam[]
 }
 
 model Player {
@@ -77,8 +78,22 @@ model Series {
   status      String   @default("ongoing") // upcoming, ongoing, completed
   description String   @default("")
   matches      Match[]
+  tournamentTeams TournamentTeam[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+// Join table: which teams participate in a tournament/league (Series).
+model TournamentTeam {
+  id        String   @id @default(cuid())
+  seriesId  String
+  teamId    String
+  series    Series   @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([seriesId, teamId])
+  @@index([seriesId])
 }
 
 model Match {

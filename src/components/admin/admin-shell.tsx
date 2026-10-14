@@ -36,7 +36,7 @@ const navItems: { label: string; view: ViewKey; icon: React.ElementType }[] = [
   { label: "Live Scorer", view: "live-scorer", icon: Radio },
   { label: "Players", view: "admin-players", icon: UserSearch },
   { label: "Teams", view: "admin-teams", icon: Users },
-  { label: "Series", view: "admin-series", icon: Trophy },
+  { label: "Tournaments", view: "admin-series", icon: Trophy },
   { label: "Sidebar", view: "admin-sidebar", icon: PanelRight },
   { label: "Import", view: "admin-import", icon: DownloadCloud },
   { label: "Galleries", view: "admin-galleries", icon: Images },

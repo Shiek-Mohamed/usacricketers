@@ -72,19 +72,15 @@ export const api = {
     list: () => fetch("/api/series").then(jsonOrThrow<Series[]>),
     get: (id: string) => fetch(`/api/series/${id}`).then(jsonOrThrow<Series>),
     create: (data: Partial<Series>) =>
-      fetch("/api/series", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }).then(jsonOrThrow<Series>),
+      fetch("/api/series", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }).then(jsonOrThrow<Series>),
     update: (id: string, data: Partial<Series>) =>
-      fetch(`/api/series/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }).then(jsonOrThrow<Series>),
+      fetch(`/api/series/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }).then(jsonOrThrow<Series>),
     remove: (id: string) =>
       fetch(`/api/series/${id}`, { method: "DELETE" }).then(jsonOrThrow),
+    addTeam: (seriesId: string, data: { teamId?: string; name?: string; shortName?: string; country?: string; primaryColor?: string; accentColor?: string }) =>
+      fetch(`/api/series/${seriesId}/teams`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }).then(jsonOrThrow<Team>),
+    removeTeam: (seriesId: string, teamId: string) =>
+      fetch(`/api/series/${seriesId}/teams/${teamId}`, { method: "DELETE" }).then(jsonOrThrow),
   },
   articles: {
     list: (params?: {

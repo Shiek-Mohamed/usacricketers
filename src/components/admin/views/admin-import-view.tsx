@@ -10,6 +10,13 @@ import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Progress } from "@/components/ui/progress"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   DownloadCloud,
   Loader2,
   ExternalLink,
@@ -54,12 +61,14 @@ export function AdminImportView() {
 
   const [pageStart, setPageStart] = useState(1)
   const [pageEnd, setPageEnd] = useState(244)
+  const [order, setOrder] = useState<"oldest" | "newest">("oldest")
   const [downloadImages, setDownloadImages] = useState(true)
 
   const [running, setRunning] = useState(false)
   const [totals, setTotals] = useState<RunningTotals | null>(null)
   const [progress, setProgress] = useState(0)
   const [recentErrors, setRecentErrors] = useState<string[]>([])
+  const [currentChunk, setCurrentChunk] = useState<string>("")
 
   const cancelRef = useRef(false)
 
@@ -106,25 +115,44 @@ export function AdminImportView() {
     setTotals({ imported: 0, updated: 0, failed: 0, pagesDone: 0 })
     setProgress(0)
     setRecentErrors([])
+    setCurrentChunk("")
 
     const acc: RunningTotals = { imported: 0, updated: 0, failed: 0, pagesDone: 0 }
     const totalChunks = Math.ceil((end - start + 1) / CHUNK_SIZE)
     let chunkIndex = 0
 
-    for (let chunkStart = start; chunkStart <= end; chunkStart += CHUNK_SIZE) {
+    // Build the list of chunk [lo, hi] page ranges in the requested order.
+    // Oldest-first (chronological): page 244 → 1, so the first chunk is the
+    // highest page range and we send descending ranges to the API.
+    // Newest-first: page 1 → 244, ascending.
+    const chunks: [number, number][] = []
+    if (order === "oldest") {
+      for (let cs = end; cs >= start; cs -= CHUNK_SIZE) {
+        const ce = Math.max(start, cs - CHUNK_SIZE + 1)
+        // send descending range (cs > ce) so the API processes oldest first
+        chunks.push([cs, ce])
+      }
+    } else {
+      for (let cs = start; cs <= end; cs += CHUNK_SIZE) {
+        const ce = Math.min(end, cs + CHUNK_SIZE - 1)
+        chunks.push([cs, ce])
+      }
+    }
+
+    for (const [cs, ce] of chunks) {
       if (cancelRef.current) {
         toast.info("Import stopped")
         break
       }
-      const chunkEnd = Math.min(end, chunkStart + CHUNK_SIZE - 1)
+      setCurrentChunk(`${Math.min(cs, ce)}–${Math.max(cs, ce)}`)
       try {
         const res = await fetch("/api/import-usacricketers", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             mode: "import",
-            pageStart: chunkStart,
-            pageEnd: chunkEnd,
+            pageStart: cs,
+            pageEnd: ce,
             downloadImages,
           }),
         })
@@ -132,7 +160,7 @@ export function AdminImportView() {
         acc.imported += data.imported
         acc.updated += data.updated
         acc.failed += data.failed
-        acc.pagesDone += chunkEnd - chunkStart + 1
+        acc.pagesDone += Math.abs(cs - ce) + 1
         setTotals({ ...acc })
         chunkIndex++
         setProgress(Math.round((chunkIndex / totalChunks) * 100))
@@ -145,10 +173,11 @@ export function AdminImportView() {
         acc.failed += 1
         setTotals({ ...acc })
         setRecentErrors((prev) =>
-          [`chunk ${chunkStart}-${chunkEnd}: ${String(e).slice(0, 80)}`, ...prev].slice(0, 8)
+          [`chunk ${cs}-${ce}: ${String(e).slice(0, 80)}`, ...prev].slice(0, 8)
         )
       }
     }
+    setCurrentChunk("")
 
     setRunning(false)
     if (!cancelRef.current) {
@@ -263,6 +292,24 @@ export function AdminImportView() {
                   className="w-28"
                 />
               </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="order">Order</Label>
+                <Select
+                  value={order}
+                  onValueChange={(v) => setOrder(v as "oldest" | "newest")}
+                  disabled={running}
+                >
+                  <SelectTrigger id="order" className="w-48">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="oldest">
+                      Oldest first (chronological)
+                    </SelectItem>
+                    <SelectItem value="newest">Newest first</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex items-center gap-2 pb-1.5">
                 <Switch
                   id="dl-img"
@@ -301,9 +348,13 @@ export function AdminImportView() {
             </div>
             <p className="text-xs text-muted-foreground">
               Imports in chunks of {CHUNK_SIZE} archive pages per request (≈
-              {CHUNK_SIZE * 13} articles per chunk). Run it in the background and
-              keep this tab open — {scan ? `${scan.totalPages} pages` : "244 pages"}{" "}
-              takes several minutes. You can stop and resume anytime; already-imported
+              {CHUNK_SIZE * 13} articles per chunk).{" "}
+              {order === "oldest"
+                ? "Oldest-first: page 244 → 1 (chronological order)."
+                : "Newest-first: page 1 → 244."}{" "}
+              Run it in the background and keep this tab open —{" "}
+              {scan ? `${scan.totalPages} pages` : "244 pages"} takes several
+              minutes. You can stop and resume anytime; already-imported
               articles are updated, not duplicated.
             </p>
             {downloadImages && (
@@ -324,6 +375,7 @@ export function AdminImportView() {
                 </h3>
                 <span className="text-xs tabular-nums text-muted-foreground">
                   {progress}%
+                  {running && currentChunk && ` · page ${currentChunk}`}
                 </span>
               </div>
               <Progress value={progress} className="h-2" />

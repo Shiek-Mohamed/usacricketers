@@ -173,17 +173,27 @@ export async function POST(req: NextRequest) {
       const { maxPage } = parseArchivePage(firstHtml)
       report.totalPages = maxPage
 
-      const start = Math.max(1, opts.pageStart ?? 1)
-      const end = Math.min(maxPage, opts.pageEnd ?? maxPage)
+      // Support descending ranges (pageStart > pageEnd) so the UI can request
+      // oldest-first: page 244 → 240, then 239 → 235, … (chronological order).
+      const reqStart = opts.pageStart ?? 1
+      const reqEnd = opts.pageEnd ?? maxPage
+      const descending = reqStart > reqEnd
+      const lo = Math.max(1, Math.min(reqStart, reqEnd))
+      const hi = Math.min(maxPage, Math.max(reqStart, reqEnd))
 
-      // Collect slugs across the requested page range.
-      const slugSet = new Set<string>()
-      for (let p = start; p <= end; p++) {
+      // Build the ordered list of archive pages to crawl.
+      const pages: number[] = []
+      for (let p = lo; p <= hi; p++) pages.push(p)
+      if (descending) pages.reverse()
+
+      // Collect slugs across the requested page range, in order.
+      const slugList: string[] = []
+      for (const p of pages) {
         try {
           const html =
             p === 1 ? firstHtml : await fetchText(`${SITE}/news.php?page=${p}`)
           const { slugs } = parseArchivePage(html)
-          slugs.forEach((s) => slugSet.add(s))
+          slugList.push(...slugs)
           report.pageProcessed = p
         } catch (e) {
           report.errors.push(`archive page ${p}: ${String(e).slice(0, 100)}`)
@@ -191,10 +201,18 @@ export async function POST(req: NextRequest) {
         // tiny pause between archive pages
         await new Promise((r) => setTimeout(r, 40))
       }
-      const slugs = Array.from(slugSet)
+      // Dedupe while preserving order (the same article can appear on
+      // adjacent pages near a boundary).
+      const seen = new Set<string>()
+      const slugs = slugList.filter((s) => {
+        if (seen.has(s)) return false
+        seen.add(s)
+        return true
+      })
       report.found = slugs.length
 
-      // Fetch + parse + upsert each article.
+      // Fetch + parse + upsert each article (in chronological order when
+      // the page range was descending).
       for (const slug of slugs) {
         try {
           const url = `${SITE}/news-detail.php?slug=${encodeURIComponent(slug)}`

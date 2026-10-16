@@ -1,133 +1,356 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { AdminShell } from "@/components/admin/admin-shell"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { DownloadCloud, Loader2, ExternalLink, CheckCircle2, XCircle } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import { Progress } from "@/components/ui/progress"
+import {
+  DownloadCloud,
+  Loader2,
+  ExternalLink,
+  CheckCircle2,
+  XCircle,
+  Search,
+  Square,
+  Globe,
+} from "lucide-react"
 import { toast } from "sonner"
 
-interface ImportReport {
+interface ScanResult {
+  totalPages: number
+  perPage: number
+  estimatedTotal: number
+  sampleSlugs: string[]
+}
+
+interface ChunkReport {
   found: number
   imported: number
   updated: number
   failed: number
+  totalPages: number
+  pageProcessed: number
   errors: string[]
   error?: string
 }
 
-export function AdminImportView() {
-  const [limit, setLimit] = useState(15)
-  const [running, setRunning] = useState(false)
-  const [report, setReport] = useState<ImportReport | null>(null)
+interface RunningTotals {
+  imported: number
+  updated: number
+  failed: number
+  pagesDone: number
+}
 
-  async function runImport() {
-    setRunning(true)
-    setReport(null)
+const CHUNK_SIZE = 5 // archive pages per API call (~65 articles, ~2 min, well under the 5-min cap)
+
+export function AdminImportView() {
+  const [scanning, setScanning] = useState(false)
+  const [scan, setScan] = useState<ScanResult | null>(null)
+
+  const [pageStart, setPageStart] = useState(1)
+  const [pageEnd, setPageEnd] = useState(244)
+  const [downloadImages, setDownloadImages] = useState(true)
+
+  const [running, setRunning] = useState(false)
+  const [totals, setTotals] = useState<RunningTotals | null>(null)
+  const [progress, setProgress] = useState(0)
+  const [recentErrors, setRecentErrors] = useState<string[]>([])
+
+  const cancelRef = useRef(false)
+
+  async function scanSite() {
+    setScanning(true)
+    setScan(null)
     try {
       const res = await fetch("/api/import-usacricketers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ limit }),
+        body: JSON.stringify({ mode: "discover" }),
       })
-      const data: ImportReport = await res.json()
-      setReport(data)
+      const data: ScanResult = await res.json()
       if (res.ok) {
+        setScan(data)
+        setPageEnd(data.totalPages)
         toast.success(
-          `Imported ${data.imported} new, updated ${data.updated}, failed ${data.failed}`
+          `Found ${data.totalPages} archive pages · ~${data.estimatedTotal} articles`
         )
       } else {
-        toast.error("Import failed", { description: data.error })
+        toast.error("Scan failed")
       }
     } catch (e) {
-      toast.error("Import failed", { description: String(e) })
+      toast.error("Scan failed", { description: String(e) })
     } finally {
-      setRunning(false)
+      setScanning(false)
     }
   }
 
+  async function runFullImport() {
+    if (!scan) {
+      toast.error("Scan the site first")
+      return
+    }
+    const start = Math.max(1, pageStart)
+    const end = Math.min(scan.totalPages, pageEnd)
+    if (end < start) {
+      toast.error("End page must be ≥ start page")
+      return
+    }
+
+    setRunning(true)
+    cancelRef.current = false
+    setTotals({ imported: 0, updated: 0, failed: 0, pagesDone: 0 })
+    setProgress(0)
+    setRecentErrors([])
+
+    const acc: RunningTotals = { imported: 0, updated: 0, failed: 0, pagesDone: 0 }
+    const totalChunks = Math.ceil((end - start + 1) / CHUNK_SIZE)
+    let chunkIndex = 0
+
+    for (let chunkStart = start; chunkStart <= end; chunkStart += CHUNK_SIZE) {
+      if (cancelRef.current) {
+        toast.info("Import stopped")
+        break
+      }
+      const chunkEnd = Math.min(end, chunkStart + CHUNK_SIZE - 1)
+      try {
+        const res = await fetch("/api/import-usacricketers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mode: "import",
+            pageStart: chunkStart,
+            pageEnd: chunkEnd,
+            downloadImages,
+          }),
+        })
+        const data: ChunkReport = await res.json()
+        acc.imported += data.imported
+        acc.updated += data.updated
+        acc.failed += data.failed
+        acc.pagesDone += chunkEnd - chunkStart + 1
+        setTotals({ ...acc })
+        chunkIndex++
+        setProgress(Math.round((chunkIndex / totalChunks) * 100))
+        if (data.errors.length > 0) {
+          setRecentErrors((prev) =>
+            [...data.errors.slice(-3), ...prev].slice(0, 8)
+          )
+        }
+      } catch (e) {
+        acc.failed += 1
+        setTotals({ ...acc })
+        setRecentErrors((prev) =>
+          [`chunk ${chunkStart}-${chunkEnd}: ${String(e).slice(0, 80)}`, ...prev].slice(0, 8)
+        )
+      }
+    }
+
+    setRunning(false)
+    if (!cancelRef.current) {
+      toast.success(
+        `Import complete: ${acc.imported} new, ${acc.updated} updated, ${acc.failed} failed`
+      )
+    }
+  }
+
+  function stopImport() {
+    cancelRef.current = true
+    setRunning(false)
+  }
+
   return (
-    <AdminShell title="Import from WordPress">
+    <AdminShell title="Import from usacricketers.com">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <DownloadCloud className="h-4 w-4 text-emerald-600" />
-            Import stories from usacricketers.com
+            <Globe className="h-4 w-4 text-emerald-600" />
+            Migrate stories from usacricketers.com
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5">
           <p className="text-sm text-muted-foreground">
-            This site&apos;s WordPress REST API and RSS feed are disabled, so the
-            importer <strong>scrapes</strong> the public article pages instead
-            (discovers slugs from the homepage, fetches each{" "}
-            <code>/news-detail.php?slug=…</code> page, extracts the title, body
-            and images, downloads the images to{" "}
-            <code>/uploads/</code>, converts the HTML body to markdown, and saves
-            the article). Re-running updates existing articles (matched by slug).
+            The source site has no WordPress REST API, RSS feed, or sitemap, so
+            the importer <strong>scrapes</strong> the public{" "}
+            <code>/news.php?page=N</code> archive (one page per chunk) and each{" "}
+            <code>/news-detail.php?slug=…</code> article. It extracts the title,
+            body and images, downloads the images to{" "}
+            <code>/uploads/</code>, converts the HTML body to markdown, and
+            upserts by slug. Re-running the same range updates existing articles.
           </p>
 
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="limit">How many articles</Label>
-              <Input
-                id="limit"
-                type="number"
-                min={1}
-                max={50}
-                value={limit}
-                onChange={(e) =>
-                  setLimit(Math.min(50, Math.max(1, Number(e.target.value) || 1)))
-                }
-                className="w-32"
-              />
+          {/* Step 1: scan */}
+          <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-bold uppercase tracking-wide">
+                1 · Scan the archive
+              </h3>
+              <Button
+                onClick={scanSite}
+                disabled={scanning || running}
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+              >
+                {scanning ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4" />
+                )}
+                {scanning ? "Scanning…" : "Scan site"}
+              </Button>
             </div>
-            <Button
-              onClick={runImport}
-              disabled={running}
-              className="gap-2"
-            >
-              {running ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <DownloadCloud className="h-4 w-4" />
-              )}
-              {running ? "Importing…" : "Run import"}
-            </Button>
-            <a
-              href="https://usacricketers.com/"
-              target="_blank"
-              rel="noreferrer"
-              className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-            >
-              usacricketers.com <ExternalLink className="h-3 w-3" />
-            </a>
+            {scan && (
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <Badge variant="secondary">
+                  {scan.totalPages} archive pages
+                </Badge>
+                <Badge variant="secondary">
+                  ~{scan.perPage} per page
+                </Badge>
+                <Badge className="bg-emerald-600 text-white">
+                  ~{scan.estimatedTotal} articles total
+                </Badge>
+              </div>
+            )}
+            {!scan && (
+              <p className="text-xs text-muted-foreground">
+                Click <strong>Scan site</strong> to discover how many articles
+                exist before importing.
+              </p>
+            )}
           </div>
 
-          {report && (
-            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+          {/* Step 2: import range */}
+          <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+            <h3 className="text-sm font-bold uppercase tracking-wide">
+              2 · Import a page range
+            </h3>
+            <div className="flex flex-wrap items-end gap-4">
+              <div className="grid gap-1.5">
+                <Label htmlFor="from">From page</Label>
+                <Input
+                  id="from"
+                  type="number"
+                  min={1}
+                  max={scan?.totalPages ?? 244}
+                  value={pageStart}
+                  onChange={(e) =>
+                    setPageStart(
+                      Math.max(1, Number(e.target.value) || 1)
+                    )
+                  }
+                  disabled={running}
+                  className="w-28"
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="to">To page</Label>
+                <Input
+                  id="to"
+                  type="number"
+                  min={1}
+                  max={scan?.totalPages ?? 244}
+                  value={pageEnd}
+                  onChange={(e) =>
+                    setPageEnd(Math.max(1, Number(e.target.value) || 1))
+                  }
+                  disabled={running}
+                  className="w-28"
+                />
+              </div>
+              <div className="flex items-center gap-2 pb-1.5">
+                <Switch
+                  id="dl-img"
+                  checked={downloadImages}
+                  onCheckedChange={setDownloadImages}
+                  disabled={running}
+                />
+                <Label htmlFor="dl-img" className="text-sm cursor-pointer">
+                  Download images
+                </Label>
+              </div>
+              <div className="ml-auto flex gap-2">
+                {running ? (
+                  <Button
+                    onClick={stopImport}
+                    variant="destructive"
+                    size="sm"
+                    className="gap-1.5"
+                  >
+                    <Square className="h-4 w-4" /> Stop
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={runFullImport}
+                    disabled={!scan}
+                    size="sm"
+                    className="gap-1.5"
+                  >
+                    <DownloadCloud className="h-4 w-4" />
+                    {scan
+                      ? `Import pages ${pageStart}–${pageEnd}`
+                      : "Scan first"}
+                  </Button>
+                )}
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Imports in chunks of {CHUNK_SIZE} archive pages per request (≈
+              {CHUNK_SIZE * 13} articles per chunk). Run it in the background and
+              keep this tab open — {scan ? `${scan.totalPages} pages` : "244 pages"}{" "}
+              takes several minutes. You can stop and resume anytime; already-imported
+              articles are updated, not duplicated.
+            </p>
+            {downloadImages && (
+              <p className="text-xs text-amber-600">
+                ⚠️ Downloading images for the full archive (~3,000 articles) will
+                use several GB of disk. Turn off “Download images” to keep
+                images on usacricketers.com’s URLs instead (faster, no disk use).
+              </p>
+            )}
+          </div>
+
+          {/* Step 3: progress */}
+          {totals && (
+            <div className="rounded-lg border bg-card p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-bold uppercase tracking-wide">
+                  {running ? "Importing…" : "Import finished"}
+                </h3>
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  {progress}%
+                </span>
+              </div>
+              <Progress value={progress} className="h-2" />
               <div className="flex flex-wrap items-center gap-2 text-sm">
-                <Badge variant="secondary">{report.found} found on homepage</Badge>
                 <Badge className="bg-emerald-600 text-white">
-                  <CheckCircle2 className="mr-1 h-3 w-3" /> {report.imported} new
+                  <CheckCircle2 className="mr-1 h-3 w-3" /> {totals.imported} new
                 </Badge>
-                <Badge variant="secondary">{report.updated} updated</Badge>
-                {report.failed > 0 && (
+                <Badge variant="secondary">{totals.updated} updated</Badge>
+                {totals.failed > 0 && (
                   <Badge className="bg-red-600 text-white">
-                    <XCircle className="mr-1 h-3 w-3" /> {report.failed} failed
+                    <XCircle className="mr-1 h-3 w-3" /> {totals.failed} failed
+                  </Badge>
+                )}
+                {scan && (
+                  <Badge variant="outline">
+                    {totals.pagesDone}/{Math.min(scan.totalPages, pageEnd) - pageStart + 1} pages
                   </Badge>
                 )}
               </div>
-              {report.errors.length > 0 && (
+              {recentErrors.length > 0 && (
                 <details className="text-xs">
                   <summary className="cursor-pointer text-muted-foreground">
-                    {report.errors.length} error(s)
+                    recent errors
                   </summary>
-                  <ul className="mt-2 space-y-1 text-red-600">
-                    {report.errors.map((e, i) => (
-                      <li key={i} className="font-mono">
+                  <ul className="mt-2 space-y-1 text-red-600 max-h-32 overflow-y-auto">
+                    {recentErrors.map((e, i) => (
+                      <li key={i} className="font-mono break-all">
                         {e}
                       </li>
                     ))}
@@ -136,6 +359,17 @@ export function AdminImportView() {
               )}
             </div>
           )}
+
+          <div className="flex items-center justify-between gap-2 pt-2 border-t">
+            <a
+              href="https://usacricketers.com/news.php"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              usacricketers.com/news.php <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
         </CardContent>
       </Card>
     </AdminShell>

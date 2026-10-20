@@ -1,7 +1,7 @@
 "use client"
 
 import { useAppStore } from "@/lib/store"
-import { Trophy, Users, CalendarDays, Newspaper, BarChart3, Activity, Mic, Images } from "lucide-react"
+import { Trophy, Users, CalendarDays, Newspaper, BarChart3, Activity, Mic, Images, Play } from "lucide-react"
 import type { ViewKey } from "@/lib/types"
 
 const footerNav: { title: string; links: { label: string; view: ViewKey }[] }[] = [
@@ -32,6 +32,7 @@ const footerNav: { title: string; links: { label: string; view: ViewKey }[] }[] 
       { label: "Opinion", view: "news" },
       { label: "Interviews", view: "interviews" },
       { label: "Photo Galleries", view: "photos" },
+      { label: "Videos", view: "videos" },
     ],
   },
 ]
@@ -46,6 +47,7 @@ const iconForView: Record<string, React.ElementType> = {
   news: Newspaper,
   interviews: Mic,
   photos: Images,
+  videos: Play,
 }
 
 export function Footer() {

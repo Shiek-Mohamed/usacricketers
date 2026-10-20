@@ -154,6 +154,32 @@ model Gallery {
   @@index([published, createdAt])
 }
 
+// Videos — supports both uploaded files (mp4/webm saved to /uploads/videos/)
+// and YouTube embeds (youtubeId stored; thumbnail auto-derived).
+model Video {
+  id           String   @id @default(cuid())
+  title        String
+  slug         String   @unique
+  description   String   @default("")
+  source       String   @default("youtube") // "youtube" | "upload"
+  videoUrl     String   // YouTube embed URL or local /uploads/videos/file.mp4
+  youtubeId    String   @default("") // extracted ID (for thumbnail + player)
+  thumbnailUrl String   @default("") // custom thumbnail (uploads); auto-derived for YouTube
+  duration     String   @default("") // display string e.g. "5:32"
+  category     String   @default("Highlights") // Highlights, Interviews, Analysis, etc.
+  author       String   @default("USA Cricketers")
+  tags         String   @default("")
+  featured     Boolean  @default(false)
+  published    Boolean  @default(true)
+  publishedAt  DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([published, publishedAt])
+  @@index([category, publishedAt])
+  @@index([featured, publishedAt])
+}
+
 // Per-scorer accounts for the live scoring add-on. Each scorer is scoped to
 // one or more tournaments (Series) via ScorerAssignment. Scorers never get
 // access to the admin CMS — they only see/score matches in their tournaments.

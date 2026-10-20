@@ -19,6 +19,7 @@ import {
   Images,
   Plus,
   UserCog,
+  Play,
 } from "lucide-react"
 import type { ViewKey } from "@/lib/types"
 
@@ -42,6 +43,7 @@ const navItems: { label: string; view: ViewKey; icon: React.ElementType }[] = [
   { label: "Sidebar", view: "admin-sidebar", icon: PanelRight },
   { label: "Import", view: "admin-import", icon: DownloadCloud },
   { label: "Galleries", view: "admin-galleries", icon: Images },
+  { label: "Videos", view: "admin-videos", icon: Play },
 ]
 
 export function AdminShell({

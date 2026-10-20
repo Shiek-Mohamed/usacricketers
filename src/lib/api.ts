@@ -1,6 +1,6 @@
 "use client"
 
-import type { Article, Gallery, Match, PaginatedArticles, Player, Series, SidebarBlock, Team } from "./types"
+import type { Article, Gallery, Match, PaginatedArticles, Player, Series, SidebarBlock, Team, Video } from "./types"
 
 async function jsonOrThrow<T>(res: Response): Promise<T> {
   if (!res.ok) throw new Error(`Request failed: ${res.status}`)
@@ -148,5 +148,23 @@ export const api = {
       fetch(`/api/galleries/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }).then(jsonOrThrow<Gallery>),
     remove: (id: string) =>
       fetch(`/api/galleries/${id}`, { method: "DELETE" }).then(jsonOrThrow),
+  },
+  videos: {
+    list: (params?: { category?: string; featured?: boolean; limit?: number; drafts?: boolean }) => {
+      const qs = new URLSearchParams()
+      if (params?.category) qs.set("category", params.category)
+      if (params?.featured) qs.set("featured", "true")
+      if (params?.limit) qs.set("limit", String(params.limit))
+      if (params?.drafts) qs.set("drafts", "true")
+      const q = qs.toString()
+      return fetch(`/api/videos${q ? `?${q}` : ""}`).then(jsonOrThrow<Video[]>)
+    },
+    get: (id: string) => fetch(`/api/videos/${id}`).then(jsonOrThrow<Video>),
+    create: (data: Partial<Video>) =>
+      fetch("/api/videos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }).then(jsonOrThrow<Video>),
+    update: (id: string, data: Partial<Video>) =>
+      fetch(`/api/videos/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }).then(jsonOrThrow<Video>),
+    remove: (id: string) =>
+      fetch(`/api/videos/${id}`, { method: "DELETE" }).then(jsonOrThrow),
   },
 }

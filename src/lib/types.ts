@@ -169,6 +169,8 @@ export type ViewKey =
   | "schedule"
   | "photos"
   | "gallery-detail"
+  | "videos"
+  | "video-detail"
   | "admin-dashboard"
   | "admin-articles"
   | "admin-matches"
@@ -178,6 +180,7 @@ export type ViewKey =
   | "admin-sidebar"
   | "admin-import"
   | "admin-galleries"
+  | "admin-videos"
   | "admin-scorers"
   | "live-scorer"
   | "scorer-login"
@@ -220,6 +223,26 @@ export interface Gallery {
   coverImage: string
   photos: PhotoItem[]
   published: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Video {
+  id: string
+  title: string
+  slug: string
+  description: string
+  source: "youtube" | "upload"
+  videoUrl: string
+  youtubeId: string
+  thumbnailUrl: string
+  duration: string
+  category: string
+  author: string
+  tags: string
+  featured: boolean
+  published: boolean
+  publishedAt: string
   createdAt: string
   updatedAt: string
 }

@@ -26,6 +26,7 @@ import {
   Mic,
   Images,
   Radio,
+  Play,
 } from "lucide-react"
 import type { ViewKey } from "@/lib/types"
 
@@ -40,6 +41,7 @@ const navItems: { label: string; view: ViewKey; icon: React.ElementType }[] = [
   { label: "News", view: "news", icon: Newspaper },
   { label: "Interviews", view: "interviews", icon: Mic },
   { label: "Photos", view: "photos", icon: Images },
+  { label: "Videos", view: "videos", icon: Play },
 ]
 
 export function Header() {

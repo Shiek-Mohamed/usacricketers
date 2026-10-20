@@ -19,6 +19,8 @@ import { StatsView } from "@/components/site/views/stats-view"
 import { ScheduleView } from "@/components/site/views/schedule-view"
 import { PhotosView } from "@/components/site/views/photos-view"
 import { GalleryDetailView } from "@/components/site/views/gallery-detail-view"
+import { VideosView } from "@/components/site/views/videos-view"
+import { VideoDetailView } from "@/components/site/views/video-detail-view"
 import { DashboardView } from "@/components/admin/views/dashboard-view"
 import { AdminArticlesView } from "@/components/admin/views/articles-view"
 import { AdminMatchesView } from "@/components/admin/views/matches-view"
@@ -28,6 +30,7 @@ import { AdminSeriesView } from "@/components/admin/views/series-view"
 import { AdminSidebarView } from "@/components/admin/views/admin-sidebar-view"
 import { AdminImportView } from "@/components/admin/views/admin-import-view"
 import { AdminGalleriesView } from "@/components/admin/views/admin-galleries-view"
+import { AdminVideosView } from "@/components/admin/views/admin-videos-view"
 import { AdminScorerView } from "@/components/admin/views/admin-scorers-view"
 import { LiveScorerView } from "@/components/admin/views/live-scorer-view"
 import { ScorerLoginView } from "@/components/site/views/scorer-login-view"
@@ -75,6 +78,10 @@ export default function Home() {
         return <PhotosView />
       case "gallery-detail":
         return <GalleryDetailView />
+      case "videos":
+        return <VideosView />
+      case "video-detail":
+        return <VideoDetailView />
       // Admin
       case "admin-dashboard":
         return <DashboardView />
@@ -94,6 +101,8 @@ export default function Home() {
         return <AdminImportView />
       case "admin-galleries":
         return <AdminGalleriesView />
+      case "admin-videos":
+        return <AdminVideosView />
       case "admin-scorers":
         return <AdminScorerView />
       // Scorer add-on

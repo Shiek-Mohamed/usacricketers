@@ -1,5 +1,5 @@
 import { parseBattingStats, parseBowlingStats, parseScorecard } from "./types"
-import type { Article, Gallery, Match, PhotoItem, Player, Scorer, Series, SidebarBlock, Team } from "./types"
+import type { Article, Gallery, Match, PhotoItem, Player, Scorer, Series, SidebarBlock, Team, Video } from "./types"
 import type { Prisma } from "@prisma/client"
 
 export function serializeTeam(t: Prisma.TeamGetPayload<Record<string, never>>): Team {
@@ -147,5 +147,29 @@ export function serializeScorer(
     tournamentIds: s.assignments.map((a) => a.seriesId),
     createdAt: s.createdAt.toISOString(),
     updatedAt: s.updatedAt.toISOString(),
+  }
+}
+
+export function serializeVideo(
+  v: Prisma.VideoGetPayload<Record<string, never>>
+): Video {
+  return {
+    id: v.id,
+    title: v.title,
+    slug: v.slug,
+    description: v.description,
+    source: (v.source as "youtube" | "upload") || "youtube",
+    videoUrl: v.videoUrl,
+    youtubeId: v.youtubeId,
+    thumbnailUrl: v.thumbnailUrl,
+    duration: v.duration,
+    category: v.category,
+    author: v.author,
+    tags: v.tags,
+    featured: v.featured,
+    published: v.published,
+    publishedAt: v.publishedAt.toISOString(),
+    createdAt: v.createdAt.toISOString(),
+    updatedAt: v.updatedAt.toISOString(),
   }
 }

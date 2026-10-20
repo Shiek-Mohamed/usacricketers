@@ -313,3 +313,63 @@ Stage Summary:
   - Scorers get NO admin CMS access (separate `scorer` mode, minimal `ScorerShell`, no admin sidebar/nav).
 - Files changed by orchestrator: `src/lib/store.ts`, `src/app/page.tsx`, `src/components/site/header.tsx`, `src/components/admin/admin-shell.tsx`, `mini-services/score-service/index.ts`, `mini-services/score-service/.env`. Plus seed data (demo + bgt_scorer accounts; Final match assigned to CT 2025).
 - Lint clean. No runtime errors.
+
+---
+Task ID: 9
+Agent: full-stack-developer (video views)
+Task: Build the 3 frontend view files for the new Videos feature: the public Videos listing page, the individual video-detail page, and the admin CRUD view.
+
+Work Log:
+- Read worklog.md foundation + Tasks 5/6/7/8 (scorer auth). Read the existing reference patterns: `src/components/site/views/news-view.tsx` (category pills), `article-detail-view.tsx` (ReactMarkdown + rehypeRaw element renderer set + InnerPageLayout usage), `photos-view.tsx` (gallery card hover/scale pattern), `admin-galleries-view.tsx` (admin table + AlertDialog delete), `articles-view.tsx` (admin Dialog create/edit pattern + slug auto-suggest), `admin-shell.tsx` (AdminShell props), `upload-button.tsx` (image upload pattern). Confirmed the `Video` interface in `@/lib/types`, `useVideos`/`useVideo` in `@/lib/use-data`, `api.videos.{list,get,create,update,remove}` in `@/lib/api`, and `extractYouTubeId`/`youTubeEmbedUrl`/`youTubeThumb` in `@/lib/youtube`. Confirmed `ViewKey` already includes `"videos" | "video-detail" | "admin-videos"`.
+- Created `src/components/site/views/videos-view.tsx` — `VideosView` named export + shared `VideoCard` + `videoThumbnailUrl` helper. Navy header band `bg-[#1e2a5e]` `text-2xl sm:text-3xl font-extrabold uppercase` "Videos" (matches the Interviews section heading color). 5 category pills (All / Highlights / Interviews / Analysis / Features — same pill style as news-view). Responsive grid 1/2/4 cols. Skeleton + empty Card states. `VideoCard` is exported for the orchestrator's homepage section reuse: 16:9 thumbnail (custom thumbnailUrl → YouTube hqdefault → gray placeholder with Play icon), centered semi-transparent black play-circle overlay, duration badge bottom-right, uppercase category label, line-clamp-2 title (turns red on hover), gray date. Hover: image scales, title turns red.
+- Created `src/components/site/views/video-detail-view.tsx` — `VideoDetailView` named export. Reads `id` from `useAppStore`, fetches via `useVideo(id)`. Back button "← Videos". 16:9 player: `<iframe allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen>` for YouTube, `<video controls poster=...>` for uploads. Title (text-2xl font-extrabold), category Badge, "View on YouTube" external link pill for youtube source, author+date+duration meta row. Description via ReactMarkdown + rehypeRaw (same element renderer set as ArticleDetailView — h1-h4, p, a, ul/ol/li, blockquote, hr, strong/em, code/pre, table/thead/th/td, img+figcaption). Tags as secondary Badges. "Related Videos" section: `useVideos({ limit: 5 })` minus the current one, rendered as a horizontal-scroll strip of up to 4 VideoCards (260-280px wide, custom scrollbar). Loading skeleton + not-found Alert (red variant="destructive" with Info icon).
+- Created `src/components/admin/views/admin-videos-view.tsx` — `AdminVideosView` named export. Wrapped in `AdminShell` with `title="Videos"`, count Badge, `+ New Video` action button. Table columns: Thumbnail (72×40 16:9 with mini play overlay) / Title (truncate) / Source (red YouTube Badge or secondary Upload Badge) / Category (outline Badge) / Published (Live/Draft Badge) / Date / Actions (edit + delete icon buttons). Skeleton loading rows. Empty-state row spans all 7 columns. Create/Edit Dialog: `Tabs` for source ("YouTube link" / "Upload file" — switching clears `videoUrl`). YouTube tab: raw URL Input + `YouTubePreview` (live thumbnail using `extractYouTubeId` + `img.youtube.com/vi/{id}/hqdefault.jpg`). Upload tab: inline `VideoUploadButton` (XMLHttpRequest with real upload progress %, posts to `/api/upload-video`). All other fields: Title (required, auto-slug on create), Slug (editable), Description Textarea (markdown), Category Select (Highlights/Interviews/Analysis/Features/News), Duration Input, Author Input, Tags Input (comma-separated), Custom-thumbnail Input + UploadButton (image route), Featured Switch, Published Switch, Published-at datetime-local. On save: POST → `api.videos.create`; PUT → `api.videos.update`. For YouTube, sends the raw URL as `videoUrl` (backend extracts the ID). For upload, sends the local `/uploads/videos/...` path. Delete via AlertDialog confirm with note that uploaded files remain on disk. Toast feedback via `sonner`.
+- Fixed a runtime PrismaClient cache issue: the running dev server had `globalThis.prisma` cached from before the `Video` model was added to `prisma/schema.prisma`, so `db.video` was `undefined` at runtime (`GET /api/videos` returned HTTP 500 "Cannot read properties of undefined (reading 'findMany')"). This is the same issue Task 6 documented. Fixed by `bunx prisma generate` + `bunx prisma db push --skip-generate` (confirmed schema already in sync) + killing the stale dev server (PIDs 1041/1042/1059) and restarting `./node_modules/.bin/next dev -p 3000` (new PID 3600). After restart, all 7 CRUD smoke tests pass cleanly.
+- Smoke tested the API end-to-end: GET (empty), POST youtube (extracts ID dQw4w9WgXcQ, transforms URL to embed form, derives thumbnail), GET by id (full record), PUT (updates only title + featured), POST upload (stores local path as-is, empty youtubeId), GET list (2 records ordered by publishedAt desc), DELETE × 2 (`{ok:true}`). All HTTP 200. Dev log shows clean Prisma queries with no errors.
+- Ran `bunx eslint <my 3 files>` → 0 errors, 0 warnings. `bun run lint` (full project) → 0 errors, 0 warnings. `bunx tsc --noEmit` → 0 errors in any of my 3 files (remaining repo-level tsc noise is in foundation files out of scope: `prisma/seed.ts`, `src/lib/scoring.ts`, `src/components/cricket/mini-scorecard.tsx`, `src/components/site/views/match-detail-view.tsx`, `src/components/admin/views/admin-galleries-view.tsx`, `src/components/admin/views/live-scorer-view.tsx`, `skills/*`).
+- Wrote per-agent record to `/home/z/my-project/agent-ctx/9-full-stack-developer.md`.
+
+Stage Summary:
+- 3 view files created, all ESLint-clean, all type-safe, all imports resolve, all API round-trips smoke-tested live:
+  1. `src/components/site/views/videos-view.tsx` — `VideosView` + `VideoCard` + `videoThumbnailUrl` exports
+  2. `src/components/site/views/video-detail-view.tsx` — `VideoDetailView` export
+  3. `src/components/admin/views/admin-videos-view.tsx` — `AdminVideosView` export (inline `VideoUploadButton` with XHR progress + `YouTubePreview` + `ThumbCell`)
+- For the orchestrator (Task 4 wiring):
+  - Import `VideoCard` from `@/components/site/views/videos-view` for the homepage Videos section.
+  - `video-detail` view uses a centered `max-w-4xl` layout (not InnerPageLayout — video player + description need the width).
+  - Admin nav item label "Videos" + icon (suggest `Youtube` or `Film` from `lucide-react`) → `admin-videos` view.
+- Known limitation (NOT a bug in my code): the `/api/videos` GET endpoint only returns `published: true` records (per the orchestrator's Task 1-2 API design). The admin table therefore only lists published videos; drafts are invisible in the table until they're marked published. If drafts should appear in admin, extend the API with a `?drafts=true` query and thread a `drafts` param through `useVideos()` — no view code change needed beyond the param.
+- Dev server running on :3000 (PID 3600) after the restart. No outstanding issues for Task 4 (orchestrator wiring).
+
+---
+Task ID: 10
+Agent: orchestrator (Z.ai)
+Task: Add a Videos content type — homepage section (jumbo+small), dedicated videos page, individual detail pages, admin CRUD, with server-upload + YouTube-link support.
+
+Work Log:
+- Schema: added `Video` model (id, title, slug unique, description, source "youtube"|"upload", videoUrl, youtubeId, thumbnailUrl, duration, category, author, tags, featured, published, publishedAt) + indexes. `bun run db:push`.
+- Types: added `Video` interface + `ViewKey` entries (`videos`, `video-detail`, `admin-videos`).
+- Serialize: `serializeVideo()`.
+- API client + hooks: `api.videos.list/get/create/update/remove`, `useVideos({category,featured,limit,drafts})`, `useVideo(id)`.
+- Shared helper `src/lib/youtube.ts`: `extractYouTubeId()` (handles watch/youtu.be/embed/shorts/bare-ID), `youTubeEmbedUrl()`, `youTubeThumb()`.
+- API routes: `GET/POST /api/videos` (GET supports ?category/?featured/?limit/?drafts — drafts returns unpublished for admin), `GET/PUT/DELETE /api/videos/[id]`. POST/PUT auto-derive youtubeId + thumbnail from the URL for YouTube source.
+- Upload routes: `POST /api/upload` (image, optional ?resize=N via Sharp — fixes the existing UploadButton which referenced a missing endpoint), `POST /api/upload-video` (video/* files, 500MB cap, saves to /public/uploads/videos/).
+- Dispatched subagent (Task 9) to build: `videos-view.tsx` (VideosView + shared VideoCard), `video-detail-view.tsx` (player + related), `admin-videos-view.tsx` (CRUD with Source tabs: YouTube link / Upload file, inline VideoUploadButton with XHR progress, YouTubePreview thumbnail).
+- Fixed drafts: admin calls `useVideos({ drafts: true })` so unpublished videos are visible in the admin table.
+- Wired `src/app/page.tsx`: added `videos`, `video-detail`, `admin-videos` router cases.
+- Header nav: added "Videos" (Play icon) after "Photos".
+- Footer: added "Videos" under News (alongside Interviews + Photo Galleries).
+- Admin sidebar: added "Videos" (Play icon) after Galleries.
+- Homepage `home-view.tsx`: added `VideosSection` after Galleries — jumbo video left (col-span-8, 16:9 with play overlay + gradient title) + 3 small videos right (col-span-4, horizontal cards). Navy "Videos" heading + "See More Videos" link matching the Interviews section style. Also added `JumboVideoCard`, `SmallVideoCard`, `videoThumb` helpers.
+- Seeded 5 demo videos (YouTube links across Highlights/Analysis/Interviews/Features categories).
+
+Verification (agent-browser):
+- Homepage Videos section renders: VLM confirmed "one large featured video on the left + three smaller videos stacked vertically on the right" with thumbnails, play buttons, category badges, titles, durations.
+- Header nav "Videos" → public Videos page (navy header, category pills All/Highlights/Interviews/Analysis/Features, 4-col video grid).
+- Clicking a video → detail page with YouTube `<iframe>` player (src=youtube.com/embed/ID), title, category badge, "View on YouTube" link, markdown description, related-videos strip.
+- Admin sidebar "Videos" → admin CRUD page: table (Thumbnail/Title/Source/Category/Published/Date/Actions), count Badge (5), "+ New Video" button. Create dialog has Source tabs (YouTube link / Upload file), all fields.
+- Footer shows "Videos" under News.
+- `bun run lint` → 0 errors. Dev log clean.
+
+Stage Summary:
+- Full Videos feature complete: YouTube embeds + server file uploads, jumbo+small homepage section, dedicated videos page with category filter, individual video post pages with player + related videos, admin CRUD with upload progress. Lint clean, browser-verified end-to-end.

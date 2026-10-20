@@ -3,8 +3,8 @@
 import { useMemo } from "react"
 import { cn } from "@/lib/utils"
 import { useAppStore } from "@/lib/store"
-import { useMatches, useArticles, useGalleries } from "@/lib/use-data"
-import type { Gallery, Match, Article } from "@/lib/types"
+import { useMatches, useArticles, useGalleries, useVideos } from "@/lib/use-data"
+import type { Gallery, Match, Article, Video } from "@/lib/types"
 import {
   TeamBadge,
   FormatPill,
@@ -25,6 +25,7 @@ import {
   User,
   ArrowRight,
   Images,
+  Play,
 } from "lucide-react"
 
 /** Format an ISO date as "Mon DD" (e.g. "Mar 10"). */
@@ -396,6 +397,9 @@ export function HomeView() {
 
       {/* Photo Galleries — 4-column card grid (sample design) */}
       <GalleriesSection />
+
+      {/* Videos — jumbo + 3 small (interview-section-style layout) */}
+      <VideosSection />
     </div>
   )
 }
@@ -620,6 +624,156 @@ function GalleryCard({
         <time className="mt-1.5 block text-[13px] font-normal text-gray-500">
           {formatShortDate(gallery.createdAt)}
         </time>
+      </div>
+    </button>
+  )
+}
+
+/* ---- Videos section (jumbo left + 3 small right, interview-section-style) ---- */
+
+function VideosSection() {
+  const navigate = useAppStore((s) => s.navigate)
+  const { data, loading } = useVideos({ limit: 4 })
+  const videos = useMemo(() => data ?? [], [data])
+
+  if (!loading && videos.length === 0) return null
+
+  const jumbo = videos[0]
+  const small = videos.slice(1, 4)
+
+  return (
+    <section className="space-y-6">
+      {/* Section header — navy "Videos" + See More link (matches Interviews) */}
+      <div className="flex items-center gap-4">
+        <h2 className="text-2xl font-extrabold uppercase tracking-tight text-[#1e2a5e] sm:text-3xl">
+          Videos
+        </h2>
+        <button
+          onClick={() => navigate("videos")}
+          className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-[#1e2a5e] hover:opacity-70 transition-opacity"
+        >
+          See More Videos
+          <ChevronRight className="h-3 w-3" />
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <Skeleton className="aspect-[16/9] w-full rounded-xl lg:col-span-8" />
+          <div className="space-y-3 lg:col-span-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-28 w-full rounded-lg" />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
+          {/* Left: jumbo video */}
+          <div className="lg:col-span-8">
+            {jumbo && (
+              <JumboVideoCard video={jumbo} onClick={() => navigate("video-detail", jumbo.id)} />
+            )}
+          </div>
+          {/* Right: 3 small videos stacked */}
+          <div className="space-y-4 lg:col-span-4">
+            {small.map((v) => (
+              <SmallVideoCard key={v.id} video={v} onClick={() => navigate("video-detail", v.id)} />
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  )
+}
+
+/** Resolve a display thumbnail for a video (custom → YouTube hqdefault → none). */
+function videoThumb(v: Video): string {
+  if (v.thumbnailUrl) return v.thumbnailUrl
+  if (v.source === "youtube" && v.youtubeId)
+    return `https://img.youtube.com/vi/${v.youtubeId}/hqdefault.jpg`
+  return ""
+}
+
+/** Large 16:9 video card with play overlay + title/meta on a gradient bottom. */
+function JumboVideoCard({ video, onClick }: { video: Video; onClick: () => void }) {
+  const thumb = videoThumb(video)
+  return (
+    <button
+      onClick={onClick}
+      className="group relative block w-full overflow-hidden rounded-xl bg-black text-left"
+    >
+      <div className="relative aspect-[16/9] w-full">
+        {thumb ? (
+          <img
+            src={thumb}
+            alt={video.title}
+            className="absolute inset-0 h-full w-full object-cover opacity-95 transition-transform duration-500 ease-out group-hover:scale-105"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-slate-800" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent" />
+        {/* Play button */}
+        <div className="absolute inset-0 grid place-items-center">
+          <span className="grid h-16 w-16 place-items-center rounded-full bg-white/90 shadow-lg transition-transform group-hover:scale-110">
+            <Play className="h-7 w-7 fill-black text-black" />
+          </span>
+        </div>
+        {/* Bottom content */}
+        <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
+          <span className="mb-2 inline-block rounded-sm bg-red-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+            {video.category}
+          </span>
+          <h3 className="text-xl font-bold leading-tight text-white sm:text-2xl">
+            {video.title}
+          </h3>
+          <div className="mt-1 flex items-center gap-2 text-xs text-gray-300">
+            {video.duration && <span>{video.duration}</span>}
+            <span>· {formatShortDate(video.publishedAt)}</span>
+          </div>
+        </div>
+      </div>
+    </button>
+  )
+}
+
+/** Small horizontal video card: 16:9 thumbnail left, title/meta right. */
+function SmallVideoCard({ video, onClick }: { video: Video; onClick: () => void }) {
+  const thumb = videoThumb(video)
+  return (
+    <button
+      onClick={onClick}
+      className="group flex w-full items-stretch gap-3 overflow-hidden rounded-lg border bg-card text-left transition-shadow hover:shadow-md"
+    >
+      <div className="relative aspect-[16/9] w-32 shrink-0 overflow-hidden bg-muted sm:w-36">
+        {thumb ? (
+          <img
+            src={thumb}
+            alt={video.title}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div className="grid h-full w-full place-items-center bg-slate-800 text-slate-500">
+            <Play className="h-5 w-5" />
+          </div>
+        )}
+        <div className="absolute inset-0 grid place-items-center">
+          <span className="grid h-8 w-8 place-items-center rounded-full bg-black/60">
+            <Play className="h-3.5 w-3.5 fill-white text-white" />
+          </span>
+        </div>
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col py-2 pr-3">
+        <span className="text-[10px] font-bold uppercase tracking-wide text-red-600">
+          {video.category}
+        </span>
+        <h3 className="mt-0.5 line-clamp-2 text-sm font-bold leading-snug transition-colors group-hover:text-red-600">
+          {video.title}
+        </h3>
+        <span className="mt-auto text-[11px] text-muted-foreground">
+          {video.duration && `${video.duration} · `}
+          {formatShortDate(video.publishedAt)}
+        </span>
       </div>
     </button>
   )

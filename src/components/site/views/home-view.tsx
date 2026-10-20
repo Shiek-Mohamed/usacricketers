@@ -43,18 +43,25 @@ function SectionTitle({
   actionLabel,
   onAction,
   icon: Icon,
+  onDark,
 }: {
   title: string
   actionLabel?: string
   onAction?: () => void
   icon?: React.ElementType
+  onDark?: boolean
 }) {
   return (
     <div className="mb-3 flex items-center justify-between gap-2">
       <div className="flex items-center gap-2">
         <span className="h-5 w-1 rounded-full bg-red-600" aria-hidden />
         {Icon && <Icon className="h-4 w-4 text-red-600" />}
-        <h2 className="text-sm font-extrabold uppercase tracking-tight sm:text-base">
+        <h2
+          className={cn(
+            "text-sm font-extrabold uppercase tracking-tight sm:text-base",
+            onDark && "text-white"
+          )}
+        >
           {title}
         </h2>
       </div>
@@ -63,7 +70,12 @@ function SectionTitle({
           variant="ghost"
           size="sm"
           onClick={onAction}
-          className="h-7 gap-0.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+          className={cn(
+            "h-7 gap-0.5 text-xs font-semibold",
+            onDark
+              ? "text-white/70 hover:text-white"
+              : "text-muted-foreground hover:text-foreground"
+          )}
         >
           {actionLabel}
           <ChevronRight className="h-3.5 w-3.5" />
@@ -313,51 +325,58 @@ export function HomeView() {
         )}
       </section>
 
-      {/* Latest Results */}
-      {completedMatches.length > 0 && (
-        <section>
-          <SectionTitle
-            title="Latest Results"
-            icon={Trophy}
-            actionLabel="All matches"
-            onAction={() => navigate("matches")}
-          />
-          <div className="-mx-3 flex gap-3 overflow-x-auto px-3 pb-2 sm:mx-0 sm:px-0">
-            {matchesLoading
-              ? Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton
-                    key={i}
-                    className="h-40 w-72 shrink-0 rounded-lg"
-                  />
-                ))
-              : completedMatches.map((m) => (
-                  <div key={m.id} className="w-72 shrink-0">
-                    <MiniScorecard match={m} />
-                  </div>
-                ))}
-          </div>
-        </section>
-      )}
+      {/* Latest Results + Upcoming Matches — navy panel */}
+      {(completedMatches.length > 0 || upcomingMatches.length > 0) && (
+        <div className="rounded-xl bg-[#1e2a5e] p-4 sm:p-6 space-y-6 sm:space-y-8">
+          {/* Latest Results */}
+          {completedMatches.length > 0 && (
+            <section>
+              <SectionTitle
+                title="Latest Results"
+                icon={Trophy}
+                actionLabel="All matches"
+                onAction={() => navigate("matches")}
+                onDark
+              />
+              <div className="flex gap-3 overflow-x-auto pb-2 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/20">
+                {matchesLoading
+                  ? Array.from({ length: 4 }).map((_, i) => (
+                      <Skeleton
+                        key={i}
+                        className="h-40 w-72 shrink-0 rounded-lg"
+                      />
+                    ))
+                  : completedMatches.map((m) => (
+                      <div key={m.id} className="w-72 shrink-0">
+                        <MiniScorecard match={m} />
+                      </div>
+                    ))}
+              </div>
+            </section>
+          )}
 
-      {/* Upcoming Matches */}
-      {upcomingMatches.length > 0 && (
-        <section>
-          <SectionTitle
-            title="Upcoming Matches"
-            icon={CalendarClock}
-            actionLabel="Full schedule"
-            onAction={() => navigate("schedule")}
-          />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {matchesLoading
-              ? Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-40 rounded-lg" />
-                ))
-              : upcomingMatches.map((m) => (
-                  <MiniScorecard key={m.id} match={m} />
-                ))}
-          </div>
-        </section>
+          {/* Upcoming Matches */}
+          {upcomingMatches.length > 0 && (
+            <section>
+              <SectionTitle
+                title="Upcoming Matches"
+                icon={CalendarClock}
+                actionLabel="Full schedule"
+                onAction={() => navigate("schedule")}
+                onDark
+              />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {matchesLoading
+                  ? Array.from({ length: 4 }).map((_, i) => (
+                      <Skeleton key={i} className="h-40 rounded-lg" />
+                    ))
+                  : upcomingMatches.map((m) => (
+                      <MiniScorecard key={m.id} match={m} />
+                    ))}
+              </div>
+            </section>
+          )}
+        </div>
       )}
 
       {/* Latest News */}

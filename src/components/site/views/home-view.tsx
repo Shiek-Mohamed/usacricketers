@@ -398,7 +398,7 @@ export function HomeView() {
       {/* Photo Galleries — 4-column card grid (sample design) */}
       <GalleriesSection />
 
-      {/* Videos — jumbo + 3 small (interview-section-style layout) */}
+      {/* Videos — jumbo + 4 small (interview-section-style layout) */}
       <VideosSection />
     </div>
   )
@@ -629,17 +629,17 @@ function GalleryCard({
   )
 }
 
-/* ---- Videos section (jumbo left + 3 small right, interview-section-style) ---- */
+/* ---- Videos section (jumbo left + 4 small right, interview-section-style) ---- */
 
 function VideosSection() {
   const navigate = useAppStore((s) => s.navigate)
-  const { data, loading } = useVideos({ limit: 4 })
+  const { data, loading } = useVideos({ limit: 5 })
   const videos = useMemo(() => data ?? [], [data])
 
   if (!loading && videos.length === 0) return null
 
   const jumbo = videos[0]
-  const small = videos.slice(1, 4)
+  const small = videos.slice(1, 5)
 
   return (
     <section className="space-y-6">
@@ -661,7 +661,7 @@ function VideosSection() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
           <Skeleton className="aspect-[16/9] w-full rounded-xl lg:col-span-8" />
           <div className="space-y-3 lg:col-span-4">
-            {Array.from({ length: 3 }).map((_, i) => (
+            {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} className="h-28 w-full rounded-lg" />
             ))}
           </div>

@@ -53,7 +53,7 @@ import { Plus, Pencil, Trash2, Search, Info, Radio } from "lucide-react"
 import { toast } from "sonner"
 import type { Match, Scorecard } from "@/lib/types"
 
-const FORMATS = ["Test", "ODI", "T20I"] as const
+const FORMATS = ["Test", "ODI", "T20I", "T10"] as const
 const STATUSES = ["upcoming", "live", "completed", "abandoned"] as const
 const NONE_SERIES = "__none__"
 

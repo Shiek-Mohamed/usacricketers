@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils"
 import type { Series, Team } from "@/lib/types"
 
 const SCROLLBAR = "[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border"
-const FORMATS = ["Test", "ODI", "T20I"] as const
+const FORMATS = ["Test", "ODI", "T20I", "T10"] as const
 const STATUSES = ["upcoming", "ongoing", "completed"] as const
 
 export function AdminSeriesView() {

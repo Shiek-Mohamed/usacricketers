@@ -19,6 +19,7 @@ const FORMAT_FILTERS = [
   { key: "Test", label: "Test" },
   { key: "ODI", label: "ODI" },
   { key: "T20I", label: "T20I" },
+  { key: "T10", label: "T10" },
 ]
 
 function monthKey(iso: string) {

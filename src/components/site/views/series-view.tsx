@@ -21,7 +21,7 @@ const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "completed", label: "Completed" },
 ]
 
-// Format → gradient color (cricket palette: emerald/red/amber, no blue/indigo)
+// Format → gradient color (cricket palette: emerald/red/amber/violet, no blue/indigo)
 function formatGradient(format: string): string {
   switch (format) {
     case "Test":
@@ -29,7 +29,10 @@ function formatGradient(format: string): string {
     case "ODI":
       return "linear-gradient(135deg,#059669 0%,#065f46 100%)"
     case "T20I":
+    case "T20":
       return "linear-gradient(135deg,#d97706 0%,#92400e 100%)"
+    case "T10":
+      return "linear-gradient(135deg,#7c3aed 0%,#5b21b6 100%)"
     default:
       return "linear-gradient(135deg,#475569 0%,#1e293b 100%)"
   }
@@ -56,7 +59,7 @@ export function SeriesView() {
           </h1>
         </div>
         <p className="text-sm text-muted-foreground">
-          Browse all international cricket series — Tests, ODIs and T20Is.
+          Browse all cricket series — Tests, ODIs, T20Is and T10s.
         </p>
       </header>
 

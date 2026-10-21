@@ -84,7 +84,8 @@ const uid = () => Math.random().toString(36).slice(2, 10)
 
 export function maxOversForFormat(format: string): number {
   if (format === "ODI") return 50
-  if (format === "T20I") return 20
+  if (format === "T20I" || format === "T20") return 20
+  if (format === "T10") return 10
   return 0 // Test = unlimited
 }
 

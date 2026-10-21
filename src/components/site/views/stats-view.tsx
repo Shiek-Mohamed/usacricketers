@@ -26,8 +26,9 @@ const FORMAT_WEIGHT: { [key: string]: number } = {
   Test: 1.0,
   ODI: 0.85,
   T20I: 0.55,
+  T10: 0.45,
 }
-const FORMATS = ["Test", "ODI", "T20I"] as const
+const FORMATS = ["Test", "ODI", "T20I", "T10"] as const
 
 export function StatsView() {
   const { data: players, loading: playersLoading } = usePlayers()

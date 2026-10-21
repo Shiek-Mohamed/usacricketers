@@ -181,6 +181,22 @@ model Video {
   @@index([featured, publishedAt])
 }
 
+// Tier 1 — Site administrators. Full god-mode CMS access (gated by the
+// requireSiteAdmin cookie guard on every /api/* admin route). Distinct from
+// league admins (Tier 2) and scorers (Tier 3) — those use scoped Bearer
+// tokens; site admins use an httpOnly signed-cookie session.
+model SiteAdmin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String   // scrypt hash (salt embedded as "salt:hash" hex)
+  name         String
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([active])
+}
+
 // Per-scorer accounts for the live scoring add-on. Each scorer is scoped to
 // one or more tournaments (Series) via ScorerAssignment. Scorers never get
 // access to the admin CMS — they only see/score matches in their tournaments.

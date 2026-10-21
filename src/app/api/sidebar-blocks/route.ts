@@ -3,6 +3,7 @@ import { db } from "@/lib/db"
 import { serializeSidebarBlock } from "@/lib/serialize"
 import { cacheWrap, cacheDelPrefix } from "@/lib/cache"
 import { rateLimit } from "@/lib/rate-limit"
+import { requireSiteAdmin } from "@/lib/scorer-auth"
 
 /**
  * A block matches a page type if its placement is "all" OR the page type is in
@@ -43,6 +44,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const admin = requireSiteAdmin(req)
+  if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   const body = await req.json()
   const block = await db.sidebarBlock.create({
     data: {

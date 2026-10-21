@@ -1,17 +1,19 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { db } from "@/lib/db"
-import { hashPassword, isValidEmail } from "@/lib/scorer-auth"
+import { hashPassword, isValidEmail, requireSiteAdmin } from "@/lib/scorer-auth"
 import { serializeScorer } from "@/lib/serialize"
 
 export const dynamic = "force-dynamic"
 
 // GET /api/scorers/:id
 export async function GET(
-  _req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+  const admin = requireSiteAdmin(req)
+  if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   const scorer = await db.scorer.findUnique({
     where: { id },
     include: { assignments: true },
@@ -27,10 +29,12 @@ export async function GET(
 // re-create). Password is re-hashed only if a non-empty `password` is sent.
 // Email is mandatory — can't be cleared.
 export async function PUT(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+  const admin = requireSiteAdmin(req)
+  if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   let body: {
     name?: string
     email?: string
@@ -121,10 +125,12 @@ export async function PUT(
 
 // DELETE /api/scorers/:id — cascade removes ScorerAssignment rows.
 export async function DELETE(
-  _req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+  const admin = requireSiteAdmin(req)
+  if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   try {
     await db.scorer.delete({ where: { id } })
   } catch {

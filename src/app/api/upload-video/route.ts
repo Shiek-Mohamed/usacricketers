@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { writeFile, mkdir } from "fs/promises"
 import { existsSync } from "fs"
 import path from "path"
+import { requireSiteAdmin } from "@/lib/scorer-auth"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 300 // allow large uploads up to 5 min
@@ -21,6 +22,8 @@ function randomName(ext: string): string {
 }
 
 export async function POST(req: NextRequest) {
+  const admin = requireSiteAdmin(req)
+  if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   try {
     const form = await req.formData()
     const file = form.get("file")

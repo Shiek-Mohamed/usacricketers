@@ -17,10 +17,38 @@ const io = new Server(httpServer, {
 const SCORER_SECRET = process.env.SCORER_SECRET || "cric-cms-scorer-secret-change-me"
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET || "cric-cms-internal-change-me"
 const APP_ORIGIN = process.env.APP_ORIGIN || "http://localhost:3000"
+const REDIS_URL = process.env.REDIS_URL || "" // optional; enables horizontal scaling
 
 const MAX_TOTAL_CONNECTIONS = Number(process.env.MAX_TOTAL_CONNECTIONS) || 5000
 const MAX_PER_MATCH = Number(process.env.MAX_PER_MATCH) || 2000
 const MIN_BROADCAST_GAP_MS = Number(process.env.MIN_BROADCAST_GAP_MS) || 80
+
+/**
+ * Optional Redis pub/sub adapter. When REDIS_URL is set, the score-service
+ * can run as multiple instances behind a load balancer — a ball scored on
+ * instance A fans out to viewers on instances B/C/D via Redis pub/sub. When
+ * REDIS_URL is empty (or the redis packages aren't installed), the service
+ * runs as a single in-memory instance (fine up to ~5K concurrent connections
+ * on one box). Imports are dynamic so the service starts without the redis
+ * packages installed.
+ */
+async function attachRedisAdapter() {
+  if (!REDIS_URL) {
+    console.log("   redis: disabled (single-instance mode). Set REDIS_URL to enable horizontal scaling.")
+    return
+  }
+  try {
+    const { createAdapter } = await import("@socket.io/redis-adapter")
+    const { createClient: createRedisClient } = await import("redis")
+    const pub = createRedisClient({ url: REDIS_URL })
+    const sub = pub.duplicate()
+    await Promise.all([pub.connect(), sub.connect()])
+    io.adapter(createAdapter(pub, sub))
+    console.log(`   redis: adapter attached (${REDIS_URL.replace(/:[^:@/]+@/, ":****@")}) — multi-instance fan-out enabled.`)
+  } catch (e) {
+    console.warn(`   redis: adapter failed (${String(e).slice(0, 120)}) — falling back to single-instance mode. (Install @socket.io/redis-adapter + redis to enable.)`)
+  }
+}
 
 // matchId -> latest live state
 const cache = new Map<string, unknown>()
@@ -206,7 +234,8 @@ setInterval(() => {
 }, 30 * 60 * 1000).unref?.()
 
 const PORT = 3003
-httpServer.listen(PORT, () => {
+httpServer.listen(PORT, async () => {
+  await attachRedisAdapter()
   console.log(`✅ Score service (socket.io) running on port ${PORT}`)
   console.log(`   caps: total=${MAX_TOTAL_CONNECTIONS} per-match=${MAX_PER_MATCH} gap=${MIN_BROADCAST_GAP_MS}ms`)
   console.log(`   auth: signed scorer tokens (HMAC-SHA256) + match->series guard via ${APP_ORIGIN}`)

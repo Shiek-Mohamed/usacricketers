@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { serializeSeries, serializeTeam } from "@/lib/serialize"
 import { cacheDelPrefix } from "@/lib/cache"
+import { requireSiteAdmin } from "@/lib/scorer-auth"
 
 export async function GET(
   _req: NextRequest,
@@ -21,6 +22,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+  const admin = requireSiteAdmin(req)
+  if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   const body = await req.json()
   const s = await db.series.update({
     where: { id },
@@ -41,10 +44,12 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+  const admin = requireSiteAdmin(req)
+  if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   try {
     await db.series.delete({ where: { id } })
   } catch {

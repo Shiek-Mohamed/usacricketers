@@ -1,13 +1,21 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { serializeTeam } from "@/lib/serialize"
+import { requireSiteAdmin } from "@/lib/scorer-auth"
 
 export async function GET() {
   const teams = await db.team.findMany({ orderBy: { name: "asc" } })
-  return NextResponse.json(teams.map(serializeTeam))
+  const res = NextResponse.json(teams.map(serializeTeam))
+  res.headers.set(
+    "Cache-Control",
+    "public, s-maxage=60, stale-while-revalidate=300"
+  )
+  return res
 }
 
 export async function POST(req: NextRequest) {
+  const admin = requireSiteAdmin(req)
+  if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   const body = await req.json()
   const team = await db.team.create({
     data: {

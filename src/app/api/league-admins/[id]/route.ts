@@ -1,24 +1,27 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { db } from "@/lib/db"
-import { hashPassword, isValidEmail } from "@/lib/scorer-auth"
+import { hashPassword, isValidEmail, requireSiteAdmin } from "@/lib/scorer-auth"
 import { serializeLeagueAdmin } from "@/lib/serialize"
 
 export const dynamic = "force-dynamic"
 
 // GET /api/league-admins/:id
 export async function GET(
-  _req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const admin = await db.leagueAdmin.findUnique({
+  const admin = requireSiteAdmin(req)
+  if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
+  const adminRec = await db.leagueAdmin.findUnique({
     where: { id },
     include: { assignments: true },
   })
-  if (!admin) {
+  if (!adminRec) {
     return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
-  return NextResponse.json(serializeLeagueAdmin(admin))
+  return NextResponse.json(serializeLeagueAdmin(adminRec))
 }
 
 // PUT /api/league-admins/:id  body: { name?, email?, active?, password?, managedSeriesIds?: string[] }
@@ -26,10 +29,12 @@ export async function GET(
 // re-create). Password is re-hashed only if a non-empty `password` is sent.
 // Pass email: null to clear it.
 export async function PUT(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+  const admin = requireSiteAdmin(req)
+  if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   let body: {
     name?: string
     email?: string | null
@@ -118,10 +123,12 @@ export async function PUT(
 
 // DELETE /api/league-admins/:id — cascade removes LeagueAdminAssignment rows.
 export async function DELETE(
-  _req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+  const admin = requireSiteAdmin(req)
+  if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   try {
     await db.leagueAdmin.delete({ where: { id } })
   } catch {

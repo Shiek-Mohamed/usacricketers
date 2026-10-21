@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { serializeVideo } from "@/lib/serialize"
 import { extractYouTubeId, youTubeEmbedUrl, youTubeThumb } from "@/lib/youtube"
+import { requireSiteAdmin } from "@/lib/scorer-auth"
 
 export const dynamic = "force-dynamic"
 
@@ -31,10 +32,17 @@ export async function GET(req: NextRequest) {
     orderBy: { publishedAt: "desc" },
     ...(limit ? { take: limit } : {}),
   })
-  return NextResponse.json(videos.map(serializeVideo))
+  const res = NextResponse.json(videos.map(serializeVideo))
+  res.headers.set(
+    "Cache-Control",
+    "public, s-maxage=60, stale-while-revalidate=300"
+  )
+  return res
 }
 
 export async function POST(req: NextRequest) {
+  const admin = requireSiteAdmin(req)
+  if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   try {
     const body = await req.json()
     const title = String(body.title || "").trim()

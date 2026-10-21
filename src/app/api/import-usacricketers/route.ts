@@ -5,6 +5,7 @@ import { writeFile, mkdir } from "fs/promises"
 import { existsSync } from "fs"
 import path from "path"
 import { db } from "@/lib/db"
+import { requireSiteAdmin } from "@/lib/scorer-auth"
 
 export const maxDuration = 300 // one chunk must finish in 5 min
 
@@ -131,6 +132,8 @@ interface ImportOptions {
 }
 
 export async function POST(req: NextRequest) {
+  const admin = requireSiteAdmin(req)
+  if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   let opts: ImportOptions = {}
   try {
     opts = (await req.json().catch(() => ({}))) as ImportOptions

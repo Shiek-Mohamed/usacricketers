@@ -1,15 +1,16 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { db } from "@/lib/db"
-import { hashPassword, isValidEmail } from "@/lib/scorer-auth"
+import { hashPassword, isValidEmail, requireSiteAdmin } from "@/lib/scorer-auth"
 import { serializeScorer } from "@/lib/serialize"
 
 export const dynamic = "force-dynamic"
 
 // GET /api/scorers — list all scorer accounts with their assignments.
-// NOTE: matches the existing admin CMS pattern (no auth gate). The CMS admin
-// is implicitly trusted; the route is reachable from the same origin only.
-export async function GET() {
+// Site-admin only — scorer accounts are private.
+export async function GET(req: NextRequest) {
+  const admin = requireSiteAdmin(req)
+  if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   const scorers = await db.scorer.findMany({
     include: { assignments: true },
     orderBy: { createdAt: "desc" },
@@ -18,7 +19,9 @@ export async function GET() {
 }
 
 // POST /api/scorers  body: { username, email, password, name, active?, tournamentIds?: string[] }
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const admin = requireSiteAdmin(req)
+  if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   let body: {
     username?: string
     email?: string

@@ -172,6 +172,7 @@ export type ViewKey =
   | "videos"
   | "video-detail"
   | "admin-dashboard"
+  | "admin-login"
   | "admin-articles"
   | "admin-matches"
   | "admin-players"
@@ -309,6 +310,16 @@ export function parseScorecard(json: string | null | undefined): Scorecard | nul
 }
 
 /* ------------------------------ Scorer add-on ------------------------------ */
+
+/** A site administrator account (Tier 1). Full god-mode CMS access. */
+export interface SiteAdmin {
+  id: string
+  email: string
+  name: string
+  active: boolean
+  createdAt: string
+  updatedAt: string
+}
 
 /** A scorer account (live-scoring operator). Scoped to tournaments via Series. */
 export interface Scorer {

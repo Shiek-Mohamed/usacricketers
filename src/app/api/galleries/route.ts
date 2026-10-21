@@ -3,6 +3,7 @@ import { db } from "@/lib/db"
 import { serializeGallery } from "@/lib/serialize"
 import { cacheWrap, cacheDelPrefix } from "@/lib/cache"
 import { rateLimit } from "@/lib/rate-limit"
+import { requireSiteAdmin } from "@/lib/scorer-auth"
 
 export async function GET(req: NextRequest) {
   const limited = rateLimit(req, { limit: 120, windowMs: 60_000 })
@@ -14,10 +15,17 @@ export async function GET(req: NextRequest) {
     })
     return all.map(serializeGallery)
   }, 10_000)
-  return NextResponse.json(result)
+  const res = NextResponse.json(result)
+  res.headers.set(
+    "Cache-Control",
+    "public, s-maxage=60, stale-while-revalidate=300"
+  )
+  return res
 }
 
 export async function POST(req: NextRequest) {
+  const admin = requireSiteAdmin(req)
+  if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   const body = await req.json()
   const g = await db.gallery.create({
     data: {

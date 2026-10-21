@@ -1,4 +1,5 @@
 import { randomBytes, scryptSync, timingSafeEqual, createHmac } from "crypto"
+import type { NextRequest } from "next/server"
 import { db } from "./db"
 
 /**
@@ -118,6 +119,80 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 export function isValidEmail(email: string | null | undefined): boolean {
   if (!email) return false
   return EMAIL_RE.test(email.trim())
+}
+
+/* ------------------------------ site-admin auth ----------------------------- */
+
+/**
+ * Tier 1 — Site administrator sessions. Signed HMAC token stored in an
+ * httpOnly cookie (`sa-session`). The `requireSiteAdmin` guard reads the
+ * cookie + verifies the token on every /api/* admin route.
+ */
+export interface SiteAdminTokenPayload {
+  role: "siteAdmin"
+  adminId: string
+  email: string
+  name: string
+  exp: number
+}
+
+export const SITE_ADMIN_COOKIE = "sa-session"
+
+export function issueSiteAdminToken(p: {
+  adminId: string
+  email: string
+  name: string
+}): string {
+  const body: SiteAdminTokenPayload = {
+    role: "siteAdmin",
+    adminId: p.adminId,
+    email: p.email,
+    name: p.name,
+    exp: Date.now() + TOKEN_TTL_MS,
+  }
+  const payload = b64url(JSON.stringify(body))
+  return `${payload}.${sign(payload)}`
+}
+
+export function verifySiteAdminToken(
+  token: string | null | undefined
+): SiteAdminTokenPayload | null {
+  if (!token || typeof token !== "string") return null
+  const [payload, sig] = token.split(".")
+  if (!payload || !sig) return null
+  const expected = sign(payload)
+  try {
+    const a = Buffer.from(sig)
+    const b = Buffer.from(expected)
+    if (a.length !== b.length || !timingSafeEqual(a, b)) return null
+  } catch {
+    return null
+  }
+  let body: SiteAdminTokenPayload
+  try {
+    body = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"))
+  } catch {
+    return null
+  }
+  if (!body || body.role !== "siteAdmin") return null
+  if (typeof body.exp !== "number" || body.exp < Date.now()) return null
+  if (!body.adminId || !body.email) return null
+  return body
+}
+
+/**
+ * Read + verify the site-admin session cookie on a Next.js Request. Returns
+ * the decoded payload, or null if not authenticated. Use this to gate admin
+ * API routes:
+ *
+ *   const admin = requireSiteAdmin(req)
+ *   if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
+ */
+export function requireSiteAdmin(
+  req: NextRequest
+): SiteAdminTokenPayload | null {
+  const cookie = req.cookies.get(SITE_ADMIN_COOKIE)?.value
+  return verifySiteAdminToken(cookie)
 }
 
 /* ----------------------------- db-backed checks ----------------------------- */

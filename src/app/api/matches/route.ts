@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { serializeMatch } from "@/lib/serialize"
+import { requireSiteAdmin } from "@/lib/scorer-auth"
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -10,10 +11,17 @@ export async function GET(req: NextRequest) {
     include: { team1: true, team2: true, series: true },
     orderBy: { startDate: "desc" },
   })
-  return NextResponse.json(matches.map(serializeMatch))
+  const res = NextResponse.json(matches.map(serializeMatch))
+  res.headers.set(
+    "Cache-Control",
+    "public, s-maxage=60, stale-while-revalidate=300"
+  )
+  return res
 }
 
 export async function POST(req: NextRequest) {
+  const admin = requireSiteAdmin(req)
+  if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   const body = await req.json()
   const match = await db.match.create({
     data: {

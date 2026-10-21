@@ -68,6 +68,17 @@ export function Header() {
     if (leagueAdminSession) enterLeagueAdminMode()
     else enterLeagueAdminLogin()
   }
+  // "Admin" button: in public mode → admin-login (which auto-redirects to the
+  // dashboard if the site-admin cookie is still valid). In admin mode → logout
+  // + back to public.
+  const onAdmin = async () => {
+    if (mode === "admin") {
+      try { await fetch("/api/admin/logout", { method: "POST" }) } catch {}
+      toggleMode()
+    } else {
+      navigate("admin-login")
+    }
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#1e2a5e] text-white shadow-md">
@@ -133,7 +144,7 @@ export function Header() {
               </button>
               <button
                 onClick={() => {
-                  toggleMode()
+                  onAdmin()
                   setOpen(false)
                 }}
                 className="flex items-center gap-2 px-3 py-2 text-left text-sm rounded-md hover:bg-muted"
@@ -188,7 +199,7 @@ export function Header() {
           <Button
             variant="secondary"
             size="sm"
-            onClick={toggleMode}
+            onClick={onAdmin}
             className="gap-1.5 text-xs font-semibold"
           >
             <Shield className="h-3.5 w-3.5" />

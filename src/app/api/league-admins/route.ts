@@ -1,14 +1,16 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { db } from "@/lib/db"
-import { hashPassword, isValidEmail } from "@/lib/scorer-auth"
+import { hashPassword, isValidEmail, requireSiteAdmin } from "@/lib/scorer-auth"
 import { serializeLeagueAdmin } from "@/lib/serialize"
 
 export const dynamic = "force-dynamic"
 
 // GET /api/league-admins — list all league-admin accounts with their assignments.
-// Site-admin level (matches the existing admin CMS pattern — no auth gate).
-export async function GET() {
+// Site-admin only — league-admin accounts are private.
+export async function GET(req: NextRequest) {
+  const admin = requireSiteAdmin(req)
+  if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   const admins = await db.leagueAdmin.findMany({
     include: { assignments: true },
     orderBy: { createdAt: "desc" },
@@ -17,7 +19,9 @@ export async function GET() {
 }
 
 // POST /api/league-admins  body: { username, password, name, email?, active?, managedSeriesIds?: string[] }
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const admin = requireSiteAdmin(req)
+  if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   let body: {
     username?: string
     email?: string

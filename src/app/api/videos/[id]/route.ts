@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { serializeVideo } from "@/lib/serialize"
 import { extractYouTubeId, youTubeEmbedUrl, youTubeThumb } from "@/lib/youtube"
+import { requireSiteAdmin } from "@/lib/scorer-auth"
 
 export const dynamic = "force-dynamic"
 
@@ -20,6 +21,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+  const admin = requireSiteAdmin(req)
+  if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   try {
     const existing = await db.video.findUnique({ where: { id } })
     if (!existing) return NextResponse.json({ error: "not found" }, { status: 404 })
@@ -66,10 +69,12 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+  const admin = requireSiteAdmin(req)
+  if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   try {
     await db.video.delete({ where: { id } })
     return NextResponse.json({ ok: true })

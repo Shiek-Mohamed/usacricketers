@@ -3,6 +3,7 @@ import { db } from "@/lib/db"
 import { serializeArticle } from "@/lib/serialize"
 import { cacheWrap, cacheDelPrefix } from "@/lib/cache"
 import { rateLimit } from "@/lib/rate-limit"
+import { requireSiteAdmin } from "@/lib/scorer-auth"
 import type { Prisma } from "@prisma/client"
 
 const DEFAULT_PAGE_SIZE = 20
@@ -34,7 +35,12 @@ export async function GET(req: NextRequest) {
     const article = await db.article.findUnique({ where: { slug } })
     if (!article)
       return NextResponse.json({ error: "Not found" }, { status: 404 })
-    return NextResponse.json(serializeArticle(article))
+    const res = NextResponse.json(serializeArticle(article))
+    res.headers.set(
+      "Cache-Control",
+      "public, s-maxage=60, stale-while-revalidate=300"
+    )
+    return res
   }
 
   const { page, pageSize, category, featured, q } = parsePagination(req)
@@ -72,10 +78,17 @@ export async function GET(req: NextRequest) {
     }
   }, LIST_TTL)
 
-  return NextResponse.json(result)
+  const res = NextResponse.json(result)
+  res.headers.set(
+    "Cache-Control",
+    "public, s-maxage=60, stale-while-revalidate=300"
+  )
+  return res
 }
 
 export async function POST(req: NextRequest) {
+  const admin = requireSiteAdmin(req)
+  if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   const body = await req.json()
   const slug = body.slug || slugify(body.title)
   const article = await db.article.create({

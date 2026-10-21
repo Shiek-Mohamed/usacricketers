@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { serializeTeam } from "@/lib/serialize"
 import { cacheDelPrefix } from "@/lib/cache"
+import { requireSiteAdmin } from "@/lib/scorer-auth"
 
 // Add an existing team to this tournament, OR create a new team + add it.
 // POST /api/series/:id/teams  body: { teamId?: string } or { name, shortName, country?, primaryColor?, accentColor? }
@@ -10,6 +11,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+  const admin = requireSiteAdmin(req)
+  if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   const body = await req.json()
   let teamId = body.teamId as string | undefined
 

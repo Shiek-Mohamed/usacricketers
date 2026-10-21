@@ -2,16 +2,24 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { serializeSeries, serializeTeam } from "@/lib/serialize"
 import { cacheDelPrefix } from "@/lib/cache"
+import { requireSiteAdmin } from "@/lib/scorer-auth"
 
 export async function GET() {
   const series = await db.series.findMany({
     orderBy: { startDate: "desc" },
     include: { tournamentTeams: { include: { team: true } } },
   })
-  return NextResponse.json(series.map(serializeSeries))
+  const res = NextResponse.json(series.map(serializeSeries))
+  res.headers.set(
+    "Cache-Control",
+    "public, s-maxage=60, stale-while-revalidate=300"
+  )
+  return res
 }
 
 export async function POST(req: NextRequest) {
+  const admin = requireSiteAdmin(req)
+  if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   const body = await req.json()
   const s = await db.series.create({
     data: {

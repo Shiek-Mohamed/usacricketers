@@ -39,6 +39,7 @@ import { ScorerHomeView } from "@/components/site/views/scorer-home-view"
 import { ScorerShell } from "@/components/admin/scorer-shell"
 import { useScorerSession } from "@/lib/scorer-session"
 import { LeagueAdminLoginView } from "@/components/site/views/league-admin-login-view"
+import { LeagueAdminSignupView } from "@/components/site/views/league-admin-signup-view"
 import { LeagueAdminHomeView } from "@/components/site/views/league-admin-home-view"
 import { LeagueAdminSeriesEditView } from "@/components/site/views/league-admin-series-edit-view"
 import { LeagueAdminMatchesView } from "@/components/site/views/league-admin-matches-view"
@@ -131,6 +132,8 @@ export default function Home() {
       // League admin add-on (Tier 3)
       case "league-admin-login":
         return <LeagueAdminLoginView />
+      case "league-admin-signup":
+        return <LeagueAdminSignupView />
       case "league-admin-home":
         if (!leagueAdminSession) return <LeagueAdminLoginView />
         return <LeagueAdminHomeView />

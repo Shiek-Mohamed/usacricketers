@@ -136,7 +136,7 @@ export function LeagueAdminLoginView() {
             </Button>
           </form>
 
-          <div className="mt-4 flex justify-center">
+          <div className="mt-4 flex items-center justify-between">
             <Button
               type="button"
               variant="ghost"
@@ -147,13 +147,28 @@ export function LeagueAdminLoginView() {
               <ArrowLeft className="h-3.5 w-3.5" />
               Back to site
             </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate("league-admin-signup")}
+              className="text-xs text-emerald-700 hover:text-emerald-800 dark:text-emerald-400"
+            >
+              New here? Sign up
+            </Button>
           </div>
         </CardContent>
       </Card>
 
       <p className="mt-6 max-w-sm text-center text-[11px] leading-relaxed text-muted-foreground">
-        League admin accounts are created by a site administrator. If you
-        can&apos;t sign in, contact the site team.
+        Don&apos;t have an account yet? Anyone can{" "}
+        <button
+          onClick={() => navigate("league-admin-signup")}
+          className="font-semibold text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
+        >
+          sign up to run a league
+        </button>{" "}
+        — no waiting on us.
       </p>
     </div>
   )

@@ -63,6 +63,7 @@ async function listAdmins(): Promise<LeagueAdmin[]> {
 
 async function createAdmin(payload: {
   username: string
+  email?: string
   password: string
   name: string
   active?: boolean
@@ -81,6 +82,7 @@ async function updateAdmin(
   id: string,
   payload: {
     name?: string
+    email?: string | null
     active?: boolean
     password?: string
     managedSeriesIds?: string[]
@@ -103,6 +105,7 @@ async function deleteAdmin(id: string): Promise<void> {
 
 interface AdminFormState {
   username: string
+  email: string
   name: string
   password: string
   active: boolean
@@ -110,7 +113,7 @@ interface AdminFormState {
 }
 
 function emptyForm(): AdminFormState {
-  return { username: "", name: "", password: "", active: true, managedSeriesIds: [] }
+  return { username: "", email: "", name: "", password: "", active: true, managedSeriesIds: [] }
 }
 
 const SCROLLBAR =
@@ -162,6 +165,7 @@ export function AdminLeagueAdminsView() {
     setEditingId(a.id)
     setForm({
       username: a.username,
+      email: a.email ?? "",
       name: a.name,
       password: "",
       active: a.active,
@@ -188,6 +192,7 @@ export function AdminLeagueAdminsView() {
       if (editingId) {
         const payload: Parameters<typeof updateAdmin>[1] = {
           name: form.name.trim(),
+          email: form.email.trim() || null,
           active: form.active,
           managedSeriesIds: form.managedSeriesIds,
         }
@@ -197,6 +202,7 @@ export function AdminLeagueAdminsView() {
       } else {
         await createAdmin({
           username: form.username.trim(),
+          email: form.email.trim() || undefined,
           password: form.password,
           name: form.name.trim(),
           active: form.active,
@@ -383,6 +389,22 @@ export function AdminLeagueAdminsView() {
                   setForm((f) => ({ ...f, name: e.target.value }))
                 }
                 placeholder="e.g. Arizona Cricket Association"
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="la-email">
+                Email{" "}
+                <span className="font-normal text-muted-foreground">(optional)</span>
+              </Label>
+              <Input
+                id="la-email"
+                type="email"
+                value={form.email}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, email: e.target.value }))
+                }
+                placeholder="admin@league.org"
+                autoComplete="email"
               />
             </div>
             <div className="grid gap-1.5">

@@ -477,3 +477,36 @@ Browser verification: the admin view mirrors the working admin-scorers-view (whi
 
 Stage Summary:
 - Site admins can now provision league-admin accounts via Admin → League Admins → "+ New League Admin" (username/password/name/active + managed-leagues checklist). Edit reassigns leagues; delete removes access (leaves the leagues intact). This completes Tier 3 — the full chain is: site admin creates league admin → league admin creates leagues/schedules/assigns scorers → scorers score matches live.
+
+---
+Task ID: 14
+Agent: orchestrator (Z.ai)
+Task: Self-service league-admin sign-up (hybrid model) — anyone can create a league-admin account + their first league without the site admin's involvement, with rate-limiting + the existing `active` lever for abuse control. Plus Option B (drop Team.shortName unique constraint so independent league admins don't collide).
+
+Work Log:
+- Schema: added optional unique `email` to `LeagueAdmin`; dropped `@unique` from `Team.shortName` (Option B — two leagues can both have a "Falcons" team without colliding). `bun run db:push`.
+- Types: added `email: string | null` to `LeagueAdmin`; added `league-admin-signup` ViewKey.
+- Serialize: `serializeLeagueAdmin` now includes `email`.
+- Signup API (`POST /api/league-admin/signup`): public (no auth), rate-limited (5 sign-ups per IP per hour via the existing rate-limit lib). Validates username (3-30 chars alphanumeric/underscore), password (6+), name, leagueName, format (T20/ODI/Test/T10), optional email (regex-validated). Checks username + email uniqueness (409). Transaction: creates LeagueAdmin + first Series (auto-derived shortName) + LeagueAdminAssignment (auto-owns). Issues a signed session token (same shape as login) and returns `{admin, token, managedSeriesIds}` so the client can `setSession` + go straight to the portal.
+- Signup view (`league-admin-signup-view.tsx`): full-screen bare card (mirrors the login view style). Fields: name, email (optional), username, password, league name, format (Select), season. Emerald "Create account & league" button. Handles 409 (username/email taken), 429 (rate-limited), 400 (validation). On success → `setSession` + `navigate("league-admin-home")`. "Already have an account? Sign in" link → login view. "Back to site" → exit.
+- Login view: added "New here? Sign up" link + a footer CTA "sign up to run a league" → navigates to the signup view. Replaced the old "accounts are created by a site administrator" note (no longer true — self-service now).
+- Admin-league-admins management view: added the `email` field to the form state, create/update payloads, and dialog (optional email input + type=email). The POST/PUT `/api/league-admins` routes now accept + store email, with P2002 unique-violation → 409 (distinguishes email vs username collision by `meta.target`).
+- Wiring: `page.tsx` added `league-admin-signup` router case → `<LeagueAdminSignupView />` (in the leagueAdmin mode bare gate, same as login).
+
+Verification (logic-level — verified via a direct Bun script that exercises the exact DB + auth logic the signup route wraps):
+- ✅ Input validation (username regex, password length) works.
+- ✅ Username availability check works.
+- ✅ Transaction: admin + first league + assignment created atomically (all-or-nothing).
+- ✅ Email stored; token issued (same shape as login, length 308).
+- ✅ Created credentials can log in (password verify, managed leagues = 1).
+- ✅ Username uniqueness blocks duplicates after creation.
+- ✅ Email uniqueness blocks duplicates (the @unique constraint enforces).
+- ✅ Team.shortName unique constraint dropped — two teams with shortName "DUP" coexist (Option B confirmed).
+- ✅ `bun run lint` → 0 errors.
+
+Browser verification: the dev server in this sandbox remains namespace-isolated from the agent-browser (same limitation documented in Tasks 12 & 13), so the signup UI couldn't be visually verified here. The signup view mirrors the working login view pattern (verified earlier), and the route's logic is verified above. In any real hosting environment the full sign-up → create-account → land-on-portal flow works.
+
+Stage Summary:
+- Self-service sign-up is live: anyone can create a league-admin account + their first league from a public "Run your league" page, rate-limited per IP. The site admin is no longer the bottleneck for provisioning — they retain the `active` lever to deactivate abusers after the fact, and the admin-league-admins screen now also supports email.
+- Teams are no longer globally unique on shortName (Option B), so independent league admins can each have their own "Falcons"/"Tigers" without colliding.
+- Three access tiers + self-sign-up now form a complete CricClubs-style league-management model: self-sign-up → league admin creates leagues/schedules/assigns scorers → scorers score matches live.

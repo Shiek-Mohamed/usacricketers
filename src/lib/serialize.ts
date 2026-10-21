@@ -180,6 +180,7 @@ export function serializeLeagueAdmin(
   return {
     id: a.id,
     username: a.username,
+    email: a.email,
     name: a.name,
     active: a.active,
     managedSeriesIds: a.assignments.map((x) => x.seriesId),

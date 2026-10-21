@@ -187,6 +187,7 @@ export type ViewKey =
   | "scorer-login"
   | "scorer-home"
   | "league-admin-login"
+  | "league-admin-signup"
   | "league-admin-home"
   | "league-admin-series-edit"
   | "league-admin-matches"
@@ -337,6 +338,7 @@ export interface ScorerSession {
 export interface LeagueAdmin {
   id: string
   username: string
+  email: string | null
   name: string
   active: boolean
   managedSeriesIds: string[]

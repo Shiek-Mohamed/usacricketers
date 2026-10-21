@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { serializeScorer } from "@/lib/serialize"
 import { authenticateLeagueAdmin } from "@/lib/league-admin-guard"
-import { hashPassword } from "@/lib/scorer-auth"
+import { hashPassword, isValidEmail } from "@/lib/scorer-auth"
 
 export const dynamic = "force-dynamic"
 
@@ -47,6 +47,12 @@ export async function PUT(
     const body = await req.json()
     const data: Record<string, unknown> = {}
     if (body.name !== undefined) data.name = String(body.name)
+    if (body.email !== undefined) {
+      if (!isValidEmail(String(body.email))) {
+        return NextResponse.json({ error: "A valid email is required" }, { status: 400 })
+      }
+      data.email = String(body.email).trim()
+    }
     if (body.active !== undefined) data.active = !!body.active
     if (body.password) data.passwordHash = hashPassword(String(body.password))
 

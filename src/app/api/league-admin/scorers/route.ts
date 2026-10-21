@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { serializeScorer } from "@/lib/serialize"
 import { authenticateLeagueAdmin } from "@/lib/league-admin-guard"
-import { hashPassword } from "@/lib/scorer-auth"
+import { hashPassword, isValidEmail } from "@/lib/scorer-auth"
 
 export const dynamic = "force-dynamic"
 
@@ -35,21 +35,28 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const username = String(body.username || "").trim()
+    const email = String(body.email || "").trim()
     const password = String(body.password || "")
     const name = String(body.name || "").trim()
     const seriesId = String(body.seriesId || "")
     if (!username || !password || !name) {
       return NextResponse.json({ error: "username, password, name are required" }, { status: 400 })
     }
+    if (!isValidEmail(email)) {
+      return NextResponse.json({ error: "A valid email is required" }, { status: 400 })
+    }
     if (!seriesId || !managedSeriesIds.includes(seriesId)) {
       return NextResponse.json({ error: "forbidden: not your league" }, { status: 403 })
     }
     const dup = await db.scorer.findUnique({ where: { username } })
     if (dup) return NextResponse.json({ error: "username already exists" }, { status: 409 })
+    const dupEmail = await db.scorer.findUnique({ where: { email } })
+    if (dupEmail) return NextResponse.json({ error: "an account with that email already exists" }, { status: 409 })
     const created = await db.$transaction(async (tx) => {
       const s = await tx.scorer.create({
         data: {
           username,
+          email,
           passwordHash: hashPassword(password),
           name,
           active: body.active !== false,

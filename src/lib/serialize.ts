@@ -142,6 +142,7 @@ export function serializeScorer(
   return {
     id: s.id,
     username: s.username,
+    email: s.email,
     name: s.name,
     active: s.active,
     tournamentIds: s.assignments.map((a) => a.seriesId),

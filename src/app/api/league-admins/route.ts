@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { db } from "@/lib/db"
-import { hashPassword } from "@/lib/scorer-auth"
+import { hashPassword, isValidEmail } from "@/lib/scorer-auth"
 import { serializeLeagueAdmin } from "@/lib/serialize"
 
 export const dynamic = "force-dynamic"
@@ -39,6 +39,12 @@ export async function POST(req: Request) {
   if (!username || !password || !name) {
     return NextResponse.json(
       { error: "username, password and name are required" },
+      { status: 400 }
+    )
+  }
+  if (!isValidEmail(email)) {
+    return NextResponse.json(
+      { error: "A valid email is required" },
       { status: 400 }
     )
   }

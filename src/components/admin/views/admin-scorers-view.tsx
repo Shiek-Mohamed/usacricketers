@@ -63,6 +63,7 @@ async function listScorers(): Promise<Scorer[]> {
 
 async function createScorer(payload: {
   username: string
+  email: string
   password: string
   name: string
   active?: boolean
@@ -81,6 +82,7 @@ async function updateScorer(
   id: string,
   payload: {
     name?: string
+    email?: string
     active?: boolean
     password?: string
     tournamentIds?: string[]
@@ -103,6 +105,7 @@ async function deleteScorer(id: string): Promise<void> {
 
 interface ScorerFormState {
   username: string
+  email: string
   name: string
   password: string
   active: boolean
@@ -110,7 +113,7 @@ interface ScorerFormState {
 }
 
 function emptyForm(): ScorerFormState {
-  return { username: "", name: "", password: "", active: true, tournamentIds: [] }
+  return { username: "", email: "", name: "", password: "", active: true, tournamentIds: [] }
 }
 
 const SCROLLBAR =
@@ -162,6 +165,7 @@ export function AdminScorerView() {
     setEditingId(s.id)
     setForm({
       username: s.username,
+      email: s.email ?? "",
       name: s.name,
       password: "",
       active: s.active,
@@ -173,6 +177,10 @@ export function AdminScorerView() {
   async function handleSubmit() {
     if (!form.username.trim()) {
       toast.error("Username is required")
+      return
+    }
+    if (!form.email.trim()) {
+      toast.error("Email is required")
       return
     }
     if (!form.name.trim()) {
@@ -188,6 +196,7 @@ export function AdminScorerView() {
       if (editingId) {
         const payload: Parameters<typeof updateScorer>[1] = {
           name: form.name.trim(),
+          email: form.email.trim(),
           active: form.active,
           tournamentIds: form.tournamentIds,
         }
@@ -197,6 +206,7 @@ export function AdminScorerView() {
       } else {
         await createScorer({
           username: form.username.trim(),
+          email: form.email.trim(),
           password: form.password,
           name: form.name.trim(),
           active: form.active,
@@ -374,6 +384,23 @@ export function AdminScorerView() {
                   Used by the scorer to sign in.
                 </p>
               )}
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="scorer-email">
+                Email{" "}
+                <span className="font-normal text-red-600">*</span>
+              </Label>
+              <Input
+                id="scorer-email"
+                type="email"
+                value={form.email}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, email: e.target.value }))
+                }
+                placeholder="scorer@league.org"
+                autoComplete="email"
+                required
+              />
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="scorer-name">Display name</Label>

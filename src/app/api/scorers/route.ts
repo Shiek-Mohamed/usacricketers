@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { db } from "@/lib/db"
-import { hashPassword } from "@/lib/scorer-auth"
+import { hashPassword, isValidEmail } from "@/lib/scorer-auth"
 import { serializeScorer } from "@/lib/serialize"
 
 export const dynamic = "force-dynamic"
@@ -17,10 +17,11 @@ export async function GET() {
   return NextResponse.json(scorers.map(serializeScorer))
 }
 
-// POST /api/scorers  body: { username, password, name, active?, tournamentIds?: string[] }
+// POST /api/scorers  body: { username, email, password, name, active?, tournamentIds?: string[] }
 export async function POST(req: Request) {
   let body: {
     username?: string
+    email?: string
     password?: string
     name?: string
     active?: boolean
@@ -33,11 +34,18 @@ export async function POST(req: Request) {
   }
 
   const username = body.username?.trim()
+  const email = body.email?.trim()
   const password = body.password ?? ""
   const name = body.name?.trim()
   if (!username || !password || !name) {
     return NextResponse.json(
       { error: "username, password and name are required" },
+      { status: 400 }
+    )
+  }
+  if (!isValidEmail(email)) {
+    return NextResponse.json(
+      { error: "A valid email is required" },
       { status: 400 }
     )
   }
@@ -53,7 +61,7 @@ export async function POST(req: Request) {
   try {
     const created = await db.$transaction(async (tx) => {
       const scorer = await tx.scorer.create({
-        data: { username, passwordHash, name, active },
+        data: { username, email, passwordHash, name, active },
       })
       if (tournamentIds.length > 0) {
         await tx.scorerAssignment.createMany({
@@ -75,10 +83,12 @@ export async function POST(req: Request) {
       err instanceof Prisma.PrismaClientKnownRequestError &&
       err.code === "P2002"
     ) {
-      return NextResponse.json(
-        { error: "Username already exists" },
-        { status: 409 }
-      )
+      const target = (err.meta?.target as string[] | undefined)?.[0]
+      const msg =
+        target === "email"
+          ? "An account with that email already exists"
+          : "Username already exists"
+      return NextResponse.json({ error: msg }, { status: 409 })
     }
     throw err
   }

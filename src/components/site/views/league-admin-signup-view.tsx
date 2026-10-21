@@ -47,6 +47,10 @@ export function LeagueAdminSignupView() {
     e.preventDefault()
     if (submitting) return
     setError(null)
+    if (!email.trim()) {
+      setError("Email is required")
+      return
+    }
     setSubmitting(true)
     try {
       const res = await fetch("/api/league-admin/signup", {
@@ -127,9 +131,7 @@ export function LeagueAdminSignupView() {
             <div className="grid gap-1.5">
               <Label htmlFor="su-email">
                 Email{" "}
-                <span className="font-normal text-muted-foreground">
-                  (optional)
-                </span>
+                <span className="font-normal text-red-600">*</span>
               </Label>
               <Input
                 id="su-email"
@@ -139,6 +141,7 @@ export function LeagueAdminSignupView() {
                 placeholder="you@league.org"
                 disabled={submitting}
                 autoComplete="email"
+                required
               />
             </div>
             <div className="grid grid-cols-2 gap-3">

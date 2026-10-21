@@ -110,6 +110,16 @@ export function checkInternalSecret(provided: string | null | undefined): boolea
   }
 }
 
+/* -------------------------------- validation -------------------------------- */
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+/** Returns true for a non-empty, syntactically-valid email. */
+export function isValidEmail(email: string | null | undefined): boolean {
+  if (!email) return false
+  return EMAIL_RE.test(email.trim())
+}
+
 /* ----------------------------- db-backed checks ----------------------------- */
 
 /** Returns true if a scorer still has an assignment to the given series. */

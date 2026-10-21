@@ -179,6 +179,10 @@ export function AdminLeagueAdminsView() {
       toast.error("Username is required")
       return
     }
+    if (!form.email.trim()) {
+      toast.error("Email is required")
+      return
+    }
     if (!form.name.trim()) {
       toast.error("Name is required")
       return
@@ -192,7 +196,7 @@ export function AdminLeagueAdminsView() {
       if (editingId) {
         const payload: Parameters<typeof updateAdmin>[1] = {
           name: form.name.trim(),
-          email: form.email.trim() || null,
+          email: form.email.trim(),
           active: form.active,
           managedSeriesIds: form.managedSeriesIds,
         }
@@ -202,7 +206,7 @@ export function AdminLeagueAdminsView() {
       } else {
         await createAdmin({
           username: form.username.trim(),
-          email: form.email.trim() || undefined,
+          email: form.email.trim(),
           password: form.password,
           name: form.name.trim(),
           active: form.active,
@@ -394,7 +398,7 @@ export function AdminLeagueAdminsView() {
             <div className="grid gap-1.5">
               <Label htmlFor="la-email">
                 Email{" "}
-                <span className="font-normal text-muted-foreground">(optional)</span>
+                <span className="font-normal text-red-600">*</span>
               </Label>
               <Input
                 id="la-email"
@@ -405,6 +409,7 @@ export function AdminLeagueAdminsView() {
                 }
                 placeholder="admin@league.org"
                 autoComplete="email"
+                required
               />
             </div>
             <div className="grid gap-1.5">

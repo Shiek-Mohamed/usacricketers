@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { hashPassword } from "@/lib/scorer-auth"
+import { hashPassword, isValidEmail } from "@/lib/scorer-auth"
 import { serializeLeagueAdmin } from "@/lib/serialize"
 
 export const dynamic = "force-dynamic"
@@ -58,7 +58,14 @@ export async function PUT(
     updateData.name = body.name.trim()
   }
   if (body.email !== undefined) {
-    updateData.email = body.email && body.email.trim() ? body.email.trim() : null
+    // Email is mandatory — can't be cleared.
+    if (!isValidEmail(body.email)) {
+      return NextResponse.json(
+        { error: "A valid email is required" },
+        { status: 400 }
+      )
+    }
+    updateData.email = body.email.trim()
   }
   if (typeof body.active === "boolean") {
     updateData.active = body.active

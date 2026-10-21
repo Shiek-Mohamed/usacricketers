@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { db } from "@/lib/db"
-import { hashPassword, issueLeagueAdminToken } from "@/lib/scorer-auth"
+import { hashPassword, issueLeagueAdminToken, isValidEmail } from "@/lib/scorer-auth"
 import { rateLimit } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
 
 const FORMATS = ["T20", "ODI", "Test", "T10"] as const
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,30}$/
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function badField(error: string) {
   return NextResponse.json({ error }, { status: 400 })
@@ -58,8 +57,8 @@ export async function POST(req: NextRequest) {
   if (!leagueName) return badField("League name is required")
   if (!FORMATS.includes(leagueFormat as (typeof FORMATS)[number]))
     return badField(`Format must be one of: ${FORMATS.join(", ")}`)
-  if (email && !EMAIL_RE.test(email))
-    return badField("Email doesn't look valid")
+  if (!isValidEmail(email))
+    return badField("A valid email is required")
 
   try {
     const result = await db.$transaction(async (tx) => {
@@ -69,18 +68,16 @@ export async function POST(req: NextRequest) {
         where: { username },
       })
       if (existingByUsername) throw new Error("USERNAME_TAKEN")
-      if (email) {
-        const existingByEmail = await tx.leagueAdmin.findUnique({
-          where: { email },
-        })
-        if (existingByEmail) throw new Error("EMAIL_TAKEN")
-      }
+      const existingByEmail = await tx.leagueAdmin.findUnique({
+        where: { email },
+      })
+      if (existingByEmail) throw new Error("EMAIL_TAKEN")
 
-      // Create the league-admin account.
+      // Create the league-admin account (email is mandatory).
       const admin = await tx.leagueAdmin.create({
         data: {
           username,
-          email: email || null,
+          email,
           passwordHash: hashPassword(password),
           name,
           active: true,

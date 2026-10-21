@@ -314,6 +314,7 @@ export function parseScorecard(json: string | null | undefined): Scorecard | nul
 export interface Scorer {
   id: string
   username: string
+  email: string | null
   name: string
   active: boolean
   tournamentIds: string[]

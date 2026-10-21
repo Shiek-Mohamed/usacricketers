@@ -76,6 +76,7 @@ async function jsonOrThrow<T>(res: Response): Promise<T> {
 
 interface CreateForm {
   username: string
+  email: string
   name: string
   password: string
   seriesId: string
@@ -84,6 +85,7 @@ interface CreateForm {
 
 interface EditForm {
   name: string
+  email: string
   password: string
   active: boolean
   tournamentIds: string[]
@@ -92,6 +94,7 @@ interface EditForm {
 function emptyCreate(currentSeriesId: string): CreateForm {
   return {
     username: "",
+    email: "",
     name: "",
     password: "",
     seriesId: currentSeriesId,
@@ -123,6 +126,7 @@ export function LeagueAdminScorersView() {
   )
   const [editForm, setEditForm] = useState<EditForm>({
     name: "",
+    email: "",
     password: "",
     active: true,
     tournamentIds: [],
@@ -196,6 +200,7 @@ export function LeagueAdminScorersView() {
     setEditingId(s.id)
     setEditForm({
       name: s.name,
+      email: s.email ?? "",
       password: "",
       active: s.active,
       tournamentIds: [...s.tournamentIds],
@@ -207,6 +212,10 @@ export function LeagueAdminScorersView() {
     if (!token) return
     if (!createForm.username.trim()) {
       toast.error("Username is required")
+      return
+    }
+    if (!createForm.email.trim()) {
+      toast.error("Email is required")
       return
     }
     if (!createForm.name.trim()) {
@@ -232,6 +241,7 @@ export function LeagueAdminScorersView() {
           },
           body: JSON.stringify({
             username: createForm.username.trim(),
+            email: createForm.email.trim(),
             password: createForm.password,
             name: createForm.name.trim(),
             seriesId: createForm.seriesId,
@@ -257,10 +267,15 @@ export function LeagueAdminScorersView() {
       toast.error("Display name is required")
       return
     }
+    if (!editForm.email.trim()) {
+      toast.error("Email is required")
+      return
+    }
     setSaving(true)
     try {
       const payload: Record<string, unknown> = {
         name: editForm.name.trim(),
+        email: editForm.email.trim(),
         active: editForm.active,
         tournamentIds: editForm.tournamentIds,
       }
@@ -505,6 +520,27 @@ export function LeagueAdminScorersView() {
                 </p>
               </div>
               <div className="grid gap-1.5">
+                <Label htmlFor="sc-email">
+                  Email{" "}
+                  <span className="font-normal text-red-600">*</span>
+                </Label>
+                <Input
+                  id="sc-email"
+                  type="email"
+                  value={createForm.email}
+                  onChange={(e) =>
+                    setCreateForm((f) => ({
+                      ...f,
+                      email: e.target.value,
+                    }))
+                  }
+                  placeholder="scorer@league.org"
+                  disabled={saving}
+                  autoComplete="email"
+                  required
+                />
+              </div>
+              <div className="grid gap-1.5">
                 <Label htmlFor="sc-name">Display name</Label>
                 <Input
                   id="sc-name"
@@ -582,6 +618,24 @@ export function LeagueAdminScorersView() {
             </div>
           ) : (
             <div className="grid gap-3 py-2">
+              <div className="grid gap-1.5">
+                <Label htmlFor="se-email">
+                  Email{" "}
+                  <span className="font-normal text-red-600">*</span>
+                </Label>
+                <Input
+                  id="se-email"
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, email: e.target.value }))
+                  }
+                  placeholder="scorer@league.org"
+                  disabled={saving}
+                  autoComplete="email"
+                  required
+                />
+              </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="se-name">Display name</Label>
                 <Input

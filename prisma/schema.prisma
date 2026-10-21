@@ -187,6 +187,7 @@ model Video {
 model Scorer {
   id           String   @id @default(cuid())
   username     String   @unique
+  email        String?  @unique
   passwordHash String   // scrypt hash (salt embedded as "salt:hash" hex)
   name         String
   active       Boolean  @default(true)

@@ -1,5 +1,5 @@
 import { parseBattingStats, parseBowlingStats, parseScorecard } from "./types"
-import type { Article, Gallery, Match, PhotoItem, Player, Scorer, Series, SidebarBlock, Team, Video } from "./types"
+import type { Article, Gallery, LeagueAdmin, Match, PhotoItem, Player, Scorer, Series, SidebarBlock, Team, Video } from "./types"
 import type { Prisma } from "@prisma/client"
 
 export function serializeTeam(t: Prisma.TeamGetPayload<Record<string, never>>): Team {
@@ -171,5 +171,19 @@ export function serializeVideo(
     publishedAt: v.publishedAt.toISOString(),
     createdAt: v.createdAt.toISOString(),
     updatedAt: v.updatedAt.toISOString(),
+  }
+}
+
+export function serializeLeagueAdmin(
+  a: Prisma.LeagueAdminGetPayload<{ include: { assignments: true } }>
+): LeagueAdmin {
+  return {
+    id: a.id,
+    username: a.username,
+    name: a.name,
+    active: a.active,
+    managedSeriesIds: a.assignments.map((x) => x.seriesId),
+    createdAt: a.createdAt.toISOString(),
+    updatedAt: a.updatedAt.toISOString(),
   }
 }

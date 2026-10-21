@@ -123,3 +123,71 @@ export async function scorerHasSeries(
   })
   return !!a
 }
+
+/* --------------------------- league-admin tokens --------------------------- */
+
+/**
+ * Tier 3 — League administrator tokens. Same HMAC-SHA256 signing as scorer
+ * tokens (reuses SCORER_SECRET) but the payload carries adminId +
+ * managedSeriesIds and a `role: "leagueAdmin"` marker so the two token types
+ * can never be confused. Only validated by the Next.js API routes (the
+ * score-service never sees these).
+ */
+export interface LeagueAdminTokenPayload {
+  role: "leagueAdmin"
+  adminId: string
+  name: string
+  username: string
+  managedSeriesIds: string[]
+  exp: number
+}
+
+export function issueLeagueAdminToken(p: {
+  adminId: string
+  name: string
+  username: string
+  managedSeriesIds: string[]
+}): string {
+  const body: LeagueAdminTokenPayload = {
+    role: "leagueAdmin",
+    adminId: p.adminId,
+    name: p.name,
+    username: p.username,
+    managedSeriesIds: p.managedSeriesIds,
+    exp: Date.now() + TOKEN_TTL_MS,
+  }
+  const payload = b64url(JSON.stringify(body))
+  return `${payload}.${sign(payload)}`
+}
+
+export function verifyLeagueAdminToken(
+  token: string
+): LeagueAdminTokenPayload | null {
+  const [payload, sig] = token.split(".")
+  if (!payload || !sig) return null
+  const expected = sign(payload)
+  try {
+    const a = Buffer.from(sig)
+    const b = Buffer.from(expected)
+    if (a.length !== b.length || !timingSafeEqual(a, b)) return null
+  } catch {
+    return null
+  }
+  let body: LeagueAdminTokenPayload
+  try {
+    body = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"))
+  } catch {
+    return null
+  }
+  if (!body || body.role !== "leagueAdmin") return null
+  if (typeof body.exp !== "number" || body.exp < Date.now()) return null
+  if (!body.adminId || !Array.isArray(body.managedSeriesIds)) return null
+  return body
+}
+
+/** Read a Bearer token from a Request's Authorization header. */
+export function readBearerToken(authHeader: string | null): string | null {
+  if (!authHeader) return null
+  const m = authHeader.match(/^Bearer\s+(.+)$/i)
+  return m ? m[1].trim() : null
+}

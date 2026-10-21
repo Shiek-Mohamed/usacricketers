@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useAppStore } from "@/lib/store"
 import { useScorerSession } from "@/lib/scorer-session"
+import { useLeagueAdminSession } from "@/lib/league-admin-session"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -50,14 +51,22 @@ export function Header() {
   const toggleMode = useAppStore((s) => s.toggleMode)
   const enterScorerLogin = useAppStore((s) => s.enterScorerLogin)
   const enterScorerMode = useAppStore((s) => s.enterScorerMode)
+  const enterLeagueAdminLogin = useAppStore((s) => s.enterLeagueAdminLogin)
+  const enterLeagueAdminMode = useAppStore((s) => s.enterLeagueAdminMode)
   const view = useAppStore((s) => s.view)
   const scorerSession = useScorerSession((s) => s.session)
+  const leagueAdminSession = useLeagueAdminSession((s) => s.session)
   const [open, setOpen] = useState(false)
 
   // "Score" button: go straight to scorer-home if a session exists, else to login.
   const onScore = () => {
     if (scorerSession) enterScorerMode()
     else enterScorerLogin()
+  }
+  // "League Admin" button: same pattern.
+  const onLeagueAdmin = () => {
+    if (leagueAdminSession) enterLeagueAdminMode()
+    else enterLeagueAdminLogin()
   }
 
   return (
@@ -111,6 +120,16 @@ export function Header() {
               >
                 <Radio className="h-4 w-4" />
                 {scorerSession ? "Scorer Mode" : "Scorer Sign In"}
+              </button>
+              <button
+                onClick={() => {
+                  onLeagueAdmin()
+                  setOpen(false)
+                }}
+                className="flex items-center gap-2 px-3 py-2 text-left text-sm rounded-md hover:bg-muted text-emerald-600 font-semibold"
+              >
+                <Trophy className="h-4 w-4" />
+                {leagueAdminSession ? "League Admin" : "League Admin Sign In"}
               </button>
               <button
                 onClick={() => {
@@ -188,6 +207,20 @@ export function Header() {
               <Radio className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">
                 {scorerSession ? "Score" : "Scorer Sign In"}
+              </span>
+            </Button>
+          )}
+          {mode === "public" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onLeagueAdmin}
+              className="gap-1.5 text-xs font-semibold text-emerald-300 hover:text-emerald-200 hover:bg-white/10"
+              title="Manage your leagues"
+            >
+              <Trophy className="h-3.5 w-3.5" />
+              <span className="hidden md:inline">
+                {leagueAdminSession ? "League Admin" : "League Admin Sign In"}
               </span>
             </Button>
           )}

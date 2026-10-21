@@ -80,6 +80,7 @@ model Series {
   matches      Match[]
   tournamentTeams TournamentTeam[]
   scorerAssignments ScorerAssignment[]
+  leagueAdminAssignments LeagueAdminAssignment[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -208,5 +209,36 @@ model ScorerAssignment {
   createdAt DateTime @default(now())
 
   @@unique([scorerId, seriesId])
+  @@index([seriesId])
+}
+
+// Tier 3 — League administrators. A league admin logs in (own account, NOT the
+// site admin), creates leagues (Series), schedules matches within their
+// leagues, and assigns scorer accounts to their leagues. Scoped to their own
+// leagues only — never sees other leagues or the site-wide CMS.
+model LeagueAdmin {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String   // scrypt hash (salt embedded as "salt:hash" hex)
+  name         String
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  assignments  LeagueAdminAssignment[]
+
+  @@index([active])
+}
+
+// Join: a league admin manages one or more leagues (Series). When a league
+// admin creates a new Series, an assignment is auto-created so they own it.
+model LeagueAdminAssignment {
+  id        String   @id @default(cuid())
+  adminId   String
+  seriesId  String
+  admin     LeagueAdmin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  series    Series     @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([adminId, seriesId])
   @@index([seriesId])
 }

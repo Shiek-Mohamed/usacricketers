@@ -37,11 +37,18 @@ import { ScorerLoginView } from "@/components/site/views/scorer-login-view"
 import { ScorerHomeView } from "@/components/site/views/scorer-home-view"
 import { ScorerShell } from "@/components/admin/scorer-shell"
 import { useScorerSession } from "@/lib/scorer-session"
+import { LeagueAdminLoginView } from "@/components/site/views/league-admin-login-view"
+import { LeagueAdminHomeView } from "@/components/site/views/league-admin-home-view"
+import { LeagueAdminSeriesEditView } from "@/components/site/views/league-admin-series-edit-view"
+import { LeagueAdminMatchesView } from "@/components/site/views/league-admin-matches-view"
+import { LeagueAdminScorersView } from "@/components/site/views/league-admin-scorers-view"
+import { useLeagueAdminSession } from "@/lib/league-admin-session"
 
 export default function Home() {
   const view = useAppStore((s) => s.view)
   const mode = useAppStore((s) => s.mode)
   const session = useScorerSession((s) => s.session)
+  const leagueAdminSession = useLeagueAdminSession((s) => s.session)
 
   const renderView = () => {
     switch (view) {
@@ -118,6 +125,21 @@ export default function Home() {
             <ScorerHomeView />
           </ScorerShell>
         )
+      // League admin add-on (Tier 3)
+      case "league-admin-login":
+        return <LeagueAdminLoginView />
+      case "league-admin-home":
+        if (!leagueAdminSession) return <LeagueAdminLoginView />
+        return <LeagueAdminHomeView />
+      case "league-admin-series-edit":
+        if (!leagueAdminSession) return <LeagueAdminLoginView />
+        return <LeagueAdminSeriesEditView />
+      case "league-admin-matches":
+        if (!leagueAdminSession) return <LeagueAdminLoginView />
+        return <LeagueAdminMatchesView />
+      case "league-admin-scorers":
+        if (!leagueAdminSession) return <LeagueAdminLoginView />
+        return <LeagueAdminScorersView />
       default:
         return <HomeView />
     }
@@ -126,6 +148,12 @@ export default function Home() {
   // Scorer mode: minimal shell, no regular header/footer. The login view is
   // full-screen; everything else (home + live-scorer) renders bare.
   if (mode === "scorer") {
+    return <>{renderView()}</>
+  }
+
+  // League admin mode: minimal shell, no regular header/footer. Views wrap
+  // themselves in LeagueAdminShell internally (except the login view).
+  if (mode === "leagueAdmin") {
     return <>{renderView()}</>
   }
 

@@ -185,6 +185,11 @@ export type ViewKey =
   | "live-scorer"
   | "scorer-login"
   | "scorer-home"
+  | "league-admin-login"
+  | "league-admin-home"
+  | "league-admin-series-edit"
+  | "league-admin-matches"
+  | "league-admin-scorers"
 
 export interface NavState {
   view: ViewKey
@@ -323,4 +328,28 @@ export interface ScorerSession {
   }
   token: string
   tournamentIds: string[]
+}
+
+/* ------------------------------ League admin ------------------------------ */
+
+/** A league administrator account (Tier 3). Scoped to their own leagues. */
+export interface LeagueAdmin {
+  id: string
+  username: string
+  name: string
+  active: boolean
+  managedSeriesIds: string[]
+  createdAt: string
+  updatedAt: string
+}
+
+/** Public-facing league-admin session returned by the login API. */
+export interface LeagueAdminSession {
+  admin: {
+    id: string
+    name: string
+    username: string
+  }
+  token: string
+  managedSeriesIds: string[]
 }

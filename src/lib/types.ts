@@ -182,6 +182,7 @@ export type ViewKey =
   | "admin-galleries"
   | "admin-videos"
   | "admin-scorers"
+  | "admin-league-admins"
   | "live-scorer"
   | "scorer-login"
   | "scorer-home"

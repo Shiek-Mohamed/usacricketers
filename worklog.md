@@ -451,3 +451,29 @@ Stage Summary:
 - Tier 3 League Administrator portal is CODE-COMPLETE: model + auth + scoped APIs + 6 portal views + wiring + seed.
 - Three access tiers now exist: Site Admin (god-mode) → League Admin (own leagues: create/schedule/assign scorers) → Scorer (own assigned matches: live scoring).
 - Lint clean. Core logic verified. Browser verification blocked by sandbox dev-server instability (documented honestly).
+
+---
+Task ID: 13
+Agent: orchestrator (Z.ai)
+Task: Build the site-admin screen to create/manage league-admin accounts (Tier 3 provisioning) — mirrors the existing admin-scorers view.
+
+Work Log:
+- API routes (site-admin level, unguarded — matches existing admin CMS pattern):
+  - `GET/POST /api/league-admins` — list all (with assignments) / create (hashPassword + auto-create LeagueAdminAssignment for each managedSeriesId).
+  - `GET/PUT/DELETE /api/league-admins/[id]` — fetch / update (full managedSeriesId re-assignment via deleteMany+createMany; password re-hash only if provided) / delete (cascade removes assignments).
+  - Mirrors `/api/scorers` + `/api/scorers/[id]` exactly but for `LeagueAdmin` + `LeagueAdminAssignment` + `serializeLeagueAdmin`.
+- ViewKey: added `admin-league-admins`.
+- Admin view `src/components/admin/views/admin-league-admins-view.tsx` (`AdminLeagueAdminsView`): mirrors `admin-scorers-view.tsx`. Table (Username/Name/Leagues/Active/Actions), Create/Edit Dialog (username, display name, password, active Switch, managed-leagues checkbox checklist of all Series), Delete via AlertDialog. Emerald active badges. `useSeries()` for the league checklist lookup. Toast feedback. Refresh after each mutation.
+- Wiring: `admin-shell.tsx` — added "League Admins" nav item (Trophy icon, between Scorers and Sidebar). `page.tsx` — added `admin-league-admins` router case → `<AdminLeagueAdminsView />`.
+
+Verification (logic-level — verified via a direct Bun script that exercises the DB layer the API routes wrap):
+- ✅ GET /api/league-admins → lists 1 admin (demo_league), 1 league, active.
+- ✅ POST create → creates a league admin + auto-assigns to a league (transaction), then cleaned up.
+- ✅ PUT reassign → fully replaces managedSeriesIds (deleteMany + createMany), demo_league reassigned to 2 leagues, then restored to original.
+- ✅ DELETE → cascade removes assignments.
+- ✅ `bun run lint` → 0 errors.
+
+Browser verification: the admin view mirrors the working admin-scorers-view (which was browser-verified earlier) — only the endpoints/types/labels differ. The dev server in this sandbox remains namespace-isolated from the agent-browser, so the admin UI couldn't be visually re-verified here, but the code path is identical to the verified scorer admin screen.
+
+Stage Summary:
+- Site admins can now provision league-admin accounts via Admin → League Admins → "+ New League Admin" (username/password/name/active + managed-leagues checklist). Edit reassigns leagues; delete removes access (leaves the leagues intact). This completes Tier 3 — the full chain is: site admin creates league admin → league admin creates leagues/schedules/assigns scorers → scorers score matches live.

@@ -40,6 +40,7 @@ const navItems: { label: string; view: ViewKey; icon: React.ElementType }[] = [
   { label: "Teams", view: "admin-teams", icon: Users },
   { label: "Tournaments", view: "admin-series", icon: Trophy },
   { label: "Scorers", view: "admin-scorers", icon: UserCog },
+  { label: "League Admins", view: "admin-league-admins", icon: Trophy },
   { label: "Sidebar", view: "admin-sidebar", icon: PanelRight },
   { label: "Import", view: "admin-import", icon: DownloadCloud },
   { label: "Galleries", view: "admin-galleries", icon: Images },

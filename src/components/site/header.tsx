@@ -31,9 +31,11 @@ import {
   Play,
   Sun,
   Moon,
+  ChevronDown,
 } from "lucide-react"
 import type { ViewKey } from "@/lib/types"
 
+// Flat list for the mobile Sheet (all items visible)
 const navItems: { label: string; view: ViewKey; icon: React.ElementType }[] = [
   { label: "Home", view: "home", icon: Home },
   { label: "Live", view: "matches", icon: Activity },
@@ -46,6 +48,38 @@ const navItems: { label: string; view: ViewKey; icon: React.ElementType }[] = [
   { label: "Interviews", view: "interviews", icon: Mic },
   { label: "Photos", view: "photos", icon: Images },
   { label: "Videos", view: "videos", icon: Play },
+]
+
+// Grouped structure for the desktop dropdown nav (5 top-level items)
+type NavChild = { label: string; view: ViewKey; icon: React.ElementType }
+type NavGroup = { label: string; view?: ViewKey; children?: NavChild[] }
+const navGroups: NavGroup[] = [
+  { label: "Home", view: "home" },
+  {
+    label: "Matches",
+    children: [
+      { label: "Live Scores", view: "matches", icon: Activity },
+      { label: "Schedule", view: "schedule", icon: CalendarDays },
+      { label: "Series", view: "series", icon: Trophy },
+    ],
+  },
+  {
+    label: "Teams",
+    children: [
+      { label: "All Teams", view: "teams", icon: Users },
+      { label: "Players", view: "players", icon: UserSearch },
+    ],
+  },
+  { label: "Stats", view: "stats" },
+  {
+    label: "News",
+    children: [
+      { label: "Latest News", view: "news", icon: Newspaper },
+      { label: "Interviews", view: "interviews", icon: Mic },
+      { label: "Photos", view: "photos", icon: Images },
+      { label: "Videos", view: "videos", icon: Play },
+    ],
+  },
 ]
 
 export function Header() {
@@ -173,20 +207,63 @@ export function Header() {
           </span>
         </button>
 
-        {/* Desktop nav */}
+        {/* Desktop nav — dropdown menus */}
         <nav className="hidden lg:flex items-center gap-0.5 ml-2">
-          {navItems.map((item) => (
-            <button
-              key={item.view}
-              onClick={() => navigate(item.view)}
-              className={cn(
-                "px-3 py-1.5 text-sm font-medium rounded-md transition-colors hover:bg-white/10",
-                view === item.view && "bg-white/15 font-semibold"
-              )}
-            >
-              {item.label}
-            </button>
-          ))}
+          {navGroups.map((group) => {
+            // Flat item (no dropdown)
+            if (!group.children) {
+              return (
+                <button
+                  key={group.label}
+                  onClick={() => group.view && navigate(group.view)}
+                  className={cn(
+                    "px-3 py-1.5 text-sm font-medium rounded-md transition-colors hover:bg-white/10",
+                    group.view === view && "bg-white/15 font-semibold"
+                  )}
+                >
+                  {group.label}
+                </button>
+              )
+            }
+            // Dropdown item
+            const isActive = group.children.some((c) => c.view === view)
+            return (
+              <div key={group.label} className="group relative">
+                <button
+                  className={cn(
+                    "flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md transition-colors hover:bg-white/10",
+                    isActive && "bg-white/15 font-semibold"
+                  )}
+                >
+                  {group.label}
+                  <ChevronDown className="h-3 w-3 opacity-60 transition-transform group-hover:rotate-180" />
+                </button>
+                {/* Dropdown panel — visible on hover */}
+                <div className="invisible absolute left-0 top-full z-50 pt-1 opacity-0 transition-all duration-150 group-hover:visible group-hover:opacity-100">
+                  <div className="w-48 rounded-lg border border-white/10 bg-[#1e2a5e] py-1 shadow-xl">
+                    {group.children.map((child) => {
+                      const Icon = child.icon
+                      return (
+                        <button
+                          key={child.view}
+                          onClick={() => navigate(child.view)}
+                          className={cn(
+                            "flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-white/10",
+                            child.view === view
+                              ? "bg-white/15 font-semibold text-white"
+                              : "text-white/80"
+                          )}
+                        >
+                          <Icon className="h-4 w-4" />
+                          {child.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
         </nav>
 
         <div className="ml-auto flex items-center gap-2">

@@ -31,7 +31,14 @@ export async function PUT(
       content: body.content,
       imageUrl: body.imageUrl || null,
       imageCaption: body.imageCaption ?? null,
-      category: body.category,
+      category:
+        Array.isArray(body.categories) && body.categories.length > 0
+          ? JSON.stringify(body.categories)
+          : body.category !== undefined
+            ? (Array.isArray(body.category)
+                ? JSON.stringify(body.category)
+                : JSON.stringify([body.category || "news"]))
+            : undefined,
       author: body.author,
       tags: body.tags,
       featured: !!body.featured,

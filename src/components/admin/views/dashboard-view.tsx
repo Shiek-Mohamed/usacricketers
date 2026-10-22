@@ -199,7 +199,7 @@ export function DashboardView() {
                         </TableCell>
                         <TableCell>
                           <Badge variant="secondary" className="capitalize">
-                            {a.category}
+                            {a.categories[0]}
                           </Badge>
                         </TableCell>
                         <TableCell className="hidden sm:table-cell text-xs text-muted-foreground">

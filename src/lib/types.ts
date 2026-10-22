@@ -79,7 +79,7 @@ export interface Article {
   content: string
   imageUrl: string | null
   imageCaption: string | null
-  category: string
+  categories: string[]
   author: string
   tags: string
   featured: boolean
@@ -307,6 +307,29 @@ export function parseScorecard(json: string | null | undefined): Scorecard | nul
   } catch {
     return null
   }
+}
+
+/**
+ * Parse the Article.category column (a JSON-array string like
+ * `["feature","interview"]`) into a string[]. Backward-compatible with old
+ * single-string values (e.g. "news" → ["news"]) so pre-migration rows keep
+ * working.
+ */
+export function parseCategories(raw: string | null | undefined): string[] {
+  if (!raw) return []
+  const trimmed = raw.trim()
+  if (trimmed.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(trimmed)
+      if (Array.isArray(parsed)) {
+        return parsed.filter((s) => typeof s === "string" && s.length > 0)
+      }
+    } catch {
+      /* fall through to single-string handling */
+    }
+  }
+  // Legacy: a bare category string like "news".
+  return trimmed ? [trimmed] : []
 }
 
 /* ------------------------------ Scorer add-on ------------------------------ */

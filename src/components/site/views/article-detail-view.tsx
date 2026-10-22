@@ -263,7 +263,7 @@ export function ArticleDetailView() {
             {/* Hero header + large image render full-width above the sidebar */}
             <header className="space-y-3">
               <Badge className="bg-primary text-primary-foreground">
-                {article.category}
+                {article.categories[0]}
               </Badge>
               <h1 className="text-2xl font-bold leading-tight sm:text-3xl">
                 {article.title}

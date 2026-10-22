@@ -45,8 +45,13 @@ export async function GET(req: NextRequest) {
 
   const { page, pageSize, category, featured, q } = parsePagination(req)
 
+  // Category filtering is now array-aware: an article's `category` column
+  // holds a JSON-array string (e.g. ["feature","interview"]); we filter
+  // where the parsed array includes the requested category.
   const where: Prisma.ArticleWhereInput = { published: true }
-  if (category) where.category = category
+  if (category) {
+    where.category = { contains: `"${category}"` }
+  }
   if (featured) where.featured = true
   if (q) {
     where.OR = [
@@ -99,7 +104,11 @@ export async function POST(req: NextRequest) {
       content: body.content || "",
       imageUrl: body.imageUrl || null,
       imageCaption: body.imageCaption || null,
-      category: body.category || "news",
+      category: JSON.stringify(
+        Array.isArray(body.categories) && body.categories.length > 0
+          ? body.categories
+          : (body.category ? [body.category] : ["news"])
+      ),
       author: body.author || "USA Cricketers staff",
       tags: body.tags || "",
       featured: !!body.featured,

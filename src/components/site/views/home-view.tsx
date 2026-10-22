@@ -158,7 +158,7 @@ function FeaturedHero({ article }: { article: Article }) {
       {/* Text card — left, layered over the image on large screens */}
       <div className="order-2 flex flex-col justify-center bg-card p-5 shadow-xl ring-1 ring-black/5 lg:order-1 lg:col-span-5 lg:-mr-12 lg:z-10 lg:p-8">
         <span className="inline-flex w-fit items-center rounded-sm bg-amber-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-          {article.category}
+          {article.categories[0]}
         </span>
         <h2 className="mt-3 text-2xl font-extrabold leading-tight tracking-tight transition-colors group-hover:text-red-600 sm:text-3xl lg:text-[2rem]">
           {article.title}
@@ -220,7 +220,7 @@ function SecondaryStoryCard({ article }: { article: Article }) {
           </div>
         )}
         <span className="absolute left-2 top-2 rounded-sm bg-amber-500 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
-          {article.category}
+          {article.categories[0]}
         </span>
       </div>
       <div className="p-4">

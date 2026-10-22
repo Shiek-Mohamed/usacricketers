@@ -22,7 +22,7 @@ export function ArticleCard({
         className="flex w-full items-start gap-2 text-left group"
       >
         <span className="mt-0.5 shrink-0 text-[10px] font-bold uppercase text-primary">
-          {article.category}
+          {article.categories[0]}
         </span>
         <span className="text-sm leading-snug font-medium group-hover:text-primary transition-colors line-clamp-2">
           {article.title}
@@ -42,7 +42,7 @@ export function ArticleCard({
         </div>
         <div className="min-w-0 flex-1">
           <div className="text-[10px] font-bold uppercase text-primary">
-            {article.category}
+            {article.categories[0]}
           </div>
           <h3 className="line-clamp-2 text-sm font-semibold leading-snug group-hover:text-primary transition-colors">
             {article.title}
@@ -65,7 +65,7 @@ export function ArticleCard({
           <Newspaper className="h-10 w-10" />
           <div className="absolute left-3 top-3">
             <span className="rounded bg-primary px-2 py-0.5 text-[10px] font-bold uppercase text-primary-foreground">
-              {article.category}
+              {article.categories[0]}
             </span>
           </div>
         </div>
@@ -91,7 +91,7 @@ export function ArticleCard({
         <Newspaper className="h-8 w-8" />
       </div>
       <div className="mt-2 text-[10px] font-bold uppercase text-primary">
-        {article.category}
+        {article.categories[0]}
       </div>
       <h3 className="line-clamp-2 text-sm font-semibold leading-snug group-hover:text-primary transition-colors">
         {article.title}

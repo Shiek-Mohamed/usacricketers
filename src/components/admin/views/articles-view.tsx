@@ -14,6 +14,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Checkbox } from "@/components/ui/checkbox"
+import { cn } from "@/lib/utils"
 import {
   Table,
   TableHeader,
@@ -59,7 +61,7 @@ interface ArticleFormState {
   content: string
   imageUrl: string
   imageCaption: string
-  category: string
+  categories: string[]
   author: string
   tags: string
   featured: boolean
@@ -75,7 +77,7 @@ function emptyForm(): ArticleFormState {
     content: "",
     imageUrl: "",
     imageCaption: "",
-    category: "news",
+    categories: ["news"],
     author: "",
     tags: "",
     featured: false,
@@ -140,7 +142,7 @@ export function AdminArticlesView() {
       content: a.content,
       imageUrl: a.imageUrl || "",
       imageCaption: a.imageCaption || "",
-      category: a.category,
+      categories: a.categories.length > 0 ? [...a.categories] : ["news"],
       author: a.author,
       tags: a.tags,
       featured: a.featured,
@@ -245,9 +247,13 @@ export function AdminArticlesView() {
                         {a.title}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className="capitalize">
-                          {a.category}
-                        </Badge>
+                        <div className="flex flex-wrap gap-1">
+                          {a.categories.map((c) => (
+                            <Badge key={c} variant="secondary" className="capitalize">
+                              {c}
+                            </Badge>
+                          ))}
+                        </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
                         {a.author}
@@ -390,24 +396,45 @@ export function AdminArticlesView() {
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
               <div className="grid gap-1.5">
-                <Label>Category</Label>
-                <Select
-                  value={form.category}
-                  onValueChange={(v) =>
-                    setForm((f) => ({ ...f, category: v }))
-                  }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIES.map((c) => (
-                      <SelectItem key={c} value={c} className="capitalize">
+                <Label>Categories</Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Select all that apply — the post appears in each selected
+                  category&apos;s listing.
+                </p>
+                <div className="flex flex-wrap gap-2 rounded-md border bg-card p-2.5">
+                  {CATEGORIES.map((c) => {
+                    const checked = form.categories.includes(c)
+                    return (
+                      <label
+                        key={c}
+                        className={cn(
+                          "flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium capitalize transition-colors",
+                          checked
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "text-muted-foreground hover:bg-accent"
+                        )}
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={() =>
+                            setForm((f) => ({
+                              ...f,
+                              categories: checked
+                                ? f.categories.filter((x) => x !== c)
+                                : [...f.categories, c],
+                            }))
+                          }
+                        />
                         {c}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                      </label>
+                    )
+                  })}
+                </div>
+                {form.categories.length === 0 && (
+                  <p className="text-[11px] text-red-600">
+                    Pick at least one category.
+                  </p>
+                )}
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="author">Author</Label>

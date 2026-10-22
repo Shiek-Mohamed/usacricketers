@@ -1,4 +1,4 @@
-import { parseBattingStats, parseBowlingStats, parseScorecard } from "./types"
+import { parseBattingStats, parseBowlingStats, parseCategories, parseScorecard } from "./types"
 import type { Article, Gallery, LeagueAdmin, Match, PhotoItem, Player, Scorer, Series, SidebarBlock, SiteAdmin, Team, Video } from "./types"
 import type { Prisma } from "@prisma/client"
 
@@ -88,7 +88,7 @@ export function serializeArticle(a: Prisma.ArticleGetPayload<Record<string, neve
     content: a.content,
     imageUrl: a.imageUrl,
     imageCaption: a.imageCaption,
-    category: a.category,
+    categories: parseCategories(a.category),
     author: a.author,
     tags: a.tags,
     featured: a.featured,

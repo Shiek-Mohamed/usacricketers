@@ -85,6 +85,7 @@ function BattingTable({ innings }: { innings: Innings }) {
         <thead>
           <tr className="border-b bg-muted/30 text-[10px] uppercase tracking-wide text-muted-foreground">
             <th className="py-2 pl-4 pr-2 text-left font-semibold">Batter</th>
+            <th className="py-2 px-2 text-right font-semibold">Dismissal</th>
             <th className="py-2 px-2 text-right font-semibold">R</th>
             <th className="py-2 px-2 text-right font-semibold">B</th>
             <th className="py-2 px-2 text-right font-semibold hidden sm:table-cell">4s</th>
@@ -115,12 +116,9 @@ function BattingTable({ innings }: { innings: Innings }) {
                       {b.name}
                     </span>
                   </div>
-                  {/* Dismissal text right below the batter name (cricinfo style) */}
-                  {!extras && !total && b.dismissal && (
-                    <div className="mt-0.5 pl-3 text-[11px] text-muted-foreground">
-                      {b.dismissal}
-                    </div>
-                  )}
+                </td>
+                <td className="py-2 px-2 text-left text-xs text-muted-foreground">
+                  {b.dismissal || "—"}
                 </td>
                 <td className="py-2 px-2 text-right tabular-nums font-semibold">
                   {b.runs}
@@ -144,13 +142,13 @@ function BattingTable({ innings }: { innings: Innings }) {
           {!innings.batting.some(b => isTotal(b.name)) && (
             <tr className="border-b bg-muted/30 font-bold">
               <td className="py-2 pl-4 pr-2">Total</td>
+              <td className="py-2 px-2 text-left text-xs text-muted-foreground">
+                ({innings.totalOvers} ov)
+              </td>
               <td className="py-2 px-2 text-right tabular-nums">
                 {innings.totalRuns}/{innings.totalWickets}
               </td>
-              <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">
-                ({innings.totalOvers} ov)
-              </td>
-              <td colSpan={3} />
+              <td colSpan={4} />
             </tr>
           )}
         </tbody>

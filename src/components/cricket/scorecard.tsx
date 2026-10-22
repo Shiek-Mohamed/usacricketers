@@ -83,7 +83,7 @@ function BattingTable({ innings }: { innings: Innings }) {
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b bg-muted/30 text-[10px] uppercase tracking-wide text-muted-foreground">
+          <tr className="border-b bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
             <th className="py-2 pl-4 pr-2 text-left font-semibold">Batter</th>
             <th className="py-2 px-2 text-right font-semibold">Dismissal</th>
             <th className="py-2 px-2 text-right font-semibold">R</th>
@@ -185,7 +185,7 @@ function BowlingTable({ innings }: { innings: Innings }) {
     <div className="border-t overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b bg-muted/30 text-[10px] uppercase tracking-wide text-muted-foreground">
+          <tr className="border-b bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
             <th className="py-2 pl-4 pr-2 text-left font-semibold">Bowler</th>
             <th className="py-2 px-2 text-right font-semibold">O</th>
             <th className="py-2 px-2 text-right font-semibold hidden sm:table-cell">M</th>

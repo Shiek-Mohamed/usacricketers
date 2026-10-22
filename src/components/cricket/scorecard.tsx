@@ -75,8 +75,6 @@ function InningsCard({
 /* ---- Batting table (cricinfo-style) ---- */
 
 function BattingTable({ innings }: { innings: Innings }) {
-  // Find the Extras + Total rows if present (the scoring engine includes them
-  // as entries in the batting array with specific names).
   const isExtras = (name: string) => name.toLowerCase() === "extras"
   const isTotal = (name: string) =>
     name.toLowerCase().startsWith("total") || name.toLowerCase() === "innings total"
@@ -91,10 +89,7 @@ function BattingTable({ innings }: { innings: Innings }) {
             <th className="py-2 px-2 text-right font-semibold">B</th>
             <th className="py-2 px-2 text-right font-semibold hidden sm:table-cell">4s</th>
             <th className="py-2 px-2 text-right font-semibold hidden sm:table-cell">6s</th>
-            <th className="py-2 px-2 text-right font-semibold">SR</th>
-            <th className="py-2 pl-3 pr-4 text-left font-semibold hidden md:table-cell w-[40%]">
-              Dismissal
-            </th>
+            <th className="py-2 pl-2 pr-4 text-right font-semibold">SR</th>
           </tr>
         </thead>
         <tbody>
@@ -120,10 +115,12 @@ function BattingTable({ innings }: { innings: Innings }) {
                       {b.name}
                     </span>
                   </div>
-                  {/* Mobile: dismissal below the name */}
-                  <div className="mt-0.5 text-[11px] text-muted-foreground md:hidden">
-                    {b.dismissal}
-                  </div>
+                  {/* Dismissal text right below the batter name (cricinfo style) */}
+                  {!extras && !total && b.dismissal && (
+                    <div className="mt-0.5 pl-3 text-[11px] text-muted-foreground">
+                      {b.dismissal}
+                    </div>
+                  )}
                 </td>
                 <td className="py-2 px-2 text-right tabular-nums font-semibold">
                   {b.runs}
@@ -137,11 +134,8 @@ function BattingTable({ innings }: { innings: Innings }) {
                 <td className="py-2 px-2 text-right tabular-nums hidden sm:table-cell">
                   {b.sixes}
                 </td>
-                <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">
+                <td className="py-2 pl-2 pr-4 text-right tabular-nums text-muted-foreground">
                   {b.strikeRate > 0 ? b.strikeRate.toFixed(1) : "—"}
-                </td>
-                <td className="py-2 pl-3 pr-4 text-left text-xs text-muted-foreground hidden md:table-cell">
-                  {b.dismissal}
                 </td>
               </tr>
             )
@@ -156,7 +150,7 @@ function BattingTable({ innings }: { innings: Innings }) {
               <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">
                 ({innings.totalOvers} ov)
               </td>
-              <td colSpan={4} />
+              <td colSpan={3} />
             </tr>
           )}
         </tbody>

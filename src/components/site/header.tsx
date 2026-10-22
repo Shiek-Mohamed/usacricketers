@@ -50,11 +50,11 @@ const navItems: { label: string; view: ViewKey; icon: React.ElementType }[] = [
   { label: "Videos", view: "videos", icon: Play },
 ]
 
-// Grouped structure for the desktop dropdown nav (5 top-level items)
+// Grouped structure for the desktop dropdown nav (4 top-level items —
+// the "usacricketers" logo IS the Home link, so Home is removed from nav)
 type NavChild = { label: string; view: ViewKey; icon: React.ElementType }
 type NavGroup = { label: string; view?: ViewKey; children?: NavChild[] }
 const navGroups: NavGroup[] = [
-  { label: "Home", view: "home" },
   {
     label: "Matches",
     children: [

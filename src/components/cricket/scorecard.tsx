@@ -117,7 +117,7 @@ function BattingTable({ innings }: { innings: Innings }) {
                     </span>
                   </div>
                 </td>
-                <td className="py-2 px-2 text-left text-xs text-muted-foreground">
+                <td className="py-2 px-2 text-left text-sm text-muted-foreground">
                   {b.dismissal || "—"}
                 </td>
                 <td className="py-2 px-2 text-right tabular-nums font-semibold">
@@ -142,7 +142,7 @@ function BattingTable({ innings }: { innings: Innings }) {
           {!innings.batting.some(b => isTotal(b.name)) && (
             <tr className="border-b bg-muted/30 font-bold">
               <td className="py-2 pl-4 pr-2">Total</td>
-              <td className="py-2 px-2 text-left text-xs text-muted-foreground">
+              <td className="py-2 px-2 text-left text-sm text-muted-foreground">
                 ({innings.totalOvers} ov)
               </td>
               <td className="py-2 px-2 text-right tabular-nums">
@@ -162,10 +162,10 @@ function BattingTable({ innings }: { innings: Innings }) {
 function FallOfWickets({ fow }: { fow: string[] }) {
   return (
     <div className="border-t px-4 py-2.5">
-      <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Fall of Wickets
       </div>
-      <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-xs">
+      <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-sm">
         {fow.map((w, i) => (
           <span key={i} className="inline-flex items-center gap-1">
             {i > 0 && <span className="text-muted-foreground/40">•</span>}

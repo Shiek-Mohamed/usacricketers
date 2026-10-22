@@ -503,6 +503,7 @@ export function stateToScorecard(state: LiveMatchState): Scorecard {
   const innings: Innings[] = state.innings.map((inn) => {
     const batting: BattingLine[] = inn.batsmen.map((b) => ({
       name: b.name,
+      playerId: b.id,
       runs: b.runs,
       balls: b.balls,
       fours: b.fours,
@@ -534,6 +535,7 @@ export function stateToScorecard(state: LiveMatchState): Scorecard {
     })
     const bowling: BowlingLine[] = inn.bowlers.map((b) => ({
       name: b.name,
+      playerId: b.id,
       overs: oversString(b.balls),
       maidens: b.maidens,
       runs: b.runsConceded,
@@ -558,7 +560,16 @@ export function stateToScorecard(state: LiveMatchState): Scorecard {
       declared: inn.declared,
     }
   })
-  return { innings, note: state.note }
+  return {
+    innings,
+    note: state.note,
+    commentary: state.commentary.map((c) => ({
+      id: c.id,
+      over: c.over,
+      text: c.text,
+      kind: c.kind,
+    })),
+  }
 }
 
 /** Quick summary line for the live strip, e.g. "IND 217/4 (42.4)". */

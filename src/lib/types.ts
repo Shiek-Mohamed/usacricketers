@@ -33,6 +33,7 @@ export interface BowlingStat {
 
 export interface BattingLine {
   name: string
+  playerId?: string
   runs: number
   balls: number
   fours: number
@@ -44,6 +45,7 @@ export interface BattingLine {
 
 export interface BowlingLine {
   name: string
+  playerId?: string
   overs: string
   maidens: number
   runs: number
@@ -70,6 +72,7 @@ export interface Innings {
 export interface Scorecard {
   innings: Innings[]
   note: string
+  commentary?: { id: string; over: string; text: string; kind: string }[]
 }
 
 // API response types mirror Prisma models but with parsed JSON fields

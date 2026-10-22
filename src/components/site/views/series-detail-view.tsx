@@ -1,11 +1,12 @@
 "use client"
 
 import { useMemo } from "react"
-import { ArrowLeft, CalendarDays, Trophy } from "lucide-react"
+import { ArrowLeft, CalendarDays, Trophy, BarChart3 } from "lucide-react"
 import { useSeriesItem, useMatches } from "@/lib/use-data"
 import { useAppStore } from "@/lib/store"
-import { StatusPill, formatMatchDate } from "@/components/cricket/ui"
+import { StatusPill, formatMatchDate, TeamBadge } from "@/components/cricket/ui"
 import { MiniScorecard } from "@/components/cricket/mini-scorecard"
+import { Standings } from "@/components/cricket/standings"
 import { InnerPageLayout } from "@/components/site/inner-layout"
 import { CustomSidebarBlocks } from "@/components/site/custom-sidebar-blocks"
 import {
@@ -16,6 +17,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
+import type { Match, Scorecard } from "@/lib/types"
 
 export function SeriesDetailView() {
   const id = useAppStore((s) => s.id)
@@ -127,7 +129,15 @@ export function SeriesDetailView() {
       }
     >
       <div className="space-y-5">
-        {/* Matches list — begins below the header card */}
+        {/* Standings (auto-computed from completed matches) */}
+        {seriesMatches.some((m) => m.status === "completed") && (
+          <Standings matches={seriesMatches} />
+        )}
+
+        {/* Top Performers (auto-aggregated from scorecards) */}
+        <TopPerformers matches={seriesMatches} />
+
+        {/* Matches list */}
         <div>
           <h2 className="mb-3 text-lg font-bold">Matches</h2>
           {matchesLoading ? (
@@ -152,5 +162,139 @@ export function SeriesDetailView() {
         </div>
       </div>
     </InnerPageLayout>
+  )
+}
+
+/* ---- Top Performers (auto-aggregated from match scorecards) ---- */
+
+interface BatAgg {
+  name: string
+  playerId?: string
+  runs: number
+  balls: number
+  fours: number
+  sixes: number
+  outs: number
+}
+interface BowlAgg {
+  name: string
+  playerId?: string
+  wickets: number
+  runs: number
+  balls: number
+}
+
+function TopPerformers({ matches }: { matches: Match[] }) {
+  const { topBatters, topBowlers } = useMemo(() => {
+    const batMap = new Map<string, BatAgg>()
+    const bowlMap = new Map<string, BowlAgg>()
+    for (const m of matches) {
+      if (m.status !== "completed") continue
+      const sc = m.scorecard
+      if (!sc?.innings) continue
+      for (const inn of sc.innings) {
+        for (const b of inn.batting) {
+          if (b.name === "Extras" || b.name.toLowerCase().startsWith("total")) continue
+          const existing = batMap.get(b.name) || { name: b.name, playerId: b.playerId, runs: 0, balls: 0, fours: 0, sixes: 0, outs: 0 }
+          existing.runs += b.runs
+          existing.balls += b.balls
+          existing.fours += b.fours
+          existing.sixes += b.sixes
+          if (b.dismissal && !b.dismissal.includes("not out")) existing.outs++
+          batMap.set(b.name, existing)
+        }
+        for (const b of inn.bowling ?? []) {
+          const existing = bowlMap.get(b.name) || { name: b.name, playerId: b.playerId, wickets: 0, runs: 0, balls: 0 }
+          existing.wickets += b.wickets
+          existing.runs += b.runs
+          existing.balls += Math.round(parseFloat(b.overs) * 6) || 0
+          bowlMap.set(b.name, existing)
+        }
+      }
+    }
+    const topBatters = Array.from(batMap.values())
+      .filter(b => b.runs > 0)
+      .sort((a, b) => b.runs - a.runs)
+      .slice(0, 5)
+    const topBowlers = Array.from(bowlMap.values())
+      .filter(b => b.wickets > 0)
+      .sort((a, b) => b.wickets - a.wickets || a.runs - b.runs)
+      .slice(0, 5)
+    return { topBatters, topBowlers }
+  }, [matches])
+
+  if (topBatters.length === 0 && topBowlers.length === 0) return null
+
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      {topBatters.length > 0 && (
+        <div className="overflow-hidden rounded-lg border bg-card">
+          <div className="flex items-center gap-2 bg-[#1e2a5e] px-4 py-2.5 text-white">
+            <BarChart3 className="h-4 w-4" />
+            <span className="text-sm font-bold uppercase tracking-wide">Most Runs</span>
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/30 text-xs uppercase text-muted-foreground">
+                <th className="py-2 pl-4 pr-2 text-left font-semibold">Batter</th>
+                <th className="py-2 px-2 text-right font-semibold">R</th>
+                <th className="py-2 px-2 text-right font-semibold hidden sm:table-cell">B</th>
+                <th className="py-2 px-2 text-right font-semibold">4s</th>
+                <th className="py-2 px-2 text-right font-semibold">6s</th>
+                <th className="py-2 pl-2 pr-4 text-right font-semibold">Avg</th>
+              </tr>
+            </thead>
+            <tbody>
+              {topBatters.map((b, i) => (
+                <tr key={i} className={`border-b border-border/40 ${i % 2 === 1 ? "bg-muted/15" : ""}`}>
+                  <td className="py-2 pl-4 pr-2 font-medium">{b.name}</td>
+                  <td className="py-2 px-2 text-right tabular-nums font-bold">{b.runs}</td>
+                  <td className="py-2 px-2 text-right tabular-nums text-muted-foreground hidden sm:table-cell">{b.balls}</td>
+                  <td className="py-2 px-2 text-right tabular-nums">{b.fours}</td>
+                  <td className="py-2 px-2 text-right tabular-nums">{b.sixes}</td>
+                  <td className="py-2 pl-2 pr-4 text-right tabular-nums text-muted-foreground">
+                    {b.outs > 0 ? (b.runs / b.outs).toFixed(1) : b.runs.toFixed(1)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {topBowlers.length > 0 && (
+        <div className="overflow-hidden rounded-lg border bg-card">
+          <div className="flex items-center gap-2 bg-[#1e2a5e] px-4 py-2.5 text-white">
+            <BarChart3 className="h-4 w-4" />
+            <span className="text-sm font-bold uppercase tracking-wide">Most Wickets</span>
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/30 text-xs uppercase text-muted-foreground">
+                <th className="py-2 pl-4 pr-2 text-left font-semibold">Bowler</th>
+                <th className="py-2 px-2 text-right font-semibold">W</th>
+                <th className="py-2 px-2 text-right font-semibold hidden sm:table-cell">O</th>
+                <th className="py-2 px-2 text-right font-semibold">R</th>
+                <th className="py-2 pl-2 pr-4 text-right font-semibold">Econ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {topBowlers.map((b, i) => (
+                <tr key={i} className={`border-b border-border/40 ${i % 2 === 1 ? "bg-muted/15" : ""}`}>
+                  <td className="py-2 pl-4 pr-2 font-medium">{b.name}</td>
+                  <td className="py-2 px-2 text-right tabular-nums font-bold">{b.wickets}</td>
+                  <td className="py-2 px-2 text-right tabular-nums text-muted-foreground hidden sm:table-cell">
+                    {(b.balls / 6).toFixed(1)}
+                  </td>
+                  <td className="py-2 px-2 text-right tabular-nums">{b.runs}</td>
+                  <td className="py-2 pl-2 pr-4 text-right tabular-nums text-muted-foreground">
+                    {b.balls > 0 ? ((b.runs / b.balls) * 6).toFixed(2) : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   )
 }

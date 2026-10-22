@@ -3,6 +3,33 @@
 import type { Innings, Scorecard } from "@/lib/types"
 import { TeamBadgeByName } from "./ui"
 import { cn } from "@/lib/utils"
+import { useAppStore } from "@/lib/store"
+
+function PlayerName({
+  name,
+  playerId,
+  className,
+}: {
+  name: string
+  playerId?: string
+  className?: string
+}) {
+  const navigate = useAppStore((s) => s.navigate)
+  if (playerId) {
+    return (
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          navigate("player-detail", playerId)
+        }}
+        className={cn(className, "hover:underline hover:text-primary transition-colors")}
+      >
+        {name}
+      </button>
+    )
+  }
+  return <span className={className}>{name}</span>
+}
 
 export function ScorecardView({ scorecard }: { scorecard: Scorecard }) {
   if (!scorecard.innings?.length) {
@@ -112,9 +139,11 @@ function BattingTable({ innings }: { innings: Innings }) {
                     {b.isBatting && !extras && !total && (
                       <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-600 animate-pulse" />
                     )}
-                    <span className={cn(!extras && !total && "font-medium")}>
-                      {b.name}
-                    </span>
+                    <PlayerName
+                      name={b.name}
+                      playerId={b.playerId}
+                      className={cn(!extras && !total && "font-medium")}
+                    />
                   </div>
                 </td>
                 <td className="py-2 px-2 text-left text-sm text-muted-foreground">
@@ -210,7 +239,11 @@ function BowlingTable({ innings }: { innings: Innings }) {
                   {b.isBowling && (
                     <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-600 animate-pulse" />
                   )}
-                  <span className="font-medium">{b.name}</span>
+                  <PlayerName
+                    name={b.name}
+                    playerId={b.playerId}
+                    className="font-medium"
+                  />
                 </div>
               </td>
               <td className="py-2 px-2 text-right tabular-nums">{b.overs}</td>

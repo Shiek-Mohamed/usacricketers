@@ -34,6 +34,7 @@ import {
   CalendarDays,
   Info,
 } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 function MatchHeaderCard({ match }: { match: Match }) {
   const sc = match.scorecard
@@ -260,6 +261,41 @@ export function MatchDetailView() {
             </Card>
           )}
         </section>
+
+        {/* Commentary feed */}
+        {sc?.commentary && sc.commentary.length > 0 && (
+          <section>
+            <div className="mb-3 flex items-center gap-2">
+              <span className="h-5 w-1 rounded-full bg-red-600" />
+              <h2 className="text-sm font-extrabold uppercase tracking-tight sm:text-base">
+                Commentary
+              </h2>
+            </div>
+            <div className="rounded-lg border bg-card overflow-hidden">
+              <div className="max-h-80 space-y-1 overflow-y-auto p-3 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
+                {sc.commentary.map((c) => (
+                  <div key={c.id} className="flex gap-2 text-sm">
+                    <span className="w-12 shrink-0 font-mono tabular-nums text-muted-foreground">
+                      {c.over}
+                    </span>
+                    <span
+                      className={cn(
+                        "min-w-0 flex-1",
+                        c.kind === "wicket" && "font-bold text-red-700",
+                        c.kind === "six" && "font-bold text-purple-700",
+                        c.kind === "boundary" && "font-bold text-emerald-700",
+                        c.kind === "over" && "font-semibold text-foreground",
+                        c.kind === "info" && "italic text-muted-foreground"
+                      )}
+                    >
+                      {c.text}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
       </div>
     </InnerPageLayout>
   )

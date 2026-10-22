@@ -20,6 +20,8 @@ export interface ScorerBowler {
   runsConceded: number
   wickets: number
   maidens: number
+  wides: number
+  noballs: number
   // per-over tracking for maiden detection
   overRuns: number
   overWickets: number
@@ -185,6 +187,8 @@ export function setBowler(
         runsConceded: 0,
         wickets: 0,
         maidens: 0,
+        wides: 0,
+        noballs: 0,
         overRuns: 0,
         overWickets: 0,
         overBalls: 0,
@@ -278,6 +282,7 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
       runs += 1
       bowler.runsConceded += 1
       bowler.overRuns += 1
+      bowler.wides += 1
       isLegal = false
       eventText = "Wide (+1)"
       eventKind = "extra"
@@ -287,6 +292,7 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
       runs += 1
       bowler.runsConceded += 1
       bowler.overRuns += 1
+      bowler.noballs += 1
       isLegal = false
       eventText = "No ball (+1)"
       eventKind = "extra"
@@ -533,6 +539,8 @@ export function stateToScorecard(state: LiveMatchState): Scorecard {
       runs: b.runsConceded,
       wickets: b.wickets,
       economy: b.balls > 0 ? Number(((b.runsConceded / b.balls) * 6).toFixed(2)) : 0,
+      wides: b.wides || 0,
+      noballs: b.noballs || 0,
       isBowling: b.id === state.bowlerId,
     }))
     return {

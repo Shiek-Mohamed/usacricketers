@@ -192,7 +192,8 @@ function BowlingTable({ innings }: { innings: Innings }) {
             <th className="py-2 px-2 text-right font-semibold">R</th>
             <th className="py-2 px-2 text-right font-semibold">W</th>
             <th className="py-2 px-2 text-right font-semibold">Econ</th>
-            <th className="py-2 pl-2 pr-4 text-right font-semibold hidden md:table-cell">0s</th>
+            <th className="py-2 px-2 text-right font-semibold hidden sm:table-cell">WD</th>
+            <th className="py-2 pl-2 pr-4 text-right font-semibold hidden sm:table-cell">NB</th>
           </tr>
         </thead>
         <tbody>
@@ -223,8 +224,11 @@ function BowlingTable({ innings }: { innings: Innings }) {
               <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">
                 {b.economy > 0 ? b.economy.toFixed(2) : "—"}
               </td>
-              <td className="py-2 pl-2 pr-4 text-right tabular-nums text-muted-foreground hidden md:table-cell">
-                —
+              <td className="py-2 px-2 text-right tabular-nums text-muted-foreground hidden sm:table-cell">
+                {b.wides || 0}
+              </td>
+              <td className="py-2 pl-2 pr-4 text-right tabular-nums text-muted-foreground hidden sm:table-cell">
+                {b.noballs || 0}
               </td>
             </tr>
           ))}

@@ -49,6 +49,8 @@ export interface BowlingLine {
   runs: number
   wickets: number
   economy: number
+  wides: number
+  noballs: number
   isBowling: boolean
 }
 

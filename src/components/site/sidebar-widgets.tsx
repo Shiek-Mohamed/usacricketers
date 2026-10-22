@@ -8,6 +8,7 @@ import {
   StatusPill,
   FormatPill,
   formatMatchDate,
+  formatMatchTime,
   timeAgo,
   PlayerAvatar,
 } from "@/components/cricket/ui"
@@ -78,32 +79,30 @@ export function NewsletterWidget() {
 /* ------------------------- Match widgets ------------------------- */
 
 export function MatchInfoWidget({ match }: { match: Match }) {
-  const rows: { icon: React.ElementType; label: string; value: string }[] = [
-    { icon: Trophy, label: "Format", value: match.format },
-    {
-      icon: MapPin,
-      label: "Venue",
-      value: `${match.venue}${match.city ? `, ${match.city}` : ""}`,
-    },
-    { icon: CalendarDays, label: "Date", value: formatMatchDate(match.startDate) },
-    {
-      icon: Trophy,
-      label: "Series",
-      value: match.series?.name || match.series?.shortName || "—",
-    },
-    { icon: Users, label: "Toss", value: "To be announced" },
-    { icon: Users, label: "Officials", value: "To be announced" },
+  const rows: { label: string; value: string }[] = [
+    { label: "Match", value: `${match.team1?.shortName ?? ""} vs ${match.team2?.shortName ?? ""}, ${match.matchNo}` },
+    { label: "Series", value: match.series?.name || match.series?.shortName || "—" },
+    { label: "Format", value: match.format },
+    { label: "Season", value: match.series?.season || "—" },
+    { label: "Venue", value: `${match.venue}${match.city ? `, ${match.city}` : ""}` },
+    { label: "Date", value: `${formatMatchDate(match.startDate)} · ${formatMatchTime(match.startDate)}` },
+    ...(match.result ? [{ label: "Result", value: match.result }] : []),
+    { label: "Toss", value: "—" },
+    { label: "Umpires", value: "—" },
+    { label: "Match Referee", value: "—" },
   ]
   return (
-    <SidebarWidget title="Match Info">
-      <dl className="space-y-2.5">
+    <SidebarWidget title="Match Details">
+      <dl className="space-y-0">
         {rows.map((r, i) => (
-          <div key={i} className="flex items-start justify-between gap-3 text-xs">
-            <dt className="flex items-center gap-1.5 text-muted-foreground">
-              <r.icon className="h-3.5 w-3.5" />
-              {r.label}
-            </dt>
-            <dd className="text-right font-medium text-foreground">{r.value}</dd>
+          <div
+            key={i}
+            className="flex items-start justify-between gap-3 border-b border-border/40 py-2 text-xs last:border-0"
+          >
+            <dt className="text-muted-foreground">{r.label}</dt>
+            <dd className="max-w-[60%] text-right font-medium text-foreground">
+              {r.value}
+            </dd>
           </div>
         ))}
       </dl>

@@ -6,122 +6,186 @@ import { cn } from "@/lib/utils"
 
 export function ScorecardView({ scorecard }: { scorecard: Scorecard }) {
   if (!scorecard.innings?.length) {
-    return <p className="text-muted-foreground">Scorecard not yet available.</p>
+    return (
+      <div className="rounded-lg border bg-card p-6 text-center">
+        <p className="text-sm text-muted-foreground">
+          Scorecard not yet available.
+        </p>
+      </div>
+    )
   }
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {scorecard.note && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           {scorecard.note}
         </div>
       )}
       {scorecard.innings.map((inn, i) => (
-        <InningsCard key={i} innings={inn} />
+        <InningsCard key={i} innings={inn} inningsNo={i + 1} />
       ))}
     </div>
   )
 }
 
-function InningsCard({ innings }: { innings: Innings }) {
+/* ---- Cricinfo-style innings card ---- */
+
+function InningsCard({
+  innings,
+  inningsNo,
+}: {
+  innings: Innings
+  inningsNo: number
+}) {
+  const ordinal = inningsNo === 1 ? "1st" : inningsNo === 2 ? "2nd" : `${inningsNo}th`
   return (
-    <div className="rounded-lg border bg-card overflow-hidden">
-      <div className="flex items-center justify-between border-b bg-muted/40 px-3 py-2">
+    <div className="overflow-hidden rounded-lg border bg-card">
+      {/* Innings header — dark navy band (cricinfo style) */}
+      <div className="flex items-center justify-between bg-[#1e2a5e] px-4 py-2.5 text-white">
         <div className="flex items-center gap-2">
           <TeamBadgeByName shortName={innings.teamShortName} size="sm" />
-          <span className="font-bold text-sm">{innings.teamShortName}</span>
+          <span className="text-sm font-bold uppercase tracking-wide">
+            {innings.teamShortName}
+          </span>
+          <span className="text-xs text-white/60">{ordinal} innings</span>
         </div>
-        <span className="font-extrabold text-base tabular-nums">
-          {innings.total}
-          {innings.declared && " (d)"}
-          <span className="text-muted-foreground font-normal text-xs ml-1">
+        <span className="text-lg font-extrabold tabular-nums">
+          {innings.totalRuns}/{innings.totalWickets}
+          {innings.declared && "d"}
+          <span className="ml-1.5 text-xs font-normal text-white/60">
             ({innings.totalOvers} ov)
           </span>
         </span>
       </div>
+
+      {/* Batting table */}
       <BattingTable innings={innings} />
-      <BowlingTable innings={innings} />
+
+      {/* Fall of wickets */}
       {innings.fallOfWickets.length > 0 && (
-        <div className="border-t px-3 py-2 text-xs">
-          <div className="font-semibold text-muted-foreground mb-1">
-            Fall of Wickets
-          </div>
-          <div className="flex flex-wrap gap-x-3 gap-y-1">
-            {innings.fallOfWickets.map((fow, i) => (
-              <span key={i} className="tabular-nums">
-                {fow}
-              </span>
-            ))}
-          </div>
-        </div>
+        <FallOfWickets fow={innings.fallOfWickets} />
       )}
+
+      {/* Bowling table */}
+      <BowlingTable innings={innings} />
     </div>
   )
 }
 
+/* ---- Batting table (cricinfo-style) ---- */
+
 function BattingTable({ innings }: { innings: Innings }) {
+  // Find the Extras + Total rows if present (the scoring engine includes them
+  // as entries in the batting array with specific names).
+  const isExtras = (name: string) => name.toLowerCase() === "extras"
+  const isTotal = (name: string) =>
+    name.toLowerCase().startsWith("total") || name.toLowerCase() === "innings total"
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b text-left text-[11px] uppercase text-muted-foreground">
-            <th className="py-1.5 px-3 font-semibold">Batter</th>
-            <th className="py-1.5 px-2 font-semibold text-right">R</th>
-            <th className="py-1.5 px-2 font-semibold text-right">B</th>
-            <th className="py-1.5 px-2 font-semibold text-right hidden sm:table-cell">4s</th>
-            <th className="py-1.5 px-2 font-semibold text-right hidden sm:table-cell">6s</th>
-            <th className="py-1.5 px-2 font-semibold text-right">SR</th>
-            <th className="py-1.5 px-3 font-semibold text-left hidden md:table-cell">
+          <tr className="border-b bg-muted/30 text-[10px] uppercase tracking-wide text-muted-foreground">
+            <th className="py-2 pl-4 pr-2 text-left font-semibold">Batter</th>
+            <th className="py-2 px-2 text-right font-semibold">R</th>
+            <th className="py-2 px-2 text-right font-semibold">B</th>
+            <th className="py-2 px-2 text-right font-semibold hidden sm:table-cell">4s</th>
+            <th className="py-2 px-2 text-right font-semibold hidden sm:table-cell">6s</th>
+            <th className="py-2 px-2 text-right font-semibold">SR</th>
+            <th className="py-2 pl-3 pr-4 text-left font-semibold hidden md:table-cell w-[40%]">
               Dismissal
             </th>
           </tr>
         </thead>
         <tbody>
-          {innings.batting.map((b, i) => (
-            <tr
-              key={i}
-              className={cn(
-                "border-b border-border/50",
-                b.name === "Extras" && "bg-muted/30 italic"
-              )}
-            >
-              <td className="py-1.5 px-3">
-                <div className="flex items-center gap-1.5">
-                  {b.isBatting && b.name !== "Extras" && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
-                  )}
-                  <span className={cn(b.name === "Extras" ? "text-muted-foreground" : "font-medium")}>
-                    {b.name}
-                  </span>
-                </div>
-                <div className="text-[11px] text-muted-foreground md:hidden">
+          {innings.batting.map((b, i) => {
+            const extras = isExtras(b.name)
+            const total = isTotal(b.name)
+            return (
+              <tr
+                key={i}
+                className={cn(
+                  "border-b border-border/40",
+                  (i % 2 === 1 && !extras && !total) && "bg-muted/15",
+                  extras && "bg-muted/20 italic text-muted-foreground",
+                  total && "bg-muted/30 font-bold"
+                )}
+              >
+                <td className="py-2 pl-4 pr-2">
+                  <div className="flex items-center gap-1.5">
+                    {b.isBatting && !extras && !total && (
+                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-600 animate-pulse" />
+                    )}
+                    <span className={cn(!extras && !total && "font-medium")}>
+                      {b.name}
+                    </span>
+                  </div>
+                  {/* Mobile: dismissal below the name */}
+                  <div className="mt-0.5 text-[11px] text-muted-foreground md:hidden">
+                    {b.dismissal}
+                  </div>
+                </td>
+                <td className="py-2 px-2 text-right tabular-nums font-semibold">
+                  {b.runs}
+                </td>
+                <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">
+                  {b.balls}
+                </td>
+                <td className="py-2 px-2 text-right tabular-nums hidden sm:table-cell">
+                  {b.fours}
+                </td>
+                <td className="py-2 px-2 text-right tabular-nums hidden sm:table-cell">
+                  {b.sixes}
+                </td>
+                <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">
+                  {b.strikeRate > 0 ? b.strikeRate.toFixed(1) : "—"}
+                </td>
+                <td className="py-2 pl-3 pr-4 text-left text-xs text-muted-foreground hidden md:table-cell">
                   {b.dismissal}
-                </div>
+                </td>
+              </tr>
+            )
+          })}
+          {/* If no explicit Total row exists in the data, add one */}
+          {!innings.batting.some(b => isTotal(b.name)) && (
+            <tr className="border-b bg-muted/30 font-bold">
+              <td className="py-2 pl-4 pr-2">Total</td>
+              <td className="py-2 px-2 text-right tabular-nums">
+                {innings.totalRuns}/{innings.totalWickets}
               </td>
-              <td className="py-1.5 px-2 text-right tabular-nums font-semibold">
-                {b.runs}
+              <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">
+                ({innings.totalOvers} ov)
               </td>
-              <td className="py-1.5 px-2 text-right tabular-nums text-muted-foreground">
-                {b.balls}
-              </td>
-              <td className="py-1.5 px-2 text-right tabular-nums hidden sm:table-cell">
-                {b.fours}
-              </td>
-              <td className="py-1.5 px-2 text-right tabular-nums hidden sm:table-cell">
-                {b.sixes}
-              </td>
-              <td className="py-1.5 px-2 text-right tabular-nums text-muted-foreground">
-                {b.strikeRate.toFixed(1)}
-              </td>
-              <td className="py-1.5 px-3 text-left text-xs text-muted-foreground hidden md:table-cell">
-                {b.dismissal}
-              </td>
+              <td colSpan={4} />
             </tr>
-          ))}
+          )}
         </tbody>
       </table>
     </div>
   )
 }
+
+/* ---- Fall of wickets (cricinfo-style horizontal flow) ---- */
+
+function FallOfWickets({ fow }: { fow: string[] }) {
+  return (
+    <div className="border-t px-4 py-2.5">
+      <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        Fall of Wickets
+      </div>
+      <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-xs">
+        {fow.map((w, i) => (
+          <span key={i} className="inline-flex items-center gap-1">
+            {i > 0 && <span className="text-muted-foreground/40">•</span>}
+            <span className="tabular-nums text-muted-foreground">{w}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* ---- Bowling table (cricinfo-style) ---- */
 
 function BowlingTable({ innings }: { innings: Innings }) {
   if (!innings.bowling?.length) return null
@@ -129,38 +193,46 @@ function BowlingTable({ innings }: { innings: Innings }) {
     <div className="border-t overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b text-left text-[11px] uppercase text-muted-foreground">
-            <th className="py-1.5 px-3 font-semibold">Bowler</th>
-            <th className="py-1.5 px-2 font-semibold text-right">O</th>
-            <th className="py-1.5 px-2 font-semibold text-right hidden sm:table-cell">M</th>
-            <th className="py-1.5 px-2 font-semibold text-right">R</th>
-            <th className="py-1.5 px-2 font-semibold text-right">W</th>
-            <th className="py-1.5 px-2 font-semibold text-right">Econ</th>
+          <tr className="border-b bg-muted/30 text-[10px] uppercase tracking-wide text-muted-foreground">
+            <th className="py-2 pl-4 pr-2 text-left font-semibold">Bowler</th>
+            <th className="py-2 px-2 text-right font-semibold">O</th>
+            <th className="py-2 px-2 text-right font-semibold hidden sm:table-cell">M</th>
+            <th className="py-2 px-2 text-right font-semibold">R</th>
+            <th className="py-2 px-2 text-right font-semibold">W</th>
+            <th className="py-2 px-2 text-right font-semibold">Econ</th>
+            <th className="py-2 pl-2 pr-4 text-right font-semibold hidden md:table-cell">0s</th>
           </tr>
         </thead>
         <tbody>
           {innings.bowling.map((b, i) => (
-            <tr key={i} className="border-b border-border/50">
-              <td className="py-1.5 px-3">
+            <tr
+              key={i}
+              className={cn(
+                "border-b border-border/40",
+                i % 2 === 1 && "bg-muted/15"
+              )}
+            >
+              <td className="py-2 pl-4 pr-2">
                 <div className="flex items-center gap-1.5">
                   {b.isBowling && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-600 animate-pulse" />
                   )}
                   <span className="font-medium">{b.name}</span>
                 </div>
               </td>
-              <td className="py-1.5 px-2 text-right tabular-nums text-muted-foreground">
-                {b.overs}
-              </td>
-              <td className="py-1.5 px-2 text-right tabular-nums text-muted-foreground hidden sm:table-cell">
+              <td className="py-2 px-2 text-right tabular-nums">{b.overs}</td>
+              <td className="py-2 px-2 text-right tabular-nums text-muted-foreground hidden sm:table-cell">
                 {b.maidens}
               </td>
-              <td className="py-1.5 px-2 text-right tabular-nums">{b.runs}</td>
-              <td className="py-1.5 px-2 text-right tabular-nums font-bold">
+              <td className="py-2 px-2 text-right tabular-nums">{b.runs}</td>
+              <td className="py-2 px-2 text-right tabular-nums font-bold">
                 {b.wickets}
               </td>
-              <td className="py-1.5 px-2 text-right tabular-nums text-muted-foreground">
-                {b.economy.toFixed(2)}
+              <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">
+                {b.economy > 0 ? b.economy.toFixed(2) : "—"}
+              </td>
+              <td className="py-2 pl-2 pr-4 text-right tabular-nums text-muted-foreground hidden md:table-cell">
+                —
               </td>
             </tr>
           ))}

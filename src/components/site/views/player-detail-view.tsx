@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useEffect, useState } from "react"
 import {
   ArrowLeft,
   BarChart3,
@@ -47,6 +47,20 @@ export function PlayerDetailView() {
   const navigate = useAppStore((s) => s.navigate)
   const { data: player, loading } = usePlayer(id)
   const { data: teammates } = usePlayers(player?.teamId)
+
+  // Auto-computed career stats from match scorecards
+  const [autoStats, setAutoStats] = useState<{
+    batting?: Record<string, number | string>
+    bowling?: Record<string, number | string>
+    matchesScored: number
+  } | null>(null)
+  useEffect(() => {
+    if (!player?.id) return
+    fetch(`/api/players/${player.id}/stats`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setAutoStats(d))
+      .catch(() => {})
+  }, [player?.id])
 
   const battingChartData = useMemo(() => {
     if (!player) return []
@@ -314,6 +328,69 @@ export function PlayerDetailView() {
             </Card>
           </>
         )}
+
+      <Separator />
+
+      {/* Auto-computed stats from scorecards */}
+      {autoStats && autoStats.matchesScored > 0 && (
+        <div className="space-y-3">
+          <h2 className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-tight">
+            <span className="h-5 w-1 rounded-full bg-emerald-600" />
+            Career Stats (from scorecards)
+          </h2>
+          <p className="text-[11px] text-muted-foreground">
+            Auto-computed from {autoStats.matchesScored} match scorecard
+            {autoStats.matchesScored !== 1 ? "s" : ""}. These update
+            automatically as new matches are scored.
+          </p>
+          {autoStats.batting && (autoStats.batting.innings as number) > 0 && (
+            <Card className="gap-0 py-0">
+              <CardHeader className="border-b px-5 py-2">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <BarChart3 className="size-3.5 text-emerald-600" /> Auto Batting
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <table className="w-full text-sm">
+                  <tbody>
+                    {Object.entries(autoStats.batting).map(([key, val]) => (
+                      <tr key={key} className="border-b border-border/40">
+                        <td className="py-1.5 pl-5 pr-2 text-muted-foreground capitalize">{key}</td>
+                        <td className="py-1.5 pr-5 text-right font-semibold tabular-nums">
+                          {String(val)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+          )}
+          {autoStats.bowling && (autoStats.bowling.wickets as number) > 0 && (
+            <Card className="gap-0 py-0">
+              <CardHeader className="border-b px-5 py-2">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Disc className="size-3.5 text-amber-600" /> Auto Bowling
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <table className="w-full text-sm">
+                  <tbody>
+                    {Object.entries(autoStats.bowling).map(([key, val]) => (
+                      <tr key={key} className="border-b border-border/40">
+                        <td className="py-1.5 pl-5 pr-2 text-muted-foreground capitalize">{key}</td>
+                        <td className="py-1.5 pr-5 text-right font-semibold tabular-nums">
+                          {String(val)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       <Separator />
       <p className="text-[11px] text-muted-foreground">

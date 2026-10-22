@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAppStore } from "@/lib/store"
 import { useScorerSession } from "@/lib/scorer-session"
 import { useLeagueAdminSession } from "@/lib/league-admin-session"
+import { useTheme } from "next-themes"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,6 +29,8 @@ import {
   Images,
   Radio,
   Play,
+  Sun,
+  Moon,
 } from "lucide-react"
 import type { ViewKey } from "@/lib/types"
 
@@ -57,6 +60,10 @@ export function Header() {
   const scorerSession = useScorerSession((s) => s.session)
   const leagueAdminSession = useLeagueAdminSession((s) => s.session)
   const [open, setOpen] = useState(false)
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => setMounted(true), [])
 
   // "Score" button: go straight to scorer-home if a session exists, else to login.
   const onScore = () => {
@@ -191,11 +198,25 @@ export function Header() {
               className="h-8 w-44 bg-white/10 border-white/20 text-white placeholder:text-white/50 pl-8 text-sm focus-visible:bg-white/15"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  navigate("players")
+                  const val = (e.target as HTMLInputElement).value.trim()
+                  if (val) navigate("search", val)
                 }
               }}
             />
           </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="text-white/70 hover:text-white hover:bg-white/10"
+            aria-label="Toggle theme"
+          >
+            {mounted && theme === "dark" ? (
+              <Sun className="h-4 w-4" />
+            ) : (
+              <Moon className="h-4 w-4" />
+            )}
+          </Button>
           <Button
             variant="secondary"
             size="sm"

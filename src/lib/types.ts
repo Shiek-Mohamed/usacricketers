@@ -176,6 +176,7 @@ export type ViewKey =
   | "gallery-detail"
   | "videos"
   | "video-detail"
+  | "search"
   | "admin-dashboard"
   | "admin-login"
   | "admin-articles"

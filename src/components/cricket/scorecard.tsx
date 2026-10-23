@@ -67,7 +67,7 @@ function InningsCard({
   const ordinal = inningsNo === 1 ? "1st" : inningsNo === 2 ? "2nd" : `${inningsNo}th`
   return (
     <div className="overflow-hidden rounded-lg border bg-card">
-      {/* Innings header — dark navy band (cricinfo style) */}
+      {/* Innings header — dark navy band */}
       <div className="flex items-center justify-between bg-[#1e2a5e] px-4 py-2.5 text-white">
         <div className="flex items-center gap-2">
           <TeamBadgeByName shortName={innings.teamShortName} size="sm" />
@@ -85,108 +85,104 @@ function InningsCard({
         </span>
       </div>
 
-      {/* Batting table */}
-      <BattingTable innings={innings} />
+      {/* Batting — cricinfo-style stacked rows */}
+      <BattingList innings={innings} />
 
       {/* Fall of wickets */}
       {innings.fallOfWickets.length > 0 && (
         <FallOfWickets fow={innings.fallOfWickets} />
       )}
 
-      {/* Bowling table */}
-      <BowlingTable innings={innings} />
+      {/* Bowling — cricinfo-style stacked rows */}
+      <BowlingList innings={innings} />
     </div>
   )
 }
 
-/* ---- Batting table (cricinfo-style) ---- */
+/* ---- Batting: cricinfo-style per-player rows ---- */
 
-function BattingTable({ innings }: { innings: Innings }) {
+function BattingList({ innings }: { innings: Innings }) {
   const isExtras = (name: string) => name.toLowerCase() === "extras"
   const isTotal = (name: string) =>
     name.toLowerCase().startsWith("total") || name.toLowerCase() === "innings total"
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
-            <th className="py-2 pl-4 pr-2 text-left font-semibold">Batter</th>
-            <th className="py-2 px-2 text-right font-semibold">Dismissal</th>
-            <th className="py-2 px-2 text-right font-semibold">R</th>
-            <th className="py-2 px-2 text-right font-semibold">B</th>
-            <th className="py-2 px-2 text-right font-semibold hidden sm:table-cell">4s</th>
-            <th className="py-2 px-2 text-right font-semibold hidden sm:table-cell">6s</th>
-            <th className="py-2 pl-2 pr-4 text-right font-semibold">SR</th>
-          </tr>
-        </thead>
-        <tbody>
-          {innings.batting.map((b, i) => {
-            const extras = isExtras(b.name)
-            const total = isTotal(b.name)
-            return (
-              <tr
-                key={i}
-                className={cn(
-                  "border-b border-border/40",
-                  (i % 2 === 1 && !extras && !total) && "bg-muted/15",
-                  extras && "bg-muted/20 italic text-muted-foreground",
-                  total && "bg-muted/30 font-bold"
+    <div className="divide-y divide-border/40">
+      {innings.batting.map((b, i) => {
+        const extras = isExtras(b.name)
+        const total = isTotal(b.name)
+        const notOut = b.dismissal?.toLowerCase().includes("not out")
+
+        return (
+          <div
+            key={i}
+            className={cn(
+              "flex items-start justify-between gap-3 px-4 py-2.5",
+              extras && "bg-muted/20 italic",
+              total && "bg-muted/30 font-bold"
+            )}
+          >
+            {/* Left: name + dismissal */}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                {b.isBatting && !extras && !total && (
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-600 animate-pulse" />
                 )}
-              >
-                <td className="py-2 pl-4 pr-2">
-                  <div className="flex items-center gap-1.5">
-                    {b.isBatting && !extras && !total && (
-                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-600 animate-pulse" />
-                    )}
-                    <PlayerName
-                      name={b.name}
-                      playerId={b.playerId}
-                      className={cn(!extras && !total && "font-medium")}
-                    />
-                  </div>
-                </td>
-                <td className="py-2 px-2 text-left text-sm text-muted-foreground">
-                  {b.dismissal || "—"}
-                </td>
-                <td className="py-2 px-2 text-right tabular-nums font-semibold">
-                  {b.runs}
-                </td>
-                <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">
-                  {b.balls}
-                </td>
-                <td className="py-2 px-2 text-right tabular-nums hidden sm:table-cell">
-                  {b.fours}
-                </td>
-                <td className="py-2 px-2 text-right tabular-nums hidden sm:table-cell">
-                  {b.sixes}
-                </td>
-                <td className="py-2 pl-2 pr-4 text-right tabular-nums text-muted-foreground">
-                  {b.strikeRate > 0 ? b.strikeRate.toFixed(1) : "—"}
-                </td>
-              </tr>
-            )
-          })}
-          {/* If no explicit Total row exists in the data, add one */}
-          {!innings.batting.some(b => isTotal(b.name)) && (
-            <tr className="border-b bg-muted/30 font-bold">
-              <td className="py-2 pl-4 pr-2">Total</td>
-              <td className="py-2 px-2 text-left text-sm text-muted-foreground">
-                ({innings.totalOvers} ov)
-              </td>
-              <td className="py-2 px-2 text-right tabular-nums">
-                {innings.totalRuns}/{innings.totalWickets}
-              </td>
-              <td colSpan={4} />
-            </tr>
-          )}
-        </tbody>
-      </table>
+                <PlayerName
+                  name={b.name}
+                  playerId={b.playerId}
+                  className={cn(!extras && !total && "font-semibold text-sm")}
+                />
+              </div>
+              {/* Dismissal text below name (cricinfo style) */}
+              {!extras && !total && b.dismissal && (
+                <div className="mt-0.5 pl-3 text-xs text-muted-foreground">
+                  {b.dismissal}
+                </div>
+              )}
+            </div>
+
+            {/* Right: stats block (cricinfo style — runs big, details below) */}
+            {!extras && !total ? (
+              <div className="flex shrink-0 items-baseline gap-3">
+                <span className="text-lg font-extrabold tabular-nums">{b.runs}</span>
+                <span className="text-xs text-muted-foreground tabular-nums">({b.balls})</span>
+                <div className="hidden sm:flex items-center gap-2 text-[11px] text-muted-foreground">
+                  <span className="tabular-nums">{b.fours}×4</span>
+                  <span className="tabular-nums">{b.sixes}×6</span>
+                  <span className="tabular-nums">SR {b.strikeRate > 0 ? b.strikeRate.toFixed(1) : "—"}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="shrink-0 text-right">
+                <span className="font-bold tabular-nums">{b.runs}</span>
+                {total && (
+                  <span className="ml-1.5 text-xs text-muted-foreground tabular-nums">
+                    ({innings.totalOvers} ov)
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
+      {/* Auto-total row if not in data */}
+      {!innings.batting.some(b => isTotal(b.name)) && (
+        <div className="flex items-center justify-between bg-muted/30 px-4 py-2.5 font-bold">
+          <span>Total</span>
+          <span className="tabular-nums">
+            {innings.totalRuns}/{innings.totalWickets}
+            <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+              ({innings.totalOvers} ov)
+            </span>
+          </span>
+        </div>
+      )}
     </div>
   )
 }
 
-/* ---- Fall of wickets (cricinfo-style horizontal flow) ---- */
+/* ---- Fall of wickets (cricinfo-style) ---- */
 
 function FallOfWickets({ fow }: { fow: string[] }) {
   return (
@@ -206,67 +202,59 @@ function FallOfWickets({ fow }: { fow: string[] }) {
   )
 }
 
-/* ---- Bowling table (cricinfo-style) ---- */
+/* ---- Bowling: cricinfo-style per-player rows ---- */
 
-function BowlingTable({ innings }: { innings: Innings }) {
+function BowlingList({ innings }: { innings: Innings }) {
   if (!innings.bowling?.length) return null
   return (
-    <div className="border-t overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
-            <th className="py-2 pl-4 pr-2 text-left font-semibold">Bowler</th>
-            <th className="py-2 px-2 text-right font-semibold">O</th>
-            <th className="py-2 px-2 text-right font-semibold hidden sm:table-cell">M</th>
-            <th className="py-2 px-2 text-right font-semibold">R</th>
-            <th className="py-2 px-2 text-right font-semibold">W</th>
-            <th className="py-2 px-2 text-right font-semibold">Econ</th>
-            <th className="py-2 px-2 text-right font-semibold hidden sm:table-cell">WD</th>
-            <th className="py-2 pl-2 pr-4 text-right font-semibold hidden sm:table-cell">NB</th>
-          </tr>
-        </thead>
-        <tbody>
-          {innings.bowling.map((b, i) => (
-            <tr
-              key={i}
-              className={cn(
-                "border-b border-border/40",
-                i % 2 === 1 && "bg-muted/15"
+    <div className="divide-y divide-border/40 border-t">
+      {innings.bowling.map((b, i) => (
+        <div
+          key={i}
+          className={cn(
+            "flex items-start justify-between gap-3 px-4 py-2.5",
+            i % 2 === 1 && "bg-muted/15"
+          )}
+        >
+          {/* Left: bowler name */}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              {b.isBowling && (
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-600 animate-pulse" />
               )}
-            >
-              <td className="py-2 pl-4 pr-2">
-                <div className="flex items-center gap-1.5">
-                  {b.isBowling && (
-                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-600 animate-pulse" />
-                  )}
-                  <PlayerName
-                    name={b.name}
-                    playerId={b.playerId}
-                    className="font-medium"
-                  />
-                </div>
-              </td>
-              <td className="py-2 px-2 text-right tabular-nums">{b.overs}</td>
-              <td className="py-2 px-2 text-right tabular-nums text-muted-foreground hidden sm:table-cell">
-                {b.maidens}
-              </td>
-              <td className="py-2 px-2 text-right tabular-nums">{b.runs}</td>
-              <td className="py-2 px-2 text-right tabular-nums font-bold">
-                {b.wickets}
-              </td>
-              <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">
-                {b.economy > 0 ? b.economy.toFixed(2) : "—"}
-              </td>
-              <td className="py-2 px-2 text-right tabular-nums text-muted-foreground hidden sm:table-cell">
-                {b.wides || 0}
-              </td>
-              <td className="py-2 pl-2 pr-4 text-right tabular-nums text-muted-foreground hidden sm:table-cell">
-                {b.noballs || 0}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+              <PlayerName
+                name={b.name}
+                playerId={b.playerId}
+                className="font-semibold text-sm"
+              />
+            </div>
+            <div className="mt-0.5 pl-3 text-xs text-muted-foreground tabular-nums">
+              {b.overs} ov · {b.maidens} maidens
+            </div>
+          </div>
+
+          {/* Right: key figures (cricinfo style) */}
+          <div className="flex shrink-0 items-baseline gap-3">
+            <div className="text-right">
+              <span className="text-lg font-extrabold tabular-nums">{b.wickets}</span>
+              <span className="text-xs text-muted-foreground">/</span>
+              <span className="text-sm font-semibold tabular-nums">{b.runs}</span>
+            </div>
+            <div className="hidden sm:flex items-center gap-2 text-[11px] text-muted-foreground">
+              <span className="tabular-nums">
+                Econ {b.economy > 0 ? b.economy.toFixed(2) : "—"}
+              </span>
+              {(b.wides > 0 || b.noballs > 0) && (
+                <span className="tabular-nums">
+                  {b.wides > 0 && `${b.wides}wd`}
+                  {b.wides > 0 && b.noballs > 0 && " "}
+                  {b.noballs > 0 && `${b.noballs}nb`}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

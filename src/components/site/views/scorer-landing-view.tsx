@@ -52,6 +52,46 @@ export function ScorerLandingView() {
       {/* Hero */}
       <div className="flex flex-1 flex-col items-center justify-center px-4 py-10">
         <div className="w-full max-w-2xl space-y-8">
+          {/* League Admin access — always at the top */}
+          <div className="rounded-xl border bg-card p-5">
+            <div className="flex items-center gap-2">
+              <span className="grid h-8 w-8 place-items-center rounded-md bg-emerald-600 text-white">
+                <Trophy className="h-4 w-4" />
+              </span>
+              <div>
+                <h2 className="text-sm font-bold">League Admin</h2>
+                <p className="text-xs text-muted-foreground">
+                  Manage your leagues, schedules and scorers
+                </p>
+              </div>
+            </div>
+            {leagueSession ? (
+              <div className="mt-4">
+                <p className="text-sm text-muted-foreground">
+                  Signed in as <span className="font-semibold">{leagueSession.admin.name}</span>
+                </p>
+                <Button
+                  onClick={() => enterLeagueAdminMode()}
+                  className="mt-2 gap-2 bg-emerald-600 text-white hover:bg-emerald-700"
+                  size="sm"
+                >
+                  <Play className="h-3.5 w-3.5" />
+                  Go to my leagues
+                </Button>
+              </div>
+            ) : (
+              <Button
+                onClick={() => enterLeagueAdminLogin()}
+                variant="outline"
+                className="mt-3 gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                size="sm"
+              >
+                <Shield className="h-3.5 w-3.5" />
+                Sign in as League Admin
+              </Button>
+            )}
+          </div>
+
           {session ? (
             // Already signed in as scorer — show welcome + go to matches
             <Card className="text-center">
@@ -160,46 +200,6 @@ export function ScorerLandingView() {
               </div>
             </>
           )}
-
-          {/* League Admin access — ALWAYS visible (whether or not scorer is signed in) */}
-          <div className="rounded-xl border bg-card p-5">
-            <div className="flex items-center gap-2">
-              <span className="grid h-8 w-8 place-items-center rounded-md bg-emerald-600 text-white">
-                <Trophy className="h-4 w-4" />
-              </span>
-              <div>
-                <h2 className="text-sm font-bold">League Admin</h2>
-                <p className="text-xs text-muted-foreground">
-                  Manage your leagues, schedules and scorers
-                </p>
-              </div>
-            </div>
-            {leagueSession ? (
-              <div className="mt-4">
-                <p className="text-sm text-muted-foreground">
-                  Signed in as <span className="font-semibold">{leagueSession.admin.name}</span>
-                </p>
-                <Button
-                  onClick={() => enterLeagueAdminMode()}
-                  className="mt-2 gap-2 bg-emerald-600 text-white hover:bg-emerald-700"
-                  size="sm"
-                >
-                  <Play className="h-3.5 w-3.5" />
-                  Go to my leagues
-                </Button>
-              </div>
-            ) : (
-              <Button
-                onClick={() => enterLeagueAdminLogin()}
-                variant="outline"
-                className="mt-3 gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-                size="sm"
-              >
-                <Shield className="h-3.5 w-3.5" />
-                Sign in as League Admin
-              </Button>
-            )}
-          </div>
         </div>
       </div>
     </div>

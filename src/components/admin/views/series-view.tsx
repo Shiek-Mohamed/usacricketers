@@ -29,6 +29,8 @@ import {
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import type { Series, Team } from "@/lib/types"
+import { BulkPlayersDialog } from "@/components/admin/bulk-players/bulk-players-dialog"
+import { parsePlayerRows } from "@/components/admin/bulk-players/bulk-players-dialog"
 
 const SCROLLBAR = "[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border"
 const FORMATS = ["Test", "ODI", "T20I", "T10"] as const
@@ -141,9 +143,14 @@ function TournamentEditor({
   const [newTeamShort, setNewTeamShort] = useState("")
   const [newTeamColor, setNewTeamColor] = useState("#1e3a8a")
   const [addingTeam, setAddingTeam] = useState(false)
+  // Optional: bulk players to add alongside the new team at creation time.
+  const [newTeamPlayersText, setNewTeamPlayersText] = useState("")
 
   // Add-existing-team select
   const [addExistingId, setAddExistingId] = useState("")
+
+  // Bulk-players dialog target (a team that's already in the tournament)
+  const [bulkFor, setBulkFor] = useState<Team | null>(null)
 
   const tournamentTeams = tournament?.teams ?? []
   const allTeams = teamsApi.data ?? []
@@ -178,16 +185,48 @@ function TournamentEditor({
     if (!newTeamName.trim() || !tournament) return
     setAddingTeam(true)
     try {
-      await api.series.addTeam(tournament.id, {
+      // 1. Create the team and add it to the tournament in a single call.
+      const createdTeam = await api.series.addTeam(tournament.id, {
         name: newTeamName,
         shortName: (newTeamShort || newTeamName).toUpperCase().slice(0, 4),
         primaryColor: newTeamColor,
       })
-      toast.success(`Team "${newTeamName}" created + added`)
-      setNewTeamName(""); setNewTeamShort(""); setNewTeamColor("#1e3a8a")
+      // 2. If the admin pasted player rows, bulk-add them to the new team.
+      const rows = parsePlayerRows(newTeamPlayersText)
+      if (rows.length > 0) {
+        try {
+          const result = await api.players.bulkCreate(
+            createdTeam.id,
+            rows.map((r) => ({
+              name: r.name,
+              role: r.role,
+              battingStyle: r.battingStyle,
+              bowlingStyle: r.bowlingStyle,
+            }))
+          )
+          toast.success(
+            `Team "${newTeamName}" created + added — ${result.created} player${result.created === 1 ? "" : "s"} imported` +
+              (result.skipped > 0 ? `, ${result.skipped} skipped` : "")
+          )
+        } catch (e) {
+          toast.warning(
+            `Team "${newTeamName}" created, but player import failed`,
+            { description: String(e) }
+          )
+        }
+      } else {
+        toast.success(`Team "${newTeamName}" created + added`)
+      }
+      setNewTeamName("")
+      setNewTeamShort("")
+      setNewTeamColor("#1e3a8a")
+      setNewTeamPlayersText("")
       onRefresh()
-    } catch (e) { toast.error("Failed to create team") }
-    finally { setAddingTeam(false) }
+    } catch (e) {
+      toast.error("Failed to create team")
+    } finally {
+      setAddingTeam(false)
+    }
   }
 
   async function removeTeam(teamId: string) {
@@ -247,6 +286,14 @@ function TournamentEditor({
                   <span key={t.id} className="inline-flex items-center gap-2 rounded-full border bg-muted/30 py-1 pl-2 pr-1">
                     <span className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold text-white" style={{ background: t.primaryColor }}>{t.shortName.slice(0, 2)}</span>
                     <span className="text-xs font-medium">{t.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => setBulkFor(t)}
+                      title="Bulk add players to this team"
+                      className="grid h-5 w-5 place-items-center rounded-full text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950"
+                    >
+                      <Users className="h-3 w-3" />
+                    </button>
                     <button onClick={() => removeTeam(t.id)} className="grid h-5 w-5 place-items-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><X className="h-3 w-3" /></button>
                   </span>
                 ))}
@@ -275,7 +322,34 @@ function TournamentEditor({
                 <input type="color" value={newTeamColor} onChange={(e) => setNewTeamColor(e.target.value)} className="h-9 w-9 cursor-pointer rounded border" title="Team color" />
                 <Button type="button" variant="outline" size="sm" onClick={createNewTeam} disabled={addingTeam || !newTeamName.trim()} className="gap-1.5"><Plus className="h-3.5 w-3.5" /> Create &amp; Add</Button>
               </div>
-              <p className="mt-1.5 text-[11px] text-muted-foreground">You can add players to the team later via Admin → Players, or directly in the Live Scorer setup.</p>
+              {/* Optional bulk players for the new team — parsed + added in one shot alongside team creation */}
+              <div className="mt-3 grid gap-1.5">
+                <label className="text-[11px] font-medium text-muted-foreground">
+                  Players (optional — one per line, or CSV: name, role, bat, bowl)
+                </label>
+                <Textarea
+                  value={newTeamPlayersText}
+                  onChange={(e) => setNewTeamPlayersText(e.target.value)}
+                  rows={4}
+                  placeholder={
+                    [
+                      "Babar Azam, Batsman, Right-hand bat",
+                      "Shaheen Afridi, Bowler, Left-hand bat, Left-arm fast",
+                      "Mohammad Rizwan, Wicket-keeper",
+                      "",
+                      "# or just names:",
+                      "Shadab Khan",
+                    ].join("\n")
+                  }
+                  className="font-mono text-xs"
+                />
+                {newTeamPlayersText.trim() && (
+                  <p className="text-[11px] text-emerald-700 dark:text-emerald-400">
+                    {parsePlayerRows(newTeamPlayersText).length} player{parsePlayerRows(newTeamPlayersText).length === 1 ? "" : "s"} will be imported when the team is created.
+                  </p>
+                )}
+              </div>
+              <p className="mt-1.5 text-[11px] text-muted-foreground">Tip: you can also bulk-add players to an existing tournament team using the green <Users className="inline h-3 w-3 -translate-y-0.5" /> button on each team chip above.</p>
             </div>
           </CardContent>
         </Card>
@@ -311,6 +385,17 @@ function TournamentEditor({
           <Button variant="outline" onClick={onCancel}>Cancel</Button>
         </div>
       </div>
+
+      {/* Bulk players dialog (opened by the green Users button on each team chip) */}
+      {bulkFor && (
+        <BulkPlayersDialog
+          open={!!bulkFor}
+          onOpenChange={(v) => !v && setBulkFor(null)}
+          teamId={bulkFor.id}
+          teamName={bulkFor.name}
+          onDone={() => onRefresh()}
+        />
+      )}
     </AdminShell>
   )
 }

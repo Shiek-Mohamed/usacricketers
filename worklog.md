@@ -714,3 +714,36 @@ Verification:
 
 Stage Summary:
 - Site admins can now score any match directly from admin mode — they no longer need to create a dedicated scorer account, assign it to the tournament, log out, and log back in. The flow now is: log in as site admin (admin@usacricketers.test / admin123) → click "Admin" → admin-matches → click "Score" on any match → the live-scorer view auto-fetches a god-mode scorer token (12h TTL, `tournamentIds: ["*"]`) and broadcasting works. Existing scorer + league-admin flows are unchanged. The god-mode check is tight (`tournamentIds.length === 1 && tournamentIds[0] === "*"`) so a regular scorer can't fake god-mode by including `"*"` alongside their real tournament ids.
+
+---
+Task ID: 20
+Agent: orchestrator (Z.ai)
+Task: Bulk-upload players when creating a team / tournament (so the admin can paste a roster in one shot).
+
+Work Log:
+- **Backend** — new route `POST /api/players/bulk` (`src/app/api/players/bulk/route.ts`):
+  - Site-admin guarded (`requireSiteAdmin`).
+  - Body: `{ teamId: string, players: Array<{ name, role?, battingStyle?, bowlingStyle?, bio?, imageUrl? }> }`.
+  - Validates teamId + that the team exists. Pulls existing player names for the team (case-insensitive dedupe), normalises incoming rows, dedupes within the batch itself, then creates them all inside a single `db.$transaction` (all-or-nothing). Returns `{ created, skipped, skippedNames, players }` so the UI can show the user exactly which ones were re-import-skipped.
+  - 400 on missing teamId / empty players / unknown team, 401 on missing/invalid sa-session.
+- **API client** — added `api.players.bulkCreate(teamId, players[])` to `src/lib/api.ts` returning `{ created, skipped, skippedNames, players }`.
+- **Reusable component** — `src/components/admin/bulk-players/bulk-players-dialog.tsx` exports both:
+  - `<BulkPlayersDialog>` — a paste-CSV/TSV/one-per-line dialog with a live preview table (#, Name, Role, Batting, Bowling). Smart parser detects delimiter from the first row (CSV/TSV/pipe/semicolon) and auto-drops a header row if it contains "name" or "role". Role strings are normalised through a small alias map (so "WK", "keeper", "wicketkeeper" all map to "Wicket-keeper"). Includes a default-role dropdown that applies when rows are name-only (no role column). Shows toast with `created + skipped` count and the skipped names on success.
+  - `parsePlayerRows(input)` — exported so the tournament editor can show a live "X players will be imported" preview as the admin types.
+- **Wired into `teams-view.tsx`** (the standalone admin → Teams page):
+  - Each team row gets a new "Bulk add players" icon button (Users icon) next to the existing Edit + Delete buttons. Clicking it opens `<BulkPlayersDialog teamId={t.id} teamName={t.name}>`.
+- **Wired into `series-view.tsx` TournamentEditor** (the admin → Tournaments → New/Edit Tournament flow):
+  - Each tournament-team chip now has a green `Users` button — click it to bulk-add players to that existing tournament team.
+  - The inline "Create a new team" form got a new optional "Players" textarea. When the admin pastes a roster there, the `createNewTeam()` flow now: (1) creates the team via the existing `api.series.addTeam`, then (2) calls `api.players.bulkCreate(createdTeam.id, rows)` in the same submit — one click to create a fully-rostered team. Toast reports both outcomes (`Team "X" created + added — 11 players imported`).
+  - Replaced the old misleading hint "You can add players to the team later via Admin → Players, or directly in the Live Scorer setup" with a pointer to the new green Users button on each team chip.
+
+Verification:
+- ✅ `bun run lint` → 0 errors.
+- ✅ `POST /api/admin/login` (admin@usacricketers.test / admin123) → 200, sa-session cookie set.
+- ✅ `POST /api/players/bulk` with 5 fresh Australian players (Travis Head, Marnus Labuschagne, Alex Carey, Josh Hazlewood, Cameron Green) → `200 { created: 5, skipped: 0, skippedNames: [], players: [...] }`. Verified by `GET /api/players?teamId=AUS` returning 10 (5 original + 5 new) with all fields persisted correctly (role, battingStyle, bowlingStyle).
+- ✅ Second `POST /api/players/bulk` with 2 of those names + 1 new one (Marcus Stoinis) → `200 { created: 1, skipped: 2, skippedNames: ["Travis Head", "Josh Hazlewood"] }` — case-insensitive dedupe against existing team players works.
+- ✅ `POST /api/players/bulk` with no cookie → `401 {"error":"unauthorized"}`.
+- ✅ Cleaned up the curl-inserted test players (6 DELETE calls — all 200) — verified the AUS team is back to its original 5-player roster.
+
+Stage Summary:
+- Site admins can now bulk-upload players in two flows: (a) the standalone Admin → Teams page (per-row Users icon button), and (b) the Admin → Tournaments editor (per-team-chip green Users button + an inline Players textarea on the new-team form that creates the team AND its roster in one click). The smart parser accepts CSV/TSV/pipe/semicolon/one-name-per-line, auto-detects header rows, and normalises role aliases (WK/keeper/wicketkeeper → "Wicket-keeper"). Existing names are case-insensitively deduped and reported back to the user as `skippedNames`. End-to-end verified via curl: 5-player batch → created:5/skipped:0; a duplicate-of-2 + 1-new batch → created:1/skipped:2; 401 when cookie is missing.

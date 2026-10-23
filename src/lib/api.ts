@@ -46,6 +46,29 @@ export const api = {
       }).then(jsonOrThrow<Player>),
     remove: (id: string) =>
       fetch(`/api/players/${id}`, { method: "DELETE" }).then(jsonOrThrow),
+    bulkCreate: async (
+      teamId: string,
+      players: Array<{
+        name: string
+        role?: string
+        battingStyle?: string
+        bowlingStyle?: string
+        bio?: string
+        imageUrl?: string
+      }>
+    ): Promise<{
+      created: number
+      skipped: number
+      skippedNames: string[]
+      players: Player[]
+    }> => {
+      const res = await fetch("/api/players/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teamId, players }),
+      })
+      return jsonOrThrow(res)
+    },
   },
   matches: {
     list: (status?: string) =>

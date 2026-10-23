@@ -36,9 +36,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Plus, Pencil, Trash2, Search, AlertTriangle } from "lucide-react"
+import { Plus, Pencil, Trash2, Search, AlertTriangle, Users } from "lucide-react"
 import { toast } from "sonner"
 import type { Team } from "@/lib/types"
+import { BulkPlayersDialog } from "@/components/admin/bulk-players/bulk-players-dialog"
 
 interface TeamFormState {
   name: string
@@ -66,6 +67,7 @@ export function AdminTeamsView() {
   const [form, setForm] = useState<TeamFormState>(emptyForm)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [bulkFor, setBulkFor] = useState<Team | null>(null)
 
   const filtered = (data ?? []).filter((t) => {
     const q = search.toLowerCase()
@@ -219,6 +221,15 @@ export function AdminTeamsView() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right whitespace-nowrap">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => setBulkFor(t)}
+                          aria-label="Bulk add players"
+                          title="Bulk add players"
+                        >
+                          <Users className="h-3.5 w-3.5" />
+                        </Button>
                         <Button
                           size="icon"
                           variant="ghost"
@@ -395,6 +406,16 @@ export function AdminTeamsView() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* Bulk players dialog */}
+      {bulkFor && (
+        <BulkPlayersDialog
+          open={!!bulkFor}
+          onOpenChange={(v) => !v && setBulkFor(null)}
+          teamId={bulkFor.id}
+          teamName={bulkFor.name}
+          onDone={() => refetch()}
+        />
+      )}
     </AdminShell>
   )
 }

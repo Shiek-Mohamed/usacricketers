@@ -11,6 +11,8 @@ export interface ScorerBatsman {
   sixes: number
   out: boolean
   dismissal: string
+  isCaptain?: boolean
+  isKeeper?: boolean
 }
 
 export interface ScorerBowler {
@@ -22,6 +24,9 @@ export interface ScorerBowler {
   maidens: number
   wides: number
   noballs: number
+  dots: number
+  foursConceded: number
+  sixesConceded: number
   // per-over tracking for maiden detection
   overRuns: number
   overWickets: number
@@ -48,6 +53,13 @@ export interface ScorerInnings {
   fallOfWickets: FallOfWicket[]
   declared: boolean
   target: number | null
+  // extras breakdown
+  extrasByes: number
+  extrasLegByes: number
+  extrasWides: number
+  extrasNoBalls: number
+  // full squad for 'did not bat'
+  squad: { id: string; name: string; isCaptain?: boolean; isKeeper?: boolean }[]
 }
 
 export interface CommentaryEntry {
@@ -115,6 +127,11 @@ export function initState(match: Match, battingFirstTeamId: string): LiveMatchSt
     fallOfWickets: [],
     declared: false,
     target: null,
+    extrasByes: 0,
+    extrasLegByes: 0,
+    extrasWides: 0,
+    extrasNoBalls: 0,
+    squad: [],
   }
   return {
     matchId: match.id,
@@ -189,6 +206,9 @@ export function setBowler(
         maidens: 0,
         wides: 0,
         noballs: 0,
+        dots: 0,
+        foursConceded: 0,
+        sixesConceded: 0,
         overRuns: 0,
         overWickets: 0,
         overBalls: 0,
@@ -238,6 +258,10 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
   let runs = inn.runs
   let wickets = inn.wickets
   let balls = inn.balls
+  let extrasByes = inn.extrasByes
+  let extrasLegByes = inn.extrasLegByes
+  let extrasWides = inn.extrasWides
+  let extrasNoBalls = inn.extrasNoBalls
   let fallOfWickets = inn.fallOfWickets
   let strikerId = state.strikerId
   let nonStrikerId = state.nonStrikerId
@@ -259,12 +283,16 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
       striker.balls += 1
       bowler.runsConceded += r
       bowler.overRuns += r
-      if (r === 4) {
+      if (r === 0) {
+        bowler.dots += 1
+      } else if (r === 4) {
         striker.fours += 1
+        bowler.foursConceded += 1
         eventText = `FOUR! ${striker.name} ${r}`
         eventKind = "boundary"
       } else if (r === 6) {
         striker.sixes += 1
+        bowler.sixesConceded += 1
         eventText = `SIX! ${striker.name} ${r}`
         eventKind = "six"
       } else {
@@ -283,6 +311,7 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
       bowler.runsConceded += 1
       bowler.overRuns += 1
       bowler.wides += 1
+      extrasWides += 1
       isLegal = false
       eventText = "Wide (+1)"
       eventKind = "extra"
@@ -293,6 +322,7 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
       bowler.runsConceded += 1
       bowler.overRuns += 1
       bowler.noballs += 1
+      extrasNoBalls += 1
       isLegal = false
       eventText = "No ball (+1)"
       eventKind = "extra"
@@ -303,7 +333,13 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
       const r = event.runs
       runs += r
       striker.balls += 1
+      if (r === 0) bowler.dots += 1
       // byes/legbyes: not credited to batsman runs or bowler runs
+      if (event.kind === "bye") {
+        extrasByes += r
+      } else {
+        extrasLegByes += r
+      }
       eventText = `${event.kind === "bye" ? "Bye" : "Leg bye"} ${r}`
       eventKind = "extra"
       if (r % 2 === 1) {
@@ -370,6 +406,10 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
     batsmen,
     bowlers,
     fallOfWickets,
+    extrasByes,
+    extrasLegByes,
+    extrasWides,
+    extrasNoBalls,
   }
   const innings = [...state.innings]
   innings[state.currentInnings] = newInnings
@@ -518,7 +558,7 @@ export function stateToScorecard(state: LiveMatchState): Scorecard {
       const bLive = b.isBatting ? 0 : 1
       return aLive - bLive
     })
-    // add Extras line
+    // add Extras line with breakdown
     const extrasRuns = Math.max(
       0,
       inn.runs - inn.batsmen.reduce((s, b) => s + b.runs, 0)
@@ -530,7 +570,7 @@ export function stateToScorecard(state: LiveMatchState): Scorecard {
       fours: 0,
       sixes: 0,
       strikeRate: 0,
-      dismissal: `(b ${Math.floor(inn.balls / 6)}, lb ${0}, w ${0}, nb ${0})`,
+      dismissal: `(b ${inn.extrasByes || 0}, lb ${inn.extrasLegByes || 0}, w ${inn.extrasWides || 0}, nb ${inn.extrasNoBalls || 0})`,
       isBatting: false,
     })
     const bowling: BowlingLine[] = inn.bowlers.map((b) => ({
@@ -543,6 +583,9 @@ export function stateToScorecard(state: LiveMatchState): Scorecard {
       economy: b.balls > 0 ? Number(((b.runsConceded / b.balls) * 6).toFixed(2)) : 0,
       wides: b.wides || 0,
       noballs: b.noballs || 0,
+      dots: b.dots || 0,
+      foursConceded: b.foursConceded || 0,
+      sixesConceded: b.sixesConceded || 0,
       isBowling: b.id === state.bowlerId,
     }))
     return {
@@ -558,6 +601,15 @@ export function stateToScorecard(state: LiveMatchState): Scorecard {
         (f) => `${f.score}-${f.wktNo} (${f.batsman}, ${f.over} ov)`
       ),
       declared: inn.declared,
+      extrasBreakdown: {
+        byes: inn.extrasByes || 0,
+        legByes: inn.extrasLegByes || 0,
+        wides: inn.extrasWides || 0,
+        noBalls: inn.extrasNoBalls || 0,
+      },
+      didNotBat: (inn.squad || []).
+        filter((s) => !inn.batsmen.some((b) => b.id === s.id))
+        .map((s) => ({ name: s.name, isCaptain: s.isCaptain, isKeeper: s.isKeeper })),
     }
   })
   return {

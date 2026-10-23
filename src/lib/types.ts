@@ -53,6 +53,9 @@ export interface BowlingLine {
   economy: number
   wides: number
   noballs: number
+  dots?: number
+  foursConceded?: number
+  sixesConceded?: number
   isBowling: boolean
 }
 
@@ -67,6 +70,13 @@ export interface Innings {
   bowling: BowlingLine[]
   fallOfWickets: string[]
   declared: boolean
+  extrasBreakdown?: {
+    byes: number
+    legByes: number
+    wides: number
+    noBalls: number
+  }
+  didNotBat?: { name: string; isCaptain?: boolean; isKeeper?: boolean }[]
 }
 
 export interface Scorecard {

@@ -173,8 +173,29 @@ function BattingList({ innings }: { innings: Innings }) {
           <span className="tabular-nums">
             {innings.totalRuns}/{innings.totalWickets}
             <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-              ({innings.totalOvers} ov)
+              ({innings.totalOvers} ov, RR {(() => {
+                const overs = parseFloat(innings.totalOvers) || 0
+                return overs > 0 ? (innings.totalRuns / overs).toFixed(2) : "0.00"
+              })()})
             </span>
+          </span>
+        </div>
+      )}
+      {/* Did not bat (cricinfo style) */}
+      {innings.didNotBat && innings.didNotBat.length > 0 && (
+        <div className="px-4 py-2.5 text-sm">
+          <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+            Did not bat:{" "}
+          </span>
+          <span className="text-muted-foreground">
+            {innings.didNotBat.map((p, i) => (
+              <span key={i}>
+                {i > 0 && ", "}
+                {p.name}
+                {p.isKeeper && " †"}
+                {p.isCaptain && " (c)"}
+              </span>
+            ))}
           </span>
         </div>
       )}
@@ -244,6 +265,15 @@ function BowlingList({ innings }: { innings: Innings }) {
               <span className="tabular-nums">
                 Econ {b.economy > 0 ? b.economy.toFixed(2) : "—"}
               </span>
+              {b.dots !== undefined && b.dots > 0 && (
+                <span className="tabular-nums">{b.dots} 0s</span>
+              )}
+              {b.foursConceded !== undefined && b.foursConceded > 0 && (
+                <span className="tabular-nums">{b.foursConceded}×4</span>
+              )}
+              {b.sixesConceded !== undefined && b.sixesConceded > 0 && (
+                <span className="tabular-nums">{b.sixesConceded}×6</span>
+              )}
               {(b.wides > 0 || b.noballs > 0) && (
                 <span className="tabular-nums">
                   {b.wides > 0 && `${b.wides}wd`}

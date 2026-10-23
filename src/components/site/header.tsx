@@ -88,6 +88,7 @@ export function Header() {
   const toggleMode = useAppStore((s) => s.toggleMode)
   const enterScorerLogin = useAppStore((s) => s.enterScorerLogin)
   const enterScorerMode = useAppStore((s) => s.enterScorerMode)
+  const enterScorerLanding = useAppStore((s) => s.enterScorerLanding)
   const enterLeagueAdminLogin = useAppStore((s) => s.enterLeagueAdminLogin)
   const enterLeagueAdminMode = useAppStore((s) => s.enterLeagueAdminMode)
   const view = useAppStore((s) => s.view)
@@ -99,10 +100,10 @@ export function Header() {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), [])
 
-  // "Score" button: go straight to scorer-home if a session exists, else to login.
+  // "Scoring" button → goes to the scoring landing page (which handles
+  // sign-in vs. "welcome back" based on the session).
   const onScore = () => {
-    if (scorerSession) enterScorerMode()
-    else enterScorerLogin()
+    enterScorerLanding()
   }
   // "League Admin" button: same pattern.
   const onLeagueAdmin = () => {
@@ -171,7 +172,7 @@ export function Header() {
                 className="flex items-center gap-2 px-3 py-2 text-left text-sm rounded-md hover:bg-muted text-red-600 font-semibold"
               >
                 <Radio className="h-4 w-4" />
-                {scorerSession ? "Scorer Mode" : "Scorer Sign In"}
+                Scoring
               </button>
               <button
                 onClick={() => {
@@ -311,12 +312,10 @@ export function Header() {
               size="sm"
               onClick={onScore}
               className="gap-1.5 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10"
-              title="Score a match live"
+              title="Live cricket scoring"
             >
               <Radio className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">
-                {scorerSession ? "Score" : "Scorer Sign In"}
-              </span>
+              <span className="hidden sm:inline">Scoring</span>
             </Button>
           )}
           {mode === "public" && (

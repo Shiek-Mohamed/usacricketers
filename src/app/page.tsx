@@ -37,6 +37,7 @@ import { AdminLeagueAdminsView } from "@/components/admin/views/admin-league-adm
 import { AdminLoginView } from "@/components/site/views/admin-login-view"
 import { LiveScorerView } from "@/components/admin/views/live-scorer-view"
 import { ScorerLoginView } from "@/components/site/views/scorer-login-view"
+import { ScorerLandingView } from "@/components/site/views/scorer-landing-view"
 import { ScorerHomeView } from "@/components/site/views/scorer-home-view"
 import { ScorerShell } from "@/components/admin/scorer-shell"
 import { useScorerSession } from "@/lib/scorer-session"
@@ -127,6 +128,8 @@ export default function Home() {
         return <LiveScorerView />
       case "scorer-login":
         return <ScorerLoginView />
+      case "scorer-landing":
+        return <ScorerLandingView />
       case "scorer-home":
         // Gate on session: if none, show the login screen instead.
         if (!session) return <ScorerLoginView />

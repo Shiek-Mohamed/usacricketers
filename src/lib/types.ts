@@ -192,6 +192,7 @@ export type ViewKey =
   | "admin-league-admins"
   | "live-scorer"
   | "scorer-login"
+  | "scorer-landing"
   | "scorer-home"
   | "league-admin-login"
   | "league-admin-signup"

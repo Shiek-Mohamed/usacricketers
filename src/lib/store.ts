@@ -42,6 +42,7 @@ export const useAppStore = create<AppState>((set) => ({
     set({ mode, view: mode === "public" ? "home" : mode === "admin" ? "admin-dashboard" : mode === "scorer" ? "scorer-home" : "league-admin-home", id: null }),
   enterScorerMode: () => set({ mode: "scorer", view: "scorer-home", id: null }),
   enterScorerLogin: () => set({ mode: "scorer", view: "scorer-login", id: null }),
+  enterScorerLanding: () => set({ mode: "scorer", view: "scorer-landing", id: null }),
   exitScorerMode: () => set({ mode: "public", view: "home", id: null }),
   enterLeagueAdminLogin: () => set({ mode: "leagueAdmin", view: "league-admin-login", id: null }),
   enterLeagueAdminMode: () => set({ mode: "leagueAdmin", view: "league-admin-home", id: null }),

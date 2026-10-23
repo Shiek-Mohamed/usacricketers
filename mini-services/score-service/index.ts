@@ -163,7 +163,9 @@ io.on("connection", (socket) => {
 
   // The operator pushes a new full state (after each ball/event).
   // The token MUST be a valid signed scorer token whose tournamentIds include
-  // the series this match belongs to.
+  // the series this match belongs to. A token carrying tournamentIds: ["*"]
+  // is treated as god-mode (site-admin minted via /api/admin/scorer-token) —
+  // the series lookup + membership check is skipped.
   socket.on(
     "operator:state",
     async (payload: { matchId?: string; state?: unknown; token?: string }) => {
@@ -177,11 +179,16 @@ io.on("connection", (socket) => {
         return
       }
 
-      // Resolve the match's series (cached after first lookup).
-      const seriesId = await resolveMatchSeries(matchId)
-      if (!seriesId || !session.tournamentIds.includes(seriesId)) {
-        socket.emit("error", { message: "Forbidden: this match is not in your tournaments" })
-        return
+      // God-mode: skip series lookup + membership check.
+      const godMode =
+        session.tournamentIds.length === 1 && session.tournamentIds[0] === "*"
+      if (!godMode) {
+        // Resolve the match's series (cached after first lookup).
+        const seriesId = await resolveMatchSeries(matchId)
+        if (!seriesId || !session.tournamentIds.includes(seriesId)) {
+          socket.emit("error", { message: "Forbidden: this match is not in your tournaments" })
+          return
+        }
       }
 
       // Throttle: drop broadcasts faster than MIN_BROADCAST_GAP_MS for this match
@@ -207,10 +214,15 @@ io.on("connection", (socket) => {
         socket.emit("error", { message: "Unauthorized: invalid or expired scorer token" })
         return
       }
-      const seriesId = await resolveMatchSeries(matchId)
-      if (!seriesId || !session.tournamentIds.includes(seriesId)) {
-        socket.emit("error", { message: "Forbidden: this match is not in your tournaments" })
-        return
+
+      const godMode =
+        session.tournamentIds.length === 1 && session.tournamentIds[0] === "*"
+      if (!godMode) {
+        const seriesId = await resolveMatchSeries(matchId)
+        if (!seriesId || !session.tournamentIds.includes(seriesId)) {
+          socket.emit("error", { message: "Forbidden: this match is not in your tournaments" })
+          return
+        }
       }
 
       cache.delete(matchId)

@@ -56,7 +56,33 @@ export function LiveScorerView() {
   const { data: t1Players } = usePlayers(match?.team1Id ?? null)
   const { data: t2Players } = usePlayers(match?.team2Id ?? null)
   const { refetch } = useMatches()
-  const token = useScorerSession((s) => s.session?.token ?? null)
+  const scorerToken = useScorerSession((s) => s.session?.token ?? null)
+
+  // Site admins (mode === "admin") don't have a scorer session — they only
+  // have the sa-session httpOnly cookie the score-service can't read. Fall
+  // back to fetching a god-mode scorer token (POST /api/admin/scorer-token),
+  // which the score-service accepts as `tournamentIds: ["*"]` god-mode.
+  const [adminToken, setAdminToken] = useState<string | null>(null)
+  useEffect(() => {
+    if (mode !== "admin") return
+    if (scorerToken) return // already have a real scorer session — prefer it
+    let cancelled = false
+    fetch("/api/admin/scorer-token", { method: "POST", credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body) => {
+        if (cancelled) return
+        if (body?.token) setAdminToken(body.token)
+      })
+      .catch(() => {
+        // 401 means the admin cookie expired or isn't there — the shell
+        // below will show the "Not authenticated" gate instead.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [mode, scorerToken])
+
+  const token = scorerToken ?? adminToken
   const { liveState, connected, pushState } = useLiveScore(id, token)
 
   // Use the minimal ScorerShell (no admin sidebar) in scorer mode, AdminShell otherwise.

@@ -98,27 +98,28 @@ export function ScorerLandingView() {
                 </p>
               </div>
 
-              {/* League Admin card — below the hero description, above sign-in */}
-              <div className="rounded-xl border p-5 text-center" style={{ background: NAVY }}>
+              {/* League Admin card — white card with navy accents */}
+              <div className="rounded-xl border bg-card p-5 text-center">
                 <div className="flex items-center justify-center gap-2">
-                  <span className="grid h-8 w-8 place-items-center rounded-md bg-white/15 text-white">
+                  <span className="grid h-8 w-8 place-items-center rounded-md text-white" style={{ background: NAVY }}>
                     <Trophy className="h-4 w-4" />
                   </span>
                   <div>
-                    <h2 className="text-sm font-bold text-white">League Admin</h2>
-                    <p className="text-xs text-white/60">
+                    <h2 className="text-sm font-bold" style={{ color: NAVY }}>League Admin</h2>
+                    <p className="text-xs text-muted-foreground">
                       Manage your leagues, schedules and scorers
                     </p>
                   </div>
                 </div>
                 {leagueSession ? (
                   <div className="mt-4">
-                    <p className="text-sm text-white/70">
-                      Signed in as <span className="font-semibold text-white">{leagueSession.admin.name}</span>
+                    <p className="text-sm text-muted-foreground">
+                      Signed in as <span className="font-semibold">{leagueSession.admin.name}</span>
                     </p>
                     <Button
                       onClick={() => enterLeagueAdminMode()}
-                      className="mt-2 gap-2 bg-white text-[#1e2a5e] hover:bg-white/90"
+                      className="mt-2 gap-2 text-white hover:opacity-90"
+                      style={{ background: NAVY }}
                       size="sm"
                     >
                       <Play className="h-3.5 w-3.5" />
@@ -129,7 +130,8 @@ export function ScorerLandingView() {
                   <Button
                     onClick={() => enterLeagueAdminLogin()}
                     variant="outline"
-                    className="mt-3 gap-2 border-white/30 text-white hover:bg-white/10 hover:text-white"
+                    className="mt-3 gap-2"
+                    style={{ borderColor: NAVY, color: NAVY }}
                     size="sm"
                   >
                     <Shield className="h-3.5 w-3.5" />

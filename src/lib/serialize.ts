@@ -70,6 +70,7 @@ export function serializeMatch(
     city: m.city,
     startDate: m.startDate.toISOString(),
     result: m.result,
+    manOfMatch: m.manOfMatch,
     scorecard: parseScorecard(m.scorecard),
     team1: m.team1 ? serializeTeam(m.team1) : undefined,
     team2: m.team2 ? serializeTeam(m.team2) : undefined,

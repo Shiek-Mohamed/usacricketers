@@ -68,6 +68,7 @@ interface MatchFormState {
   city: string
   startDate: string
   result: string
+  manOfMatch: string
   scorecard: string
 }
 
@@ -82,6 +83,7 @@ const emptyForm: MatchFormState = {
   city: "",
   startDate: new Date().toISOString().slice(0, 16),
   result: "",
+  manOfMatch: "",
   scorecard: "",
 }
 
@@ -134,6 +136,7 @@ export function AdminMatchesView() {
       city: m.city,
       startDate: toLocalInput(m.startDate),
       result: m.result,
+      manOfMatch: m.manOfMatch || "",
       scorecard: m.scorecard
         ? JSON.stringify(m.scorecard, null, 2)
         : "",
@@ -484,6 +487,17 @@ export function AdminMatchesView() {
                     setForm((f) => ({ ...f, result: e.target.value }))
                   }
                   placeholder="e.g. India won by 6 wickets"
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="manOfMatch">Player of the Match</Label>
+                <Input
+                  id="manOfMatch"
+                  value={form.manOfMatch}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, manOfMatch: e.target.value }))
+                  }
+                  placeholder="e.g. Virat Kohli"
                 />
               </div>
             </div>

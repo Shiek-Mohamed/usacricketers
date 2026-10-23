@@ -41,14 +41,23 @@ export async function GET(
   })
   if (!player) return NextResponse.json({ error: "not found" }, { status: 404 })
 
-  // Fetch all completed matches involving this player's team (narrower than
-  // all matches; the player can only bat/bowl in matches their team played).
+  // Fetch all completed matches involving this player's team
   const matches = await db.match.findMany({
     where: {
       status: "completed",
       OR: [{ team1Id: player.teamId }, { team2Id: player.teamId }],
     },
-    select: { scorecard: true, format: true },
+    select: {
+      scorecard: true,
+      format: true,
+      matchNo: true,
+      startDate: true,
+      team1Id: true,
+      team2Id: true,
+      team1: { select: { shortName: true } },
+      team2: { select: { shortName: true } },
+    },
+    orderBy: { startDate: "desc" },
   })
 
   const bat: BatAgg = {
@@ -59,6 +68,18 @@ export async function GET(
     matches: 0, balls: 0, runs: 0, wickets: 0, maidens: 0, wides: 0, noballs: 0,
   }
   const formatsPlayed = new Set<string>()
+  const recentInnings: {
+    runs: number
+    balls: number
+    fours: number
+    sixes: number
+    strikeRate: number
+    dismissal: string
+    opponent: string
+    matchNo: string
+    format: string
+    date: string
+  }[] = []
 
   for (const m of matches) {
     const sc = parseScorecard(m.scorecard)
@@ -87,6 +108,22 @@ export async function GET(
         if (b.dismissal && b.dismissal.toLowerCase().includes("not out")) {
           bat.notOuts++
         }
+        // Collect recent innings (opponent = the team that's NOT the player's team)
+        const opponent = m.team1Id === player.teamId
+          ? m.team2?.shortName ?? "?"
+          : m.team1?.shortName ?? "?"
+        recentInnings.push({
+          runs: b.runs,
+          balls: b.balls,
+          fours: b.fours,
+          sixes: b.sixes,
+          strikeRate: b.balls > 0 ? Number(((b.runs / b.balls) * 100).toFixed(1)) : 0,
+          dismissal: b.dismissal,
+          opponent,
+          matchNo: m.matchNo,
+          format: m.format,
+          date: m.startDate.toISOString(),
+        })
       }
       // Find this player in the bowling lines
       for (const b of inn.bowling ?? []) {
@@ -140,5 +177,6 @@ export async function GET(
       best: `${bowl.wickets}/${bowl.runs}`,
     },
     matchesScored: matches.length,
+    recentInnings: recentInnings.slice(0, 5),
   })
 }

@@ -35,6 +35,7 @@ import {
   Info,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { ShareButtons } from "@/components/site/share-buttons"
 
 function MatchHeaderCard({ match }: { match: Match }) {
   const sc = match.scorecard
@@ -236,10 +237,18 @@ export function MatchDetailView() {
 
         {match_.status === "completed" && match_.result && (
           <div className="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-emerald-900">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-emerald-700">
-              <Trophy className="h-4 w-4" /> Result
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-emerald-700">
+                <Trophy className="h-4 w-4" /> Result
+              </div>
+              <ShareButtons title={`${match_.team1?.shortName} vs ${match_.team2?.shortName} — ${match_.matchNo}`} />
             </div>
             <p className="mt-1 text-sm font-semibold">{match_.result}</p>
+            {match_.manOfMatch && (
+              <p className="mt-1 text-sm text-emerald-700">
+                <span className="font-bold">Player of the Match:</span> {match_.manOfMatch}
+              </p>
+            )}
           </div>
         )}
 

@@ -6,6 +6,7 @@ import {
   BarChart3,
   Disc,
   Target,
+  Activity,
 } from "lucide-react"
 import {
   Bar,
@@ -53,6 +54,18 @@ export function PlayerDetailView() {
     batting?: Record<string, number | string>
     bowling?: Record<string, number | string>
     matchesScored: number
+    recentInnings?: {
+      runs: number
+      balls: number
+      fours: number
+      sixes: number
+      strikeRate: number
+      dismissal: string
+      opponent: string
+      matchNo: string
+      format: string
+      date: string
+    }[]
   } | null>(null)
   useEffect(() => {
     if (!player?.id) return
@@ -390,6 +403,50 @@ export function PlayerDetailView() {
             </Card>
           )}
         </div>
+      )}
+
+      {/* Recent innings from scorecards */}
+      {autoStats?.recentInnings && autoStats.recentInnings.length > 0 && (
+        <Card className="gap-0 py-0">
+          <CardHeader className="border-b px-5 py-2">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Activity className="size-3.5 text-emerald-600" />
+              Recent Innings
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/30 text-xs uppercase text-muted-foreground">
+                    <th className="py-2 pl-5 pr-2 text-left font-semibold">Opponent</th>
+                    <th className="py-2 px-2 text-left font-semibold hidden sm:table-cell">Match</th>
+                    <th className="py-2 px-2 text-right font-semibold">R</th>
+                    <th className="py-2 px-2 text-right font-semibold hidden sm:table-cell">B</th>
+                    <th className="py-2 px-2 text-right font-semibold">4s</th>
+                    <th className="py-2 px-2 text-right font-semibold">6s</th>
+                    <th className="py-2 px-2 text-right font-semibold">SR</th>
+                    <th className="py-2 pl-2 pr-5 text-left font-semibold hidden md:table-cell">Dismissal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {autoStats.recentInnings.map((inn, i) => (
+                    <tr key={i} className={`border-b border-border/40 ${i % 2 === 1 ? "bg-muted/15" : ""}`}>
+                      <td className="py-2 pl-5 pr-2 font-medium">vs {inn.opponent}</td>
+                      <td className="py-2 px-2 text-xs text-muted-foreground hidden sm:table-cell">{inn.matchNo}</td>
+                      <td className="py-2 px-2 text-right tabular-nums font-bold">{inn.runs}</td>
+                      <td className="py-2 px-2 text-right tabular-nums text-muted-foreground hidden sm:table-cell">{inn.balls}</td>
+                      <td className="py-2 px-2 text-right tabular-nums">{inn.fours}</td>
+                      <td className="py-2 px-2 text-right tabular-nums">{inn.sixes}</td>
+                      <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">{inn.strikeRate.toFixed(1)}</td>
+                      <td className="py-2 pl-2 pr-5 text-xs text-muted-foreground hidden md:table-cell">{inn.dismissal}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <Separator />

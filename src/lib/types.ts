@@ -149,6 +149,7 @@ export interface Match {
   city: string
   startDate: string
   result: string
+  manOfMatch: string | null
   scorecard: Scorecard | null
   team1?: Team
   team2?: Team

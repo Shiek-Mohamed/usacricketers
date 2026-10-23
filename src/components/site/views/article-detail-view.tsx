@@ -8,6 +8,7 @@ import { useArticle, useArticles } from "@/lib/use-data"
 import type { Article } from "@/lib/types"
 import { timeAgo } from "@/components/cricket/ui"
 import { InnerPageLayout } from "@/components/site/inner-layout"
+import { ShareButtons } from "@/components/site/share-buttons"
 import { CustomSidebarBlocks } from "@/components/site/custom-sidebar-blocks"
 import {
   ArticleListWidget,
@@ -284,6 +285,9 @@ export function ArticleDetailView() {
                   <Clock className="h-3.5 w-3.5" />
                   {readTime} min read
                 </span>
+              </div>
+              <div className="mt-2">
+                <ShareButtons title={article.title} />
               </div>
             </header>
 

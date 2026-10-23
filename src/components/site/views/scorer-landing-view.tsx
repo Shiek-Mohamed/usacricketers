@@ -17,6 +17,8 @@ import {
   Shield,
 } from "lucide-react"
 
+const NAVY = "#1e2a5e"
+
 export function ScorerLandingView() {
   const navigate = useAppStore((s) => s.navigate)
   const enterScorerLogin = useAppStore((s) => s.enterScorerLogin)
@@ -29,13 +31,13 @@ export function ScorerLandingView() {
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
-      {/* Top bar — minimal, just wordmark + back */}
+      {/* Top bar */}
       <header className="flex h-12 items-center justify-between border-b bg-[#1e2a5e] px-4 text-white">
         <button
           onClick={() => navigate("home")}
           className="flex items-center gap-2"
         >
-          <Radio className="h-4 w-4 text-red-400" />
+          <Radio className="h-4 w-4 text-blue-300" />
           <span className="font-extrabold text-sm tracking-tight">usacricketers</span>
         </button>
         <Button
@@ -49,54 +51,14 @@ export function ScorerLandingView() {
         </Button>
       </header>
 
-      {/* Hero */}
+      {/* Content */}
       <div className="flex flex-1 flex-col items-center justify-center px-4 py-10">
         <div className="w-full max-w-2xl space-y-8">
-          {/* League Admin access — always at the top */}
-          <div className="rounded-xl border bg-card p-5">
-            <div className="flex items-center gap-2">
-              <span className="grid h-8 w-8 place-items-center rounded-md bg-emerald-600 text-white">
-                <Trophy className="h-4 w-4" />
-              </span>
-              <div>
-                <h2 className="text-sm font-bold">League Admin</h2>
-                <p className="text-xs text-muted-foreground">
-                  Manage your leagues, schedules and scorers
-                </p>
-              </div>
-            </div>
-            {leagueSession ? (
-              <div className="mt-4">
-                <p className="text-sm text-muted-foreground">
-                  Signed in as <span className="font-semibold">{leagueSession.admin.name}</span>
-                </p>
-                <Button
-                  onClick={() => enterLeagueAdminMode()}
-                  className="mt-2 gap-2 bg-emerald-600 text-white hover:bg-emerald-700"
-                  size="sm"
-                >
-                  <Play className="h-3.5 w-3.5" />
-                  Go to my leagues
-                </Button>
-              </div>
-            ) : (
-              <Button
-                onClick={() => enterLeagueAdminLogin()}
-                variant="outline"
-                className="mt-3 gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-                size="sm"
-              >
-                <Shield className="h-3.5 w-3.5" />
-                Sign in as League Admin
-              </Button>
-            )}
-          </div>
-
           {session ? (
-            // Already signed in as scorer — show welcome + go to matches
+            // Already signed in as scorer
             <Card className="text-center">
               <CardContent className="space-y-5 p-8">
-                <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-red-600">
+                <div className="mx-auto grid h-16 w-16 place-items-center rounded-full" style={{ background: NAVY }}>
                   <Radio className="h-7 w-7 text-white" />
                 </div>
                 <div>
@@ -109,7 +71,8 @@ export function ScorerLandingView() {
                 </div>
                 <Button
                   onClick={() => enterScorerMode()}
-                  className="w-full gap-2 bg-red-600 text-white hover:bg-red-700"
+                  className="w-full gap-2 text-white hover:opacity-90"
+                  style={{ background: NAVY }}
                   size="lg"
                 >
                   <Play className="h-4 w-4" />
@@ -120,10 +83,10 @@ export function ScorerLandingView() {
           ) : (
             // Not signed in — show the landing page
             <>
-              {/* Hero */}
+              {/* Hero title + description (NO sign-in button here) */}
               <div className="text-center">
-                <div className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-full bg-[#1e2a5e]">
-                  <Radio className="h-7 w-7 text-red-400" />
+                <div className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-full" style={{ background: NAVY }}>
+                  <Radio className="h-7 w-7 text-blue-300" />
                 </div>
                 <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
                   Live Cricket Scoring
@@ -133,16 +96,59 @@ export function ScorerLandingView() {
                   wicket, four and six is broadcast live to viewers instantly —
                   no app download needed, just sign in and start scoring.
                 </p>
-                <div className="mt-6 flex items-center justify-center gap-3">
-                  <Button
-                    onClick={() => enterScorerLogin()}
-                    className="gap-2 bg-red-600 text-white hover:bg-red-700"
-                    size="lg"
-                  >
-                    <LogIn className="h-4 w-4" />
-                    Sign in to score
-                  </Button>
+              </div>
+
+              {/* League Admin card — below the hero description, above sign-in */}
+              <div className="rounded-xl border p-5 text-center" style={{ background: NAVY }}>
+                <div className="flex items-center justify-center gap-2">
+                  <span className="grid h-8 w-8 place-items-center rounded-md bg-white/15 text-white">
+                    <Trophy className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <h2 className="text-sm font-bold text-white">League Admin</h2>
+                    <p className="text-xs text-white/60">
+                      Manage your leagues, schedules and scorers
+                    </p>
+                  </div>
                 </div>
+                {leagueSession ? (
+                  <div className="mt-4">
+                    <p className="text-sm text-white/70">
+                      Signed in as <span className="font-semibold text-white">{leagueSession.admin.name}</span>
+                    </p>
+                    <Button
+                      onClick={() => enterLeagueAdminMode()}
+                      className="mt-2 gap-2 bg-white text-[#1e2a5e] hover:bg-white/90"
+                      size="sm"
+                    >
+                      <Play className="h-3.5 w-3.5" />
+                      Go to my leagues
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    onClick={() => enterLeagueAdminLogin()}
+                    variant="outline"
+                    className="mt-3 gap-2 border-white/30 text-white hover:bg-white/10 hover:text-white"
+                    size="sm"
+                  >
+                    <Shield className="h-3.5 w-3.5" />
+                    Sign in as League Admin
+                  </Button>
+                )}
+              </div>
+
+              {/* Sign in to score — below the League Admin card */}
+              <div className="text-center">
+                <Button
+                  onClick={() => enterScorerLogin()}
+                  className="gap-2 text-white hover:opacity-90"
+                  style={{ background: NAVY }}
+                  size="lg"
+                >
+                  <LogIn className="h-4 w-4" />
+                  Sign in to score
+                </Button>
                 <p className="mt-3 text-xs text-muted-foreground">
                   Don&apos;t have an account? Ask your league admin to create one for you.
                 </p>
@@ -173,7 +179,7 @@ export function ScorerLandingView() {
               {/* Features */}
               <div className="rounded-xl border bg-card p-5">
                 <h2 className="mb-3 flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide">
-                  <span className="h-4 w-1 rounded-full bg-red-600" />
+                  <span className="h-4 w-1 rounded-full" style={{ background: NAVY }} />
                   What you get
                 </h2>
                 <div className="grid grid-cols-1 gap-2.5 text-sm sm:grid-cols-2">
@@ -192,6 +198,7 @@ export function ScorerLandingView() {
                   onClick={() => enterScorerLogin()}
                   variant="outline"
                   className="gap-2"
+                  style={{ borderColor: NAVY, color: NAVY }}
                   size="lg"
                 >
                   Get started
@@ -220,10 +227,10 @@ function HowItWorks({
   return (
     <Card className="text-center">
       <CardContent className="space-y-2 p-4">
-        <div className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-red-600 text-white">
+        <div className="mx-auto grid h-10 w-10 place-items-center rounded-full text-white" style={{ background: NAVY }}>
           <Icon className="h-4 w-4" />
         </div>
-        <div className="text-[10px] font-bold uppercase tracking-wide text-red-600">
+        <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: NAVY }}>
           Step {step}
         </div>
         <h3 className="text-sm font-bold">{title}</h3>
@@ -236,7 +243,7 @@ function HowItWorks({
 function Feature({ text }: { text: string }) {
   return (
     <div className="flex items-start gap-2">
-      <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-600" />
+      <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: NAVY }} />
       <span className="text-muted-foreground">{text}</span>
     </div>
   )

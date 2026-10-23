@@ -9,6 +9,7 @@ import { useLiveScore } from "@/lib/use-live-score"
 import {
   initState,
   addBatsman,
+  addSquadMember,
   setBatsmen,
   setBowler,
   applyBall,
@@ -157,8 +158,24 @@ export function LiveScorerView() {
       return
     }
     let state = initState(match!, battingFirstId)
-    state = addBatsman(state, striker.id, striker.name)
-    state = addBatsman(state, nonStriker.id, nonStriker.name)
+    // Pre-populate the squad with the full batting-team roster so the
+    // "Did not bat" section of the public scorecard lists bench players.
+    for (const p of battingPlayers) {
+      state = addSquadMember(state, p.id, p.name, {
+        // crude role-based captain/keeper hint — refine when Player has
+        // explicit captain/keeper fields
+        isCaptain: /captain/i.test(p.role || ""),
+        isKeeper: /keeper|wicket/i.test(p.role || ""),
+      })
+    }
+    state = addBatsman(state, striker.id, striker.name, {
+      isCaptain: /captain/i.test(striker.role || ""),
+      isKeeper: /keeper|wicket/i.test(striker.role || ""),
+    })
+    state = addBatsman(state, nonStriker.id, nonStriker.name, {
+      isCaptain: /captain/i.test(nonStriker.role || ""),
+      isKeeper: /keeper|wicket/i.test(nonStriker.role || ""),
+    })
     state = setBatsmen(state, striker.id, nonStriker.id)
     state = setBowler(state, bowler.id, bowler.name)
     setHistory([])
@@ -172,7 +189,10 @@ export function LiveScorerView() {
     const battingPlayers = playersByTeam[liveState.innings[liveState.currentInnings].battingTeamId] ?? []
     const p = battingPlayers.find((x) => x.id === playerId)
     if (!p) return
-    let state = addBatsman(liveState, p.id, p.name)
+    let state = addBatsman(liveState, p.id, p.name, {
+      isCaptain: /captain/i.test(p.role || ""),
+      isKeeper: /keeper|wicket/i.test(p.role || ""),
+    })
     state = { ...state, strikerId: p.id }
     setHistory((h) => [...h, liveState].slice(-50))
     pushState(state)

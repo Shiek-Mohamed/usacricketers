@@ -41,6 +41,8 @@ export interface BattingLine {
   strikeRate: number
   dismissal: string
   isBatting: boolean
+  isCaptain?: boolean
+  isKeeper?: boolean
 }
 
 export interface BowlingLine {

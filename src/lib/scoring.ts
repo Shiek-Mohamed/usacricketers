@@ -158,9 +158,13 @@ export function initState(match: Match, battingFirstTeamId: string): LiveMatchSt
   }
 }
 
-export function addBatsman(state: LiveMatchState, id: string, name: string): LiveMatchState {
+export function addBatsman(
+  state: LiveMatchState,
+  id: string,
+  name: string,
+  opts?: { isCaptain?: boolean; isKeeper?: boolean }
+): LiveMatchState {
   const inn = state.innings[state.currentInnings]
-  if (inn.batsmen.some((b) => b.id === id)) return state
   const batsman: ScorerBatsman = {
     id,
     name,
@@ -170,11 +174,42 @@ export function addBatsman(state: LiveMatchState, id: string, name: string): Liv
     sixes: 0,
     out: false,
     dismissal: "",
+    isCaptain: opts?.isCaptain,
+    isKeeper: opts?.isKeeper,
   }
+  const newInnings = [...state.innings]
+  // ensure batsman list (dedup by id) and squad list (dedup by id)
+  const batsmen = inn.batsmen.some((b) => b.id === id)
+    ? inn.batsmen
+    : [...inn.batsmen, batsman]
+  const squad = inn.squad.some((s) => s.id === id)
+    ? inn.squad
+    : [
+        ...inn.squad,
+        { id, name, isCaptain: opts?.isCaptain, isKeeper: opts?.isKeeper },
+      ]
+  newInnings[state.currentInnings] = { ...inn, batsmen, squad }
+  return { ...state, innings: newInnings }
+}
+
+/** Pre-populate the squad with the full batting-team roster (so 'Did not bat'
+ * works). Players already added as batsmen are skipped to preserve any
+ * captain/keeper tags set on the batsman entry. */
+export function addSquadMember(
+  state: LiveMatchState,
+  id: string,
+  name: string,
+  opts?: { isCaptain?: boolean; isKeeper?: boolean }
+): LiveMatchState {
+  const inn = state.innings[state.currentInnings]
+  if (inn.squad.some((s) => s.id === id)) return state
   const newInnings = [...state.innings]
   newInnings[state.currentInnings] = {
     ...inn,
-    batsmen: [...inn.batsmen, batsman],
+    squad: [
+      ...inn.squad,
+      { id, name, isCaptain: opts?.isCaptain, isKeeper: opts?.isKeeper },
+    ],
   }
   return { ...state, innings: newInnings }
 }
@@ -489,6 +524,11 @@ export function endInnings(state: LiveMatchState, reason: string): LiveMatchStat
       fallOfWickets: [],
       declared: false,
       target,
+      extrasByes: 0,
+      extrasLegByes: 0,
+      extrasWides: 0,
+      extrasNoBalls: 0,
+      squad: [],
     }
     innings.push(newInnings)
     return {
@@ -551,6 +591,8 @@ export function stateToScorecard(state: LiveMatchState): Scorecard {
       strikeRate: b.balls > 0 ? Number(((b.runs / b.balls) * 100).toFixed(1)) : 0,
       dismissal: b.out ? b.dismissal : "not out",
       isBatting: !b.out && (b.id === state.strikerId || b.id === state.nonStrikerId),
+      isCaptain: b.isCaptain,
+      isKeeper: b.isKeeper,
     }))
     // order: striker first, non-striker second, then out batsmen in order
     batting.sort((a, b) => {

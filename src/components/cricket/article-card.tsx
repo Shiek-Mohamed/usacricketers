@@ -2,7 +2,7 @@
 
 import type { Article } from "@/lib/types"
 import { useAppStore } from "@/lib/store"
-import { timeAgo } from "@/components/cricket/ui"
+import { formatDate } from "@/components/cricket/ui"
 import { cn } from "@/lib/utils"
 import { Newspaper } from "lucide-react"
 
@@ -48,7 +48,7 @@ export function ArticleCard({
             {article.title}
           </h3>
           <div className="mt-0.5 text-[11px] text-muted-foreground">
-            {article.author} · {timeAgo(article.publishedAt)}
+            {article.author} · {formatDate(article.publishedAt)}
           </div>
         </div>
       </button>
@@ -97,7 +97,7 @@ export function ArticleCard({
         {article.title}
       </h3>
       <div className="mt-0.5 text-[11px] text-muted-foreground">
-        {timeAgo(article.publishedAt)}
+        {formatDate(article.publishedAt)}
       </div>
     </button>
   )

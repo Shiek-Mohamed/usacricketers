@@ -6,7 +6,7 @@ import rehypeRaw from "rehype-raw"
 import { useAppStore } from "@/lib/store"
 import { useArticle, useArticles } from "@/lib/use-data"
 import type { Article } from "@/lib/types"
-import { timeAgo } from "@/components/cricket/ui"
+import { formatDate } from "@/components/cricket/ui"
 import { InnerPageLayout } from "@/components/site/inner-layout"
 import { ShareButtons } from "@/components/site/share-buttons"
 import { CustomSidebarBlocks } from "@/components/site/custom-sidebar-blocks"
@@ -279,7 +279,7 @@ export function ArticleDetailView() {
                 </span>
                 <span className="inline-flex items-center gap-1">
                   <Clock className="h-3.5 w-3.5" />
-                  {timeAgo(article.publishedAt)}
+                  {formatDate(article.publishedAt)}
                 </span>
                 <span className="inline-flex items-center gap-1">
                   <Clock className="h-3.5 w-3.5" />

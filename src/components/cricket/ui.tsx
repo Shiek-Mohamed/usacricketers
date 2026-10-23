@@ -145,6 +145,16 @@ export function timeAgo(iso: string) {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
 }
 
+/** Absolute date for archives/research: "Mar 10, 2025" */
+export function formatDate(iso: string): string {
+  const date = new Date(iso)
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })
+}
+
 export function formatMatchDate(iso: string) {
   const date = new Date(iso)
   return date.toLocaleDateString("en-US", {

@@ -9,6 +9,7 @@ import {
   TeamBadge,
   FormatPill,
   timeAgo,
+  formatDate,
 } from "@/components/cricket/ui"
 import { MiniScorecard } from "@/components/cricket/mini-scorecard"
 import { ArticleCard } from "@/components/cricket/article-card"
@@ -173,7 +174,7 @@ function FeaturedHero({ article }: { article: Article }) {
           </span>
           <span className="inline-flex items-center gap-1">
             <Clock className="h-3.5 w-3.5" />
-            {timeAgo(article.publishedAt)}
+            {formatDate(article.publishedAt)}
           </span>
         </div>
         <span className="mt-5 inline-flex w-fit items-center gap-1 text-sm font-bold text-red-600 transition-all group-hover:gap-2">
@@ -234,7 +235,7 @@ function SecondaryStoryCard({ article }: { article: Article }) {
           </span>
           <span className="inline-flex items-center gap-1">
             <Clock className="h-3 w-3" />
-            {timeAgo(article.publishedAt)}
+            {formatDate(article.publishedAt)}
           </span>
         </div>
       </div>
@@ -545,7 +546,7 @@ function InterviewCard({
             {article.title}
           </h3>
           <time className="text-sm font-medium text-gray-300">
-            {timeAgo(article.publishedAt)}
+            {formatDate(article.publishedAt)}
           </time>
         </div>
       </div>

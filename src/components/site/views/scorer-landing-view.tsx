@@ -2,16 +2,19 @@
 
 import { useAppStore } from "@/lib/store"
 import { useScorerSession } from "@/lib/scorer-session"
+import { useLeagueAdminSession } from "@/lib/league-admin-session"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import {
   Radio,
+  Trophy,
   ArrowLeft,
   LogIn,
   Play,
   ListChecks,
   Activity,
   ChevronRight,
+  Shield,
 } from "lucide-react"
 
 export function ScorerLandingView() {
@@ -19,7 +22,10 @@ export function ScorerLandingView() {
   const enterScorerLogin = useAppStore((s) => s.enterScorerLogin)
   const enterScorerMode = useAppStore((s) => s.enterScorerMode)
   const exitScorerMode = useAppStore((s) => s.exitScorerMode)
+  const enterLeagueAdminLogin = useAppStore((s) => s.enterLeagueAdminLogin)
+  const enterLeagueAdminMode = useAppStore((s) => s.enterLeagueAdminMode)
   const session = useScorerSession((s) => s.session)
+  const leagueSession = useLeagueAdminSession((s) => s.session)
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
@@ -137,6 +143,46 @@ export function ScorerLandingView() {
                 <Feature text="Commentary feed with every ball logged" />
                 <Feature text="Auto-persist to the database when the match completes" />
               </div>
+            </div>
+
+            {/* League Admin access — secondary option */}
+            <div className="rounded-xl border bg-card p-5">
+              <div className="flex items-center gap-2">
+                <span className="grid h-8 w-8 place-items-center rounded-md bg-emerald-600 text-white">
+                  <Trophy className="h-4 w-4" />
+                </span>
+                <div>
+                  <h2 className="text-sm font-bold">League Admin</h2>
+                  <p className="text-xs text-muted-foreground">
+                    Manage your leagues, schedules and scorers
+                  </p>
+                </div>
+              </div>
+              {leagueSession ? (
+                <div className="mt-4">
+                  <p className="text-sm text-muted-foreground">
+                    Signed in as <span className="font-semibold">{leagueSession.admin.name}</span>
+                  </p>
+                  <Button
+                    onClick={() => enterLeagueAdminMode()}
+                    className="mt-2 gap-2 bg-emerald-600 text-white hover:bg-emerald-700"
+                    size="sm"
+                  >
+                    <Play className="h-3.5 w-3.5" />
+                    Go to my leagues
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  onClick={() => enterLeagueAdminLogin()}
+                  variant="outline"
+                  className="mt-3 gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                  size="sm"
+                >
+                  <Shield className="h-3.5 w-3.5" />
+                  Sign in as League Admin
+                </Button>
+              )}
             </div>
 
             {/* CTA at the bottom */}

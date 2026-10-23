@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { useAppStore } from "@/lib/store"
-import { useScorerSession } from "@/lib/scorer-session"
-import { useLeagueAdminSession } from "@/lib/league-admin-session"
 import { useTheme } from "next-themes"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -89,26 +87,17 @@ export function Header() {
   const enterScorerLogin = useAppStore((s) => s.enterScorerLogin)
   const enterScorerMode = useAppStore((s) => s.enterScorerMode)
   const enterScorerLanding = useAppStore((s) => s.enterScorerLanding)
-  const enterLeagueAdminLogin = useAppStore((s) => s.enterLeagueAdminLogin)
-  const enterLeagueAdminMode = useAppStore((s) => s.enterLeagueAdminMode)
   const view = useAppStore((s) => s.view)
-  const scorerSession = useScorerSession((s) => s.session)
-  const leagueAdminSession = useLeagueAdminSession((s) => s.session)
   const [open, setOpen] = useState(false)
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), [])
 
-  // "Scoring" button → goes to the scoring landing page (which handles
-  // sign-in vs. "welcome back" based on the session).
+  // "Live Scoring" button → goes to the scoring landing page (which handles
+  // both scorer + league-admin sign-in).
   const onScore = () => {
     enterScorerLanding()
-  }
-  // "League Admin" button: same pattern.
-  const onLeagueAdmin = () => {
-    if (leagueAdminSession) enterLeagueAdminMode()
-    else enterLeagueAdminLogin()
   }
   // "Admin" button: in public mode → admin-login (which auto-redirects to the
   // dashboard if the site-admin cookie is still valid). In admin mode → logout
@@ -172,17 +161,7 @@ export function Header() {
                 className="flex items-center gap-2 px-3 py-2 text-left text-sm rounded-md hover:bg-muted text-red-600 font-semibold"
               >
                 <Radio className="h-4 w-4" />
-                Scoring
-              </button>
-              <button
-                onClick={() => {
-                  onLeagueAdmin()
-                  setOpen(false)
-                }}
-                className="flex items-center gap-2 px-3 py-2 text-left text-sm rounded-md hover:bg-muted text-emerald-600 font-semibold"
-              >
-                <Trophy className="h-4 w-4" />
-                {leagueAdminSession ? "League Admin" : "League Admin Sign In"}
+                Live Scoring
               </button>
               <button
                 onClick={() => {
@@ -308,28 +287,15 @@ export function Header() {
           </Button>
           {mode === "public" && (
             <Button
-              variant="ghost"
               size="sm"
               onClick={onScore}
-              className="gap-1.5 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10"
-              title="Live cricket scoring"
+              className="gap-1.5 text-xs font-bold bg-gradient-to-r from-red-600 to-red-500 text-white hover:from-red-700 hover:to-red-600 shadow-md"
             >
-              <Radio className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Scoring</span>
-            </Button>
-          )}
-          {mode === "public" && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onLeagueAdmin}
-              className="gap-1.5 text-xs font-semibold text-emerald-300 hover:text-emerald-200 hover:bg-white/10"
-              title="Manage your leagues"
-            >
-              <Trophy className="h-3.5 w-3.5" />
-              <span className="hidden md:inline">
-                {leagueAdminSession ? "League Admin" : "League Admin Sign In"}
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
               </span>
+              <span>Live Scoring</span>
             </Button>
           )}
         </div>

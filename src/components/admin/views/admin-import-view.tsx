@@ -25,6 +25,7 @@ import {
   Search,
   Square,
   Globe,
+  Images,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -69,6 +70,17 @@ export function AdminImportView() {
   const [progress, setProgress] = useState(0)
   const [recentErrors, setRecentErrors] = useState<string[]>([])
   const [currentChunk, setCurrentChunk] = useState<string>("")
+
+  // Gallery import state
+  const [galPageEnd, setGalPageEnd] = useState(2)
+  const [galRunning, setGalRunning] = useState(false)
+  const [galReport, setGalReport] = useState<{
+    found: number
+    imported: number
+    updated: number
+    failed: number
+    errors: string[]
+  } | null>(null)
 
   const cancelRef = useRef(false)
 
@@ -190,6 +202,31 @@ export function AdminImportView() {
   function stopImport() {
     cancelRef.current = true
     setRunning(false)
+  }
+
+  async function runGalleryImport() {
+    setGalRunning(true)
+    setGalReport(null)
+    try {
+      const res = await fetch("/api/import-galleries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pageStart: 1, pageEnd: galPageEnd, limit: 50 }),
+      })
+      const data = await res.json()
+      setGalReport(data)
+      if (res.ok) {
+        toast.success(
+          `Galleries: ${data.imported} new, ${data.updated} updated, ${data.failed} failed`
+        )
+      } else {
+        toast.error("Gallery import failed", { description: data.error })
+      }
+    } catch (e) {
+      toast.error("Gallery import failed", { description: String(e) })
+    } finally {
+      setGalRunning(false)
+    }
   }
 
   return (
@@ -422,6 +459,94 @@ export function AdminImportView() {
               usacricketers.com/news.php <ExternalLink className="h-3 w-3" />
             </a>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Gallery Import */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Images className="h-4 w-4 text-amber-600" />
+            Import Photo Galleries from usacricketers.com
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            This importer scrapes the{" "}
+            <code>/gallery.php</code> listing + each{" "}
+            <code>/gallery-detail.php?slug=…</code> page. It extracts the
+            gallery title, downloads all photos to{" "}
+            <code>/uploads/</code>, and saves the gallery with its photos.
+            Re-running updates existing galleries (matched by slug).
+          </p>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="gal-pages">Gallery listing pages</Label>
+              <Input
+                id="gal-pages"
+                type="number"
+                min={1}
+                max={10}
+                value={galPageEnd}
+                onChange={(e) =>
+                  setGalPageEnd(Math.max(1, Number(e.target.value) || 1))
+                }
+                className="w-32"
+                disabled={galRunning}
+              />
+            </div>
+            <Button
+              onClick={runGalleryImport}
+              disabled={galRunning}
+              className="gap-2"
+            >
+              {galRunning ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <DownloadCloud className="h-4 w-4" />
+              )}
+              {galRunning ? "Importing…" : `Import galleries (pages 1–${galPageEnd})`}
+            </Button>
+            <a
+              href="https://usacricketers.com/gallery.php"
+              target="_blank"
+              rel="noreferrer"
+              className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              usacricketers.com/gallery.php <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+
+          {galReport && (
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <Badge variant="secondary">{galReport.found} found</Badge>
+                <Badge className="bg-emerald-600 text-white">
+                  <CheckCircle2 className="mr-1 h-3 w-3" /> {galReport.imported} new
+                </Badge>
+                <Badge variant="secondary">{galReport.updated} updated</Badge>
+                {galReport.failed > 0 && (
+                  <Badge className="bg-red-600 text-white">
+                    <XCircle className="mr-1 h-3 w-3" /> {galReport.failed} failed
+                  </Badge>
+                )}
+              </div>
+              {galReport.errors.length > 0 && (
+                <details className="text-xs">
+                  <summary className="cursor-pointer text-muted-foreground">
+                    {galReport.errors.length} error(s)
+                  </summary>
+                  <ul className="mt-2 space-y-1 text-red-600 max-h-32 overflow-y-auto">
+                    {galReport.errors.map((e, i) => (
+                      <li key={i} className="font-mono break-all">
+                        {e}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </AdminShell>

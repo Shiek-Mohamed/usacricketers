@@ -17,6 +17,7 @@ import {
   oversString,
   type LiveMatchState,
   type BallEvent,
+  type WicketType,
 } from "@/lib/scoring"
 import { ScorecardView } from "@/components/cricket/scorecard"
 import { AdminShell } from "@/components/admin/admin-shell"
@@ -32,6 +33,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import {
@@ -91,6 +101,10 @@ export function LiveScorerView() {
   // History stack for undo
   const [history, setHistory] = useState<LiveMatchState[]>([])
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Wicket-dialog open state — the Wicket button opens a modal that lets the
+  // admin pick dismissal type + fielder(s) involved, then sends the structured
+  // wicket BallEvent to applyBall via handleBall.
+  const [wicketOpen, setWicketOpen] = useState(false)
 
   const playersByTeam: Record<string, Player[]> = useMemo(() => {
     const m: Record<string, Player[]> = {}
@@ -219,7 +233,17 @@ export function LiveScorerView() {
       isCaptain: /captain/i.test(p.role || ""),
       isKeeper: /keeper|wicket/i.test(p.role || ""),
     })
-    state = { ...state, strikerId: p.id }
+    // Fill whichever slot is currently empty — the striker's end if a normal
+    // wicket fell (strikerId === null), or the non-striker's end if a run-out
+    // happened at the non-striker's end (nonStrikerId === null). If both are
+    // empty (innings restart, edge case), default to striker.
+    const fillStriker = liveState.strikerId === null
+    const fillNonStriker = !fillStriker && liveState.nonStrikerId === null
+    state = {
+      ...state,
+      strikerId: fillStriker ? p.id : state.strikerId,
+      nonStrikerId: fillNonStriker ? p.id : state.nonStrikerId,
+    }
     setHistory((h) => [...h, liveState].slice(-50))
     pushState(state)
     persist(state)
@@ -247,7 +271,16 @@ export function LiveScorerView() {
 
   const showSetup = !liveState || liveState.innings.length === 0
   const currentInnings = liveState?.innings[liveState.currentInnings]
-  const needBatsman = !!liveState && liveState.strikerId === null && liveState.status === "live"
+  // Need a new batsman if either end is empty after a wicket (a run-out can
+  // empty the non-striker slot while the striker stays in).
+  const needStriker = !!liveState && liveState.strikerId === null && liveState.status === "live"
+  const needNonStriker =
+    !!liveState &&
+    liveState.nonStrikerId === null &&
+    liveState.status === "live" &&
+    !!currentInnings &&
+    currentInnings.batsmen.length > 0 // not the very first pickup of an innings
+  const needBatsman = needStriker || needNonStriker
   const needBowler = !!liveState && liveState.bowlerId === null && liveState.status === "live"
   const isComplete = liveState?.status === "completed"
 
@@ -327,9 +360,9 @@ export function LiveScorerView() {
               {/* Action prompts */}
               {needBatsman && (
                 <Picker
-                  title="New batsman"
+                  title={needStriker ? "New batsman (striker's end)" : "New batsman (non-striker's end)"}
                   players={(playersByTeam[currentInnings!.battingTeamId] ?? []).filter(
-                    (p) => !currentInnings!.batsmen.some((b) => b.id === p.id)
+                    (p) => !currentInnings!.batsmen.some((b) => b.id === p.id || b.out)
                   )}
                   placeholder="Select new batsman"
                   onPick={bringInBatsman}
@@ -346,7 +379,32 @@ export function LiveScorerView() {
 
               {/* Ball entry buttons */}
               {!isComplete && !needBatsman && !needBowler && (
-                <BallPad onBall={handleBall} disabled={!liveState} />
+                <BallPad onBall={handleBall} disabled={!liveState} onWicket={() => setWicketOpen(true)} />
+              )}
+
+              {/* Wicket dialog — dismissal type + fielder picker */}
+              {wicketOpen && liveState && currentInnings && (
+                <WicketDialog
+                  open={wicketOpen}
+                  onOpenChange={setWicketOpen}
+                  striker={{
+                    id: liveState.strikerId!,
+                    name: currentInnings.batsmen.find((b) => b.id === liveState.strikerId)?.name ?? "Striker",
+                  }}
+                  nonStriker={{
+                    id: liveState.nonStrikerId!,
+                    name: currentInnings.batsmen.find((b) => b.id === liveState.nonStrikerId)?.name ?? "Non-striker",
+                  }}
+                  bowler={{
+                    id: liveState.bowlerId!,
+                    name: currentInnings.bowlers.find((b) => b.id === liveState.bowlerId)?.name ?? "Bowler",
+                  }}
+                  fieldingPlayers={playersByTeam[currentInnings.bowlingTeamId] ?? []}
+                  onConfirm={(ev) => {
+                    handleBall(ev)
+                    setWicketOpen(false)
+                  }}
+                />
               )}
 
               {isComplete && (
@@ -630,9 +688,11 @@ function LiveScoreboard({ state }: { state: LiveMatchState }) {
 
 function BallPad({
   onBall,
+  onWicket,
   disabled,
 }: {
   onBall: (e: BallEvent) => void
+  onWicket: () => void
   disabled?: boolean
 }) {
   return (
@@ -668,20 +728,259 @@ function BallPad({
           variant="default"
           className="h-10 gap-1 bg-red-600 hover:bg-red-700"
           disabled={disabled}
-          onClick={() =>
-            onBall({
-              kind: "wicket",
-              dismissal: "b (bowler)",
-            })
-          }
+          onClick={onWicket}
         >
           Wicket
         </Button>
       </div>
       <p className="mt-2 text-[11px] text-muted-foreground">
-        Tap a run number, an extra, or Wicket. Strike, overs and the scorecard update automatically.
+        Tap a run number, an extra, or Wicket. The Wicket button opens a
+        dialog to pick dismissal type + fielder(s) involved.
       </p>
     </div>
+  )
+}
+
+/* ---------- Wicket dialog: pick dismissal type + fielder(s) ---------- */
+
+const WICKET_TYPE_OPTIONS: { value: WicketType; label: string; hint: string }[] = [
+  { value: "bowled", label: "Bowled", hint: "b Bowler" },
+  { value: "caught", label: "Caught", hint: "c Fielder b Bowler" },
+  { value: "lbw", label: "LBW", hint: "lbw b Bowler" },
+  { value: "runout", label: "Run Out", hint: "run out (Fielder)" },
+  { value: "stumped", label: "Stumped", hint: "st Keeper b Bowler" },
+  { value: "hitwkt", label: "Hit Wicket", hint: "hit wkt b Bowler" },
+  { value: "retired", label: "Retired Out", hint: "retired out (no ball)" },
+]
+
+/** Build the dismissal summary string from the structured inputs (this is
+ *  what the public scorecard renders next to the batsman's name). */
+function buildDismissalText(args: {
+  wicketType: WicketType
+  bowlerName?: string
+  fielderName?: string
+}): string {
+  const bowler = args.bowlerName ?? "?"
+  const fielder = args.fielderName
+  switch (args.wicketType) {
+    case "bowled":
+      return `b ${bowler}`
+    case "caught":
+      // Caught & bowled when no fielder is selected OR the fielder is the bowler.
+      if (!fielder || fielder === bowler) return `c &b ${bowler}`
+      return `c ${fielder} b ${bowler}`
+    case "lbw":
+      return `lbw b ${bowler}`
+    case "stumped":
+      return fielder ? `st ${fielder} b ${bowler}` : `st ${bowler}`
+    case "runout":
+      return fielder ? `run out (${fielder})` : `run out`
+    case "hitwkt":
+      return `hit wkt b ${bowler}`
+    case "retired":
+      return `retired out`
+  }
+}
+
+function WicketDialog({
+  open,
+  onOpenChange,
+  striker,
+  nonStriker,
+  bowler,
+  fieldingPlayers,
+  onConfirm,
+}: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  striker: { id: string; name: string }
+  nonStriker: { id: string; name: string }
+  bowler: { id: string; name: string }
+  fieldingPlayers: { id: string; name: string; role?: string }[]
+  onConfirm: (ev: {
+    kind: "wicket"
+    wicketType: WicketType
+    outBatsmanId: string
+    fielderIds: string[]
+    dismissal: string
+  }) => void
+}) {
+  const [wicketType, setWicketType] = useState<WicketType>("bowled")
+  const [outBatsmanId, setOutBatsmanId] = useState<string>(striker.id)
+  const [fielderId, setFielderId] = useState<string>("")
+  // Note: this component is conditionally rendered by the parent only when
+  // `wicketOpen` is true, so it remounts fresh each time the user opens the
+  // dialog — useState initial values act as the "reset on open".
+
+  // The wicket-keeper on the fielding side (auto-prefilled for stumped).
+  const keeperId = useMemo(() => {
+    const k = fieldingPlayers.find((p) =>
+      /keeper|wicket/i.test(p.role || "")
+    )
+    return k?.id ?? ""
+  }, [fieldingPlayers])
+
+  // Derived state — avoid setState-in-effect by computing the effective
+  // selections during render. The picker's `value` reads from these, so the
+  // UI stays in sync without needing an effect to "correct" the user's
+  // last selection when the dismissal type changes.
+  // • For any dismissal type other than run-out, the batsman out is always
+  //   the striker (run-out can happen at the non-striker's end).
+  // • For stumped with no fielder selected, auto-prefill the keeper.
+  const effectiveOutBatsmanId =
+    wicketType === "runout" ? outBatsmanId : striker.id
+  const effectiveFielderId =
+    wicketType === "stumped" && !fielderId && keeperId ? keeperId : fielderId
+
+  const needsFielder =
+    wicketType === "caught" ||
+    wicketType === "stumped" ||
+    wicketType === "runout"
+  const showBatsmanSelect = wicketType === "runout"
+
+  const fielderName = fieldingPlayers.find(
+    (p) => p.id === effectiveFielderId
+  )?.name
+  const dismissal = buildDismissalText({
+    wicketType,
+    bowlerName: bowler.name,
+    fielderName,
+  })
+
+  const outBatsmanName =
+    effectiveOutBatsmanId === striker.id
+      ? striker.name
+      : effectiveOutBatsmanId === nonStriker.id
+        ? nonStriker.name
+        : "?"
+
+  function handleConfirm() {
+    onConfirm({
+      kind: "wicket",
+      wicketType,
+      outBatsmanId: effectiveOutBatsmanId,
+      fielderIds: effectiveFielderId ? [effectiveFielderId] : [],
+      dismissal,
+    })
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <span className="grid h-7 w-7 place-items-center rounded-md bg-red-600 text-white">
+              <Activity className="h-4 w-4" />
+            </span>
+            Dismiss {outBatsmanName}
+          </DialogTitle>
+          <DialogDescription>
+            Pick the dismissal type. If caught, stumped or run out, choose the
+            fielder(s) involved. The dismissal text updates live in the preview.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-3 py-2">
+          {/* Dismissal type */}
+          <div className="grid gap-1.5">
+            <Label>Dismissal type</Label>
+            <Select value={wicketType} onValueChange={(v) => setWicketType(v as WicketType)}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {WICKET_TYPE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    <span className="font-medium">{opt.label}</span>
+                    <span className="ml-2 text-[10px] text-muted-foreground">{opt.hint}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Batsman out — only shown for run-out */}
+          {showBatsmanSelect && (
+            <div className="grid gap-1.5">
+              <Label>Which batsman is out?</Label>
+              <Select
+                value={effectiveOutBatsmanId}
+                onValueChange={setOutBatsmanId}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={striker.id}>
+                    Striker — {striker.name}
+                  </SelectItem>
+                  <SelectItem value={nonStriker.id}>
+                    Non-striker — {nonStriker.name}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Fielder(s) involved — for caught, stumped, run out */}
+          {needsFielder && (
+            <div className="grid gap-1.5">
+              <Label>
+                {wicketType === "caught"
+                  ? "Catcher"
+                  : wicketType === "stumped"
+                    ? "Wicket-keeper"
+                    : "Run-out fielder"}
+              </Label>
+              <Select value={effectiveFielderId} onValueChange={setFielderId}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="(direct hit / no fielder)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="(direct-hit)">(direct hit / no fielder)</SelectItem>
+                  {fieldingPlayers.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                      {/keeper|wicket/i.test(p.role || "") && " †"}
+                      {/captain/i.test(p.role || "") && " (c)"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {wicketType === "stumped" && keeperId && !fielderId && (
+                <p className="text-[11px] text-muted-foreground">
+                  Wicket-keeper auto-prefilled (you can change it).
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Live dismissal-text preview */}
+          <div className="rounded-md border bg-muted/40 p-3 text-sm">
+            <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              Dismissal preview
+            </div>
+            <div className="mt-1 font-mono text-sm">
+              <span className="font-semibold">{outBatsmanName}</span>{" "}
+              <span className="text-muted-foreground">{dismissal}</span>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirm}
+            className="gap-1.5 bg-red-600 hover:bg-red-700"
+          >
+            <Activity className="h-4 w-4" />
+            Confirm wicket
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 

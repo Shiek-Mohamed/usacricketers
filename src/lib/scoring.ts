@@ -86,11 +86,43 @@ export interface LiveMatchState {
   ballNo: number
 }
 
+export type WicketType =
+  | "bowled"
+  | "caught"
+  | "lbw"
+  | "runout"
+  | "stumped"
+  | "hitwkt"
+  | "retired"
+
+/** Dismissal types that credit the bowler with a wicket (everything except
+ *  run-out and retired-out). Exported so the UI + tests can share. */
+export const BOWLER_CREDITED_WICKETS: ReadonlySet<WicketType> = new Set([
+  "bowled",
+  "caught",
+  "lbw",
+  "stumped",
+  "hitwkt",
+])
+
 export type BallEvent =
   | { kind: "run"; runs: number }
   | { kind: "wide" }
   | { kind: "noball" }
-  | { kind: "wicket"; dismissal: string }
+  | {
+      kind: "wicket"
+      wicketType: WicketType
+      /** Which batsman got out (must match state.strikerId or state.nonStrikerId). */
+      outBatsmanId: string
+      /** Fielding players involved in the dismissal (catcher / stumper / run-out
+       *  fielder). Empty for bowled/lbw/hit-wkt/retired. UI is responsible for
+       *  pre-building the human-readable dismissal string below. */
+      fielderIds?: string[]
+      /** Pre-built dismissal summary string, e.g. "c Smith b Cummins" or
+       *  "run out (Carey)" — stored as-is in `batsmen[].dismissal` and shown
+       *  in the public scorecard. */
+      dismissal: string
+    }
   | { kind: "bye"; runs: number }
   | { kind: "legbye"; runs: number }
 
@@ -385,23 +417,58 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
       break
     }
     case "wicket": {
-      striker.out = true
-      striker.balls += 1
-      striker.dismissal = event.dismissal
+      // Resolve which batsman got out — must be the striker or the
+      // non-striker (run-out can happen at the non-striker's end).
+      const isStrikerOut = event.outBatsmanId === strikerId
+      const isNonStrikerOut =
+        event.outBatsmanId === nonStrikerId && event.outBatsmanId !== strikerId
+      if (!isStrikerOut && !isNonStrikerOut) {
+        // Unknown batsman id — bail out without changing state.
+        return state
+      }
+      const outBatsman = batsmen.find((b) => b.id === event.outBatsmanId)
+      if (!outBatsman) return state
+
+      // Retired-out is a dismissal that doesn't bowl a delivery, so the ball
+      // count for the over and the bowler's figures stay untouched.
+      if (event.wicketType === "retired") {
+        isLegal = false
+      }
+
+      outBatsman.out = true
+      outBatsman.dismissal = event.dismissal
+      // Only the striker has faced this delivery — the non-striker didn't
+      // (and on a retired-out, no delivery was bowled at all).
+      if (isStrikerOut && event.wicketType !== "retired") {
+        outBatsman.balls += 1
+      }
+
       wickets += 1
-      bowler.wickets += 1
-      bowler.overWickets += 1
+
+      // Credit the bowler only for these dismissal types.
+      if (BOWLER_CREDITED_WICKETS.has(event.wicketType)) {
+        bowler.wickets += 1
+        bowler.overWickets += 1
+      }
+
       fallOfWickets = [
         ...fallOfWickets,
         {
           wktNo: wickets,
           score: runs,
           over: oversString(balls),
-          batsman: striker.name,
+          batsman: outBatsman.name,
         },
       ]
-      strikerId = null // awaiting new batsman
-      eventText = `WICKET! ${striker.name} ${event.dismissal}`
+
+      // Set the right slot to null so the UI prompts for the replacement at
+      // the correct end.
+      if (isStrikerOut) {
+        strikerId = null
+      } else {
+        nonStrikerId = null
+      }
+      eventText = `WICKET! ${outBatsman.name} ${event.dismissal}`
       eventKind = "wicket"
       break
     }

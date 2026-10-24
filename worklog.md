@@ -747,3 +747,42 @@ Verification:
 
 Stage Summary:
 - Site admins can now bulk-upload players in two flows: (a) the standalone Admin → Teams page (per-row Users icon button), and (b) the Admin → Tournaments editor (per-team-chip green Users button + an inline Players textarea on the new-team form that creates the team AND its roster in one click). The smart parser accepts CSV/TSV/pipe/semicolon/one-name-per-line, auto-detects header rows, and normalises role aliases (WK/keeper/wicketkeeper → "Wicket-keeper"). Existing names are case-insensitively deduped and reported back to the user as `skippedNames`. End-to-end verified via curl: 5-player batch → created:5/skipped:0; a duplicate-of-2 + 1-new batch → created:1/skipped:2; 401 when cookie is missing.
+
+---
+Task ID: 21
+Agent: orchestrator (Z.ai)
+Task: Wicket flow — prompt the admin for the dismissal type + fielder(s) involved (catcher, run-out fielder, keeper for stumping).
+
+Work Log:
+- **Engine** (`src/lib/scoring.ts`) — restructured the wicket BallEvent variant + applyBall logic:
+  - New `WicketType` union: `"bowled" | "caught" | "lbw" | "runout" | "stumped" | "hitwkt" | "retired"`.
+  - Exported `BOWLER_CREDITED_WICKETS: Set<WicketType>` so the UI + tests share the same source of truth for "does this dismissal credit the bowler?" (everything except `runout` and `retired`).
+  - BallEvent wicket variant now carries `{ kind: "wicket"; wicketType: WicketType; outBatsmanId: string; fielderIds?: string[]; dismissal: string }`. The UI pre-builds the dismissal summary string ("c Maxwell b Cummins" / "run out (Carey)" / "retired out") and the engine stores it as-is.
+  - `applyBall` case `"wicket"` rewritten to:
+    1. Resolve which batsman got out (must be striker or non-striker — run-out can happen at the non-striker's end).
+    2. Mark the OUT batsman; only the striker's `balls` counter increments (the non-striker didn't face the delivery).
+    3. For `retired`-out, no delivery was bowled — `isLegal = false` so the over's ball count, the bowler's figures, and the batsman's balls don't change.
+    4. Bowler credit only fires for the `BOWLER_CREDITED_WICKETS` set (so run-outs and retired-outs leave the bowler's wicket tally unchanged — matches Cricinfo semantics).
+    5. Sets the right slot (`strikerId` or `nonStrikerId`) to null so the UI prompts for the replacement at the correct end.
+- **Live scorer view** (`src/components/admin/views/live-scorer-view.tsx`):
+  - **Wicket button** now opens a `<WicketDialog>` modal instead of firing a hardcoded `b (bowler)` event.
+  - **`<WicketDialog>`** — full dismissal picker:
+    - Dismissal-type dropdown (Bowled / Caught / LBW / Run Out / Stumped / Hit Wicket / Retired Out) with inline hints (`c Fielder b Bowler`, `run out (Fielder)`, etc.) so the admin sees the format at a glance.
+    - "Which batsman is out?" picker (Striker / Non-striker) — only shown for run-out (only run-out can dismiss the non-striker).
+    - Fielder picker — only shown for caught/stumped/run-out. Each fielding-team player's `†` (keeper) and `(c)` (captain) tags are shown next to their name. Includes a "(direct hit / no fielder)" option for run-outs with no specific fielder.
+    - **Wicket-keeper auto-prefill** for stumped dismissals — the engine doesn't know about fielders' roles directly, but the UI auto-selects the keeper when wicketType === `stumped` and no fielder has been picked (overrideable).
+    - **Live dismissal-text preview** at the bottom updates as the admin changes selections, so they see exactly what will land on the public scorecard (`Babar Azam c Maxwell b Cummins`).
+    - **`buildDismissalText`** helper — produces Cricinfo-style strings: `b X`, `c Y b X`, `c &b X` (caught & bowled when the fielder is the bowler or omitted), `lbw b X`, `run out (Y)` / `run out`, `st Y b X`, `hit wkt b X`, `retired out`.
+  - **`bringInBatsman`** updated — fills whichever slot is currently null (striker's or non-striker's end) rather than always setting strikerId. So a run-out of the non-striker correctly prompts for a new batsman at the non-striker's end, and the new batsman comes in at the correct end.
+  - **`needBatsman` logic** updated — now true if EITHER `strikerId` or `nonStrikerId` is null (with a small guard so the very first pickup of an innings doesn't false-positive). The Picker title now reads "New batsman (striker's end)" or "New batsman (non-striker's end)" so the admin knows which slot they're filling.
+  - **New batsman filter** — excludes anyone who's already batted-out, not just anyone in the batsmen array.
+- Lint: refactored three `setState in useEffect` patterns into derived state (the project's `react-hooks/set-state-in-effect` rule is on). `bun run lint` → 0 errors.
+
+Verification (engine unit-tested via a /tmp bun script — kept out of the project per the "no test code" rule):
+- ✅ **Test 1 — Caught by Maxwell off Cummins**: Smith.out=true; Smith.dismissal="c Maxwell b Cummins"; Smith.balls=1; Bowler.wickets=1; strikerId=null (right slot cleared); nonStrikerId unchanged (Jones still in); totalWickets=1.
+- ✅ **Test 2 — Run out of non-striker (Jones) by Maxwell**: Jones.out=true; Jones.dismissal="run out (Maxwell)"; Jones.balls=0 (non-striker didn't face the delivery); Bowler.wickets UNCHANGED (run-outs don't credit the bowler — Cricinfo semantics); strikerId unchanged (Brown still in); nonStrikerId=null; totalWickets=2.
+- ✅ **Test 3 — Bowled (Brown) by Cummins**: Brown.out=true; Brown.dismissal="b Cummins"; Brown.balls=1; Bowler.wickets=2 (credited); strikerId=null; nonStrikerId unchanged.
+- ✅ **Test 4 — Retired out (Lee)**: Lee.out=true; Lee.dismissal="retired out"; Lee.balls UNCHANGED=0 (no delivery bowled); innings.balls UNCHANGED=3 (retired-out doesn't count as a legal ball); Bowler.wickets UNCHANGED=2 (retired-out not credited); nonStrikerId=null.
+
+Stage Summary:
+- The Wicket button now opens a modal that lets the admin pick the dismissal type (Bowled/Caught/LBW/Run Out/Stumped/Hit Wicket/Retired Out) AND select the fielder(s) involved (catcher for Caught, keeper auto-prefilled for Stumped, run-out fielder for Run Out). For run-outs, the admin can pick which batsman was out (striker or non-striker). The engine correctly credits the bowler only for bowled/caught/lbw/stumped/hit-wkt (NOT for run-out or retired-out), correctly marks the right batsman out (including non-striker for run-out at that end), and correctly skips ball-counting for retired-out. The dismissal text is built Cricinfo-style ("c Maxwell b Cummins", "run out (Carey)", "c &b Cummins", "st Carey b Cummins", "hit wkt b Cummins", "retired out") and shows up live on the public scorecard. All 4 dismissal-type unit tests pass end-to-end (caught, run-out-of-non-striker, bowled, retired-out).

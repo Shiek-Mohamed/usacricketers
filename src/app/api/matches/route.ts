@@ -35,6 +35,10 @@ export async function POST(req: NextRequest) {
       city: body.city || "",
       startDate: body.startDate ? new Date(body.startDate) : new Date(),
       result: body.result || "",
+      manOfMatch: body.manOfMatch || null,
+      umpires: body.umpires || "",
+      tvUmpire: body.tvUmpire || "",
+      referee: body.referee || "",
       scorecard:
         typeof body.scorecard === "string"
           ? body.scorecard

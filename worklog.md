@@ -1142,3 +1142,35 @@ Stage Summary:
   - #7 "Swap ends" button in the LiveScoreboard — overrides the auto strike-rotation when it disagrees with reality (caught-and-bowled crossing, etc.).
   - #15 Player `isCaptain` / `isKeeper` boolean fields — replaces the brittle regex on the role string. Bulk-upload parser auto-detects from the role column. Admin form has explicit checkboxes. Live scorer reads the fields directly.
   - #6 4-innings Test match support — engine allows N innings (limited-overs = 2, Test = 4) + handles the chase target computation for both formats + new `declareInnings()` export + amber "Declare" button in the UI (Test-only). Result computation handles wins-by-wickets, wins-by-runs, ties, and draws.
+
+---
+Task ID: 31
+Agent: orchestrator (Z.ai)
+Task: Live scorer feature gaps (real cricket scenarios) — #12 match officials, #7 retired hurt/out, #11 keyboard shortcuts, #8 partnerships, #13 follow-on, #10 super-over.
+
+Work Log (partial — 3 of 7 completed, context running low):
+- **#12 — Match officials** (`umpires`, `tvUmpire`, `referee` fields on Match):
+  - Prisma: added 3 String fields to Match model + db:push.
+  - Types: added to Match interface + serializeMatch.
+  - API: POST + PUT routes accept and persist all 3 fields.
+  - Admin UI: new "Match officials (optional)" section in the matches create/edit dialog with 3 inputs (On-field umpires, TV umpire, Match referee).
+  - Public UI: match-detail-view shows officials inline below the result + PoM when any are set.
+- **#7 — Retired hurt vs retired out** (split the old `retired` wicket type):
+  - Engine: `WicketType` union now has `"retiredHurt"` (not out — may return) + `"retiredOut"` (out — counts as dismissal). New `NOT_OUT_DISMISSALS` set for clarity.
+  - `applyBall` wicket case: `retiredHurt` clears the slot (batsman can return), doesn't count as a wicket, doesn't credit bowler, doesn't add to fall-of-wickets, doesn't bowl a delivery. `retiredOut` counts as a wicket (but no delivery bowled, no bowler credit). Both are excluded from the free-hit consumption logic.
+  - UI: WICKET_TYPE_OPTIONS has 2 separate options ("Retired Hurt" with hint "not out — may return" + "Retired Out" with hint "out — no ball"). `buildDismissalText` returns "retired hurt" or "retired out" respectively.
+- **#11 — Keyboard shortcuts** (power-user scorers):
+  - `useEffect` (no deps, re-runs every render) with a `window.addEventListener("keydown", onKey)`.
+  - Keys: `0,1,2,3,4,6` → score N runs | `.` / `-` → dot | `w` → wicket dialog | `e` → swap ends | `u` → undo | `d` → declare (Test) | `s` → save.
+  - Guards: ignores when typing in inputs/textareas/selects/comboboxes, when wicket dialog is open, when not in active scoring mode (no striker/nonStriker/bowler), when match is complete, when meta/ctrl/alt are held.
+  - The functions (handleBall, swapEnds, handleUndo, handleDeclare, persist) are hoisted JS function declarations, so they're in scope at call-time even though defined later in the component body. eslint-disable for the `react-hooks/immutability` rule since this pattern is valid JS but the rule is overly cautious.
+  - BallPad hint text updated to show the keyboard shortcuts inline.
+
+Remaining (deferred due to context window):
+- #8 — Completed partnership tracker (store all partnerships in innings state)
+- #13 — Follow-on tracking for Tests (200+ run lead after innings 2)
+- #10 — Super-over support for tied limited-overs
+- #9 — DLS par-score calculations (math-heavy, needs DLS tables)
+
+Verification:
+- ✅ `bun run lint` → 0 errors after all 3 features.

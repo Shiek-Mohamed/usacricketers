@@ -249,6 +249,29 @@ export function MatchDetailView() {
                 <span className="font-bold">Player of the Match:</span> {match_.manOfMatch}
               </p>
             )}
+            {/* Match officials — umpires + TV umpire + referee */}
+            {(match_.umpires || match_.tvUmpire || match_.referee) && (
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+                {match_.umpires && (
+                  <span>
+                    <span className="font-semibold">Umpires:</span>{" "}
+                    {match_.umpires}
+                  </span>
+                )}
+                {match_.tvUmpire && (
+                  <span>
+                    <span className="font-semibold">TV:</span>{" "}
+                    {match_.tvUmpire}
+                  </span>
+                )}
+                {match_.referee && (
+                  <span>
+                    <span className="font-semibold">Referee:</span>{" "}
+                    {match_.referee}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         )}
 

@@ -37,6 +37,10 @@ export async function PUT(
       city: body.city,
       startDate: body.startDate ? new Date(body.startDate) : undefined,
       result: body.result,
+      manOfMatch: body.manOfMatch === undefined ? undefined : (body.manOfMatch || null),
+      umpires: body.umpires === undefined ? undefined : body.umpires,
+      tvUmpire: body.tvUmpire === undefined ? undefined : body.tvUmpire,
+      referee: body.referee === undefined ? undefined : body.referee,
       scorecard:
         typeof body.scorecard === "string"
           ? body.scorecard

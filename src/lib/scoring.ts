@@ -100,16 +100,26 @@ export type WicketType =
   | "runout"
   | "stumped"
   | "hitwkt"
-  | "retired"
+  | "retiredHurt"
+  | "retiredOut"
 
 /** Dismissal types that credit the bowler with a wicket (everything except
- *  run-out and retired-out). Exported so the UI + tests can share. */
+ *  run-out, retired-hurt, and retired-out). Exported so the UI + tests
+ *  share the same source of truth for "does this dismissal credit the
+ *  bowler?" */
 export const BOWLER_CREDITED_WICKETS: ReadonlySet<WicketType> = new Set([
   "bowled",
   "caught",
   "lbw",
   "stumped",
   "hitwkt",
+])
+
+/** Dismissal types that DON'T count as a wicket for the team's tally or
+ *  the batsman's dismissal — retired hurt means the batsman left the
+ *  field injured and may return. They're not out. */
+export const NOT_OUT_DISMISSALS: ReadonlySet<WicketType> = new Set([
+  "retiredHurt",
 ])
 
 export type BallEvent =
@@ -459,14 +469,13 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
 
       // Free-hit policy (limited-overs only): bowler-credited dismissals
       // (bowled / caught / lbw / stumped / hit-wkt) are NOT allowed on a
-      // free hit — only run-out and retired-out stand. The striker still
-      // faces the ball, the ball still counts, but the dismissal is void
-      // and the batsman survives. Log a commentary line + a "dot"-styled
-      // entry so the admin sees the rejection.
+      // free hit — only run-out, retired-hurt, and retired-out stand.
+      // The striker still faces the ball, the ball still counts, but the
+      // dismissal is void and the batsman survives. Log a commentary line
+      // + an "info"-styled entry so the admin sees the rejection.
       if (
         isFreeHit &&
-        BOWLER_CREDITED_WICKETS.has(event.wicketType) &&
-        event.wicketType !== "retired"
+        BOWLER_CREDITED_WICKETS.has(event.wicketType)
       ) {
         // The striker faced this delivery — credit the ball.
         if (isStrikerOut) {
@@ -479,9 +488,31 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
         break
       }
 
-      // Retired-out is a dismissal that doesn't bowl a delivery, so the ball
-      // count for the over and the bowler's figures stay untouched.
-      if (event.wicketType === "retired") {
+      // Retired-hurt: NOT a dismissal. The batsman left the field injured
+      // and may return. Doesn't bowl a delivery, doesn't count as a wicket,
+      // doesn't credit the bowler, doesn't add to fall-of-wickets. The
+      // batsman's `out` flag stays false. Only the slot is cleared so a
+      // replacement batsman can come in (the original can return later
+      // via the standard bringInBatsman flow).
+      if (event.wicketType === "retiredHurt") {
+        isLegal = false  // no delivery was bowled
+        outBatsman.dismissal = event.dismissal  // "retired hurt" — stored but `out` stays false
+        // Clear the slot so the picker re-shows for the replacement batsman.
+        if (isStrikerOut) {
+          strikerId = null
+        } else {
+          nonStrikerId = null
+        }
+        eventText = `RETIRED HURT — ${outBatsman.name} left the field (may return)`
+        eventKind = "info"
+        break
+      }
+
+      // Retired-out: a dismissal that doesn't bowl a delivery, so the
+      // ball count for the over and the bowler's figures stay untouched.
+      // Unlike retired-hurt, this counts as a wicket — the batsman is
+      // permanently out and cannot return.
+      if (event.wicketType === "retiredOut") {
         isLegal = false
       }
 
@@ -489,13 +520,14 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
       outBatsman.dismissal = event.dismissal
       // Only the striker has faced this delivery — the non-striker didn't
       // (and on a retired-out, no delivery was bowled at all).
-      if (isStrikerOut && event.wicketType !== "retired") {
+      if (isStrikerOut && event.wicketType !== "retiredOut") {
         outBatsman.balls += 1
       }
 
       wickets += 1
 
-      // Credit the bowler only for these dismissal types.
+      // Credit the bowler only for these dismissal types (not retired-out
+      // or retired-hurt — but retired-hurt already broke above).
       if (BOWLER_CREDITED_WICKETS.has(event.wicketType)) {
         bowler.wickets += 1
         bowler.overWickets += 1
@@ -544,7 +576,9 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
       event.kind === "run" ||
       event.kind === "bye" ||
       event.kind === "legbye" ||
-      (event.kind === "wicket" && event.wicketType !== "retired")
+      (event.kind === "wicket" &&
+        event.wicketType !== "retiredOut" &&
+        event.wicketType !== "retiredHurt")
     ) {
       freeHit = false
     }

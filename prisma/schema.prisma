@@ -119,6 +119,15 @@ model Match {
   startDate   DateTime
   result      String   @default("")
   manOfMatch  String?
+  // Match officials — on-field umpires + TV umpire + match referee. Plain
+  // strings (no relation to a Player/Person model) since officials are
+  // usually independent of the players table. Format:
+  //   umpires: "Umpire One, Umpire Two"
+  //   tvUmpire: "TV Umpire Name"
+  //   referee: "Match Referee Name"
+  umpires     String   @default("")
+  tvUmpire    String   @default("")
+  referee     String   @default("")
   scorecard   String   @default("") // JSON
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

@@ -164,6 +164,10 @@ export interface Match {
   startDate: string
   result: string
   manOfMatch: string | null
+  // Match officials — comma-separated on-field umpires + TV umpire + referee.
+  umpires: string
+  tvUmpire: string
+  referee: string
   scorecard: Scorecard | null
   team1?: Team
   team2?: Team

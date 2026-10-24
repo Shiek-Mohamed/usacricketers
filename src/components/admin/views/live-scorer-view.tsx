@@ -110,6 +110,61 @@ export function LiveScorerView() {
   // wicket BallEvent to applyBall via handleBall.
   const [wicketOpen, setWicketOpen] = useState(false)
 
+  /* ------------------ Keyboard shortcuts (power-user scorers) ------------------
+   * 0,1,2,3,4,6 → score N runs | . / - → dot | w → wicket dialog |
+   * e → swap ends | u → undo | d → declare (Test) | s → save.
+   * No deps array → re-subscribes on every render with the latest closures.
+   * The function declarations (handleBall, swapEnds, etc.) are hoisted by
+   * JS so they're in scope at call-time even though defined later in the
+   * component body. The lint rule below is overly cautious about this
+   * pattern — it's safe because the effect re-runs every render. */
+  /* eslint-disable react-hooks/immutability */
+  useEffect(() => {
+    function isTyping(el: Element | null): boolean {
+      if (!el) return false
+      const tag = el.tagName?.toLowerCase()
+      return tag === "input" || tag === "textarea" || tag === "select" ||
+        el.getAttribute("role") === "combobox" ||
+        (el as HTMLElement)?.isContentEditable === true
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (isTyping(document.activeElement)) return
+      if (wicketOpen) return
+      if (!liveState || liveState.status !== "live") return
+      if (!liveState.strikerId || !liveState.nonStrikerId || !liveState.bowlerId) return
+      const k = e.key.toLowerCase()
+      if (["0", "1", "2", "3", "4", "6"].includes(k)) {
+        e.preventDefault()
+        handleBall({ kind: "run", runs: Number(k) })
+      } else if (k === "." || k === "-") {
+        e.preventDefault()
+        handleBall({ kind: "run", runs: 0 })
+      } else if (k === "w") {
+        e.preventDefault()
+        setWicketOpen(true)
+      } else if (k === "e") {
+        e.preventDefault()
+        swapEnds()
+      } else if (k === "u") {
+        e.preventDefault()
+        handleUndo()
+      } else if (k === "d") {
+        e.preventDefault()
+        handleDeclare()
+      } else if (k === "s") {
+        e.preventDefault()
+        if (liveState) {
+          persist(liveState)
+          toast.success("Scorecard saved")
+        }
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  })
+  /* eslint-enable react-hooks/immutability */
+
   const playersByTeam: Record<string, Player[]> = useMemo(() => {
     const m: Record<string, Player[]> = {}
     if (match) {
@@ -956,6 +1011,17 @@ function BallPad({
       <p className="mt-2 text-[11px] text-muted-foreground">
         Tap a run number, an extra, or Wicket. The Wicket button opens a
         dialog to pick dismissal type + fielder(s) involved.
+        <br />
+        <span className="mt-1 inline-block">
+          Keyboard shortcuts:{" "}
+          <code className="rounded bg-muted px-1 py-0.5">0–6</code> runs ·{" "}
+          <code className="rounded bg-muted px-1 py-0.5">.</code> dot ·{" "}
+          <code className="rounded bg-muted px-1 py-0.5">w</code> wicket ·{" "}
+          <code className="rounded bg-muted px-1 py-0.5">e</code> swap ends ·{" "}
+          <code className="rounded bg-muted px-1 py-0.5">u</code> undo ·{" "}
+          <code className="rounded bg-muted px-1 py-0.5">d</code> declare ·{" "}
+          <code className="rounded bg-muted px-1 py-0.5">s</code> save
+        </span>
       </p>
     </div>
   )
@@ -970,7 +1036,8 @@ const WICKET_TYPE_OPTIONS: { value: WicketType; label: string; hint: string }[] 
   { value: "runout", label: "Run Out", hint: "run out (Fielder)" },
   { value: "stumped", label: "Stumped", hint: "st Keeper b Bowler" },
   { value: "hitwkt", label: "Hit Wicket", hint: "hit wkt b Bowler" },
-  { value: "retired", label: "Retired Out", hint: "retired out (no ball)" },
+  { value: "retiredHurt", label: "Retired Hurt", hint: "not out — may return" },
+  { value: "retiredOut", label: "Retired Out", hint: "out — no ball" },
 ]
 
 /** Build the dismissal summary string from the structured inputs (this is
@@ -997,7 +1064,9 @@ function buildDismissalText(args: {
       return fielder ? `run out (${fielder})` : `run out`
     case "hitwkt":
       return `hit wkt b ${bowler}`
-    case "retired":
+    case "retiredHurt":
+      return `retired hurt`
+    case "retiredOut":
       return `retired out`
   }
 }

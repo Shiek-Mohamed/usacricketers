@@ -69,6 +69,9 @@ interface MatchFormState {
   startDate: string
   result: string
   manOfMatch: string
+  umpires: string
+  tvUmpire: string
+  referee: string
   scorecard: string
 }
 
@@ -84,6 +87,9 @@ const emptyForm: MatchFormState = {
   startDate: new Date().toISOString().slice(0, 16),
   result: "",
   manOfMatch: "",
+  umpires: "",
+  tvUmpire: "",
+  referee: "",
   scorecard: "",
 }
 
@@ -137,6 +143,9 @@ export function AdminMatchesView() {
       startDate: toLocalInput(m.startDate),
       result: m.result,
       manOfMatch: m.manOfMatch || "",
+      umpires: m.umpires || "",
+      tvUmpire: m.tvUmpire || "",
+      referee: m.referee || "",
       scorecard: m.scorecard
         ? JSON.stringify(m.scorecard, null, 2)
         : "",
@@ -499,6 +508,48 @@ export function AdminMatchesView() {
                   }
                   placeholder="e.g. Virat Kohli"
                 />
+              </div>
+            </div>
+
+            {/* Match officials — umpires + TV umpire + referee */}
+            <div className="rounded-md border bg-muted/30 p-3">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Match officials (optional)
+              </p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="umpires">On-field umpires</Label>
+                  <Input
+                    id="umpires"
+                    value={form.umpires}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, umpires: e.target.value }))
+                    }
+                    placeholder="e.g. Aleem Dar, Richard Kettleborough"
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="tvUmpire">TV umpire</Label>
+                  <Input
+                    id="tvUmpire"
+                    value={form.tvUmpire}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, tvUmpire: e.target.value }))
+                    }
+                    placeholder="e.g. Chris Gaffaney"
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="referee">Match referee</Label>
+                  <Input
+                    id="referee"
+                    value={form.referee}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, referee: e.target.value }))
+                    }
+                    placeholder="e.g. Andy Pycroft"
+                  />
+                </div>
               </div>
             </div>
             <div className="rounded-md bg-amber-50 border border-amber-200 p-3 flex gap-2 text-xs text-amber-800">

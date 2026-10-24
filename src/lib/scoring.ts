@@ -60,6 +60,13 @@ export interface ScorerInnings {
   extrasNoBalls: number
   // full squad for 'did not bat'
   squad: { id: string; name: string; isCaptain?: boolean; isKeeper?: boolean }[]
+  /** True when the CURRENT ball (i.e. the one about to be bowled) is a free
+   *  hit. Set after a no-ball in limited-overs matches (maxOvers > 0); on
+   *  the next legal delivery it applies, then resets to false. Wides + no-
+   *  balls during a free hit keep it pending. Bowler-credited dismissals
+   *  (bowled/caught/lbw/stumped/hit-wkt) are NOT allowed on a free hit —
+   *  only run-out and retired-out stand. */
+  freeHit: boolean
 }
 
 export interface CommentaryEntry {
@@ -164,6 +171,7 @@ export function initState(match: Match, battingFirstTeamId: string): LiveMatchSt
     extrasWides: 0,
     extrasNoBalls: 0,
     squad: [],
+    freeHit: false,
   }
   return {
     matchId: match.id,
@@ -329,6 +337,12 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
   let extrasLegByes = inn.extrasLegByes
   let extrasWides = inn.extrasWides
   let extrasNoBalls = inn.extrasNoBalls
+  // Free-hit tracking. `isFreeHit` = the CURRENT ball is a free hit (only
+  // applies in limited-overs matches — maxOvers > 0). `freeHit` is the value
+  // that will be carried into the NEXT ball's state.
+  const limitedOvers = state.maxOvers > 0
+  const isFreeHit = limitedOvers && inn.freeHit
+  let freeHit = inn.freeHit
   let fallOfWickets = inn.fallOfWickets
   let strikerId = state.strikerId
   let nonStrikerId = state.nonStrikerId
@@ -396,7 +410,16 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
       bowler.noballs += 1
       extrasNoBalls += 1
       isLegal = false
-      eventText = "No ball (+1)"
+      // Free-hit policy (limited-overs only): a no-ball makes the next
+      // LEGAL delivery a free hit. Wides + no-balls that follow keep it
+      // pending until a legal ball is bowled. See the post-switch block
+      // for the carry-over logic.
+      if (limitedOvers) {
+        freeHit = true
+        eventText = "No ball (+1) — FREE HIT next ball"
+      } else {
+        eventText = "No ball (+1)"
+      }
       eventKind = "extra"
       break
     }
@@ -433,6 +456,28 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
       }
       const outBatsman = batsmen.find((b) => b.id === event.outBatsmanId)
       if (!outBatsman) return state
+
+      // Free-hit policy (limited-overs only): bowler-credited dismissals
+      // (bowled / caught / lbw / stumped / hit-wkt) are NOT allowed on a
+      // free hit — only run-out and retired-out stand. The striker still
+      // faces the ball, the ball still counts, but the dismissal is void
+      // and the batsman survives. Log a commentary line + a "dot"-styled
+      // entry so the admin sees the rejection.
+      if (
+        isFreeHit &&
+        BOWLER_CREDITED_WICKETS.has(event.wicketType) &&
+        event.wicketType !== "retired"
+      ) {
+        // The striker faced this delivery — credit the ball.
+        if (isStrikerOut) {
+          outBatsman.balls += 1
+        }
+        // Consume the free hit — next ball is normal.
+        freeHit = false
+        eventText = `FREE HIT! ${outBatsman.name} survives (${event.wicketType} not allowed on free hit)`
+        eventKind = "info"
+        break
+      }
 
       // Retired-out is a dismissal that doesn't bowl a delivery, so the ball
       // count for the over and the bowler's figures stay untouched.
@@ -486,6 +531,25 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
     state = { ...state, ballNo: state.ballNo + 1 }
   }
 
+  // Free-hit consumption: a legal delivery (run/bye/legbye, or an allowed
+  // non-retired wicket) consumes the free hit — the NEXT ball is normal
+  // play. No-balls already set `freeHit = true` above (the next legal ball
+  // will be a free hit too). Wides carry the prior status forward (the wide
+  // case doesn't touch `freeHit`). Retired-out (no delivery) doesn't consume
+  // the free hit either. The wicket-rejection branch already set
+  // `freeHit = false` itself; the wicket-allowed branch needs the explicit
+  // consume below.
+  if (isLegal) {
+    if (
+      event.kind === "run" ||
+      event.kind === "bye" ||
+      event.kind === "legbye" ||
+      (event.kind === "wicket" && event.wicketType !== "retired")
+    ) {
+      freeHit = false
+    }
+  }
+
   // Over complete?
   const ballsThisOver = balls % 6
   let overComplete = false
@@ -517,6 +581,7 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
     extrasLegByes,
     extrasWides,
     extrasNoBalls,
+    freeHit,
   }
   const innings = [...state.innings]
   innings[state.currentInnings] = newInnings
@@ -601,6 +666,7 @@ export function endInnings(state: LiveMatchState, reason: string): LiveMatchStat
       extrasWides: 0,
       extrasNoBalls: 0,
       squad: [],
+      freeHit: false,
     }
     innings.push(newInnings)
     return {

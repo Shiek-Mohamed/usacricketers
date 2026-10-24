@@ -882,3 +882,36 @@ Verification:
 
 Stage Summary:
 - The New-batsman dropdown now correctly shows the team's bench players (everyone not already in the batsmen list) after a wicket falls — was previously showing an empty list because of a `||` operator regression I introduced in task 22. Fixed by reverting to the original `b.id === p.id` filter. Plus added an empty-state message in the Picker for the genuine edge case of a team with no bench players (points the admin to the bulk-add-players feature).
+
+---
+Task ID: 25
+Agent: orchestrator (Z.ai)
+Task: Apply the no-ball free-hit policy in limited-overs games.
+
+Work Log:
+- **Engine** (`src/lib/scoring.ts`) — added `freeHit: boolean` to the `ScorerInnings` interface (initialized `false` in `initState` and the 2nd-innings setup in `endInnings`). Then wired the full free-hit lifecycle into `applyBall`:
+  - **Restricted to limited-overs**: `const limitedOvers = state.maxOvers > 0` — Tests (maxOvers=0) skip the rule entirely. ODI (50), T20I (20), T10 (10) all apply it.
+  - **No-ball case**: in limited-overs matches, sets `freeHit = true` after a no-ball, and the commentary text becomes `"No ball (+1) — FREE HIT next ball"` so the admin gets a clear announcement.
+  - **Wicket case — free-hit rejection**: when `isFreeHit && BOWLER_CREDITED_WICKETS.has(wicketType) && wicketType !== "retired"`, the wicket is **rejected**:
+    - The striker's balls count increments (they faced the ball).
+    - `freeHit = false` is set (the free hit is consumed by the legal delivery).
+    - The dismissal is NOT applied — no `outBatsman.out`, no `wickets += 1`, no bowler credit, no fall-of-wicket entry.
+    - Commentary: `"FREE HIT! <BatsmanName> survives (<wicketType> not allowed on free hit)"` with kind `"info"`.
+    - Run-out and retired-out are NOT rejected (they're allowed on a free hit per the rules).
+  - **Post-switch consumption block** (new): for legal deliveries (run / bye / legbye / non-retired wicket) the free hit is consumed (`freeHit = false`). No-balls already set it true above. Wides carry the prior status forward (the wide case doesn't touch `freeHit`). Retired-out (no delivery) doesn't consume it either.
+  - Added `freeHit` to the `newInnings` object literal so the carried-over flag reaches the next ball.
+- **UI** (`src/components/admin/views/live-scorer-view.tsx`):
+  - **LiveScoreboard**: renders an animated amber "Free hit" pill badge next to the score (`{inn.runs}/{inn.wickets} (X.Y ov) [Free hit]`) whenever `inn.freeHit === true` so the admin can always see the current state at a glance.
+  - **WicketDialog**: new `freeHit?: boolean` prop. When true, an amber banner appears above the dismissal-type dropdown explaining "Bowler-credited dismissals (bowled, caught, lbw, stumped, hit wicket) are not allowed on a free hit — the batsman survives and only run-out / retired-out stand." When the admin selects a bowler-credited dismissal type during a free hit, the banner adds an inline warning: "Picking this dismissal will be rejected by the engine — pick Run Out instead." This pre-warns the admin BEFORE they hit Confirm, so they don't waste a click on a doomed dismissal.
+  - Imported `BOWLER_CREDITED_WICKETS` from `@/lib/scoring` so the dialog can derive `freeHitWillReject` (computed during render — no setState-in-effect).
+
+Verification (engine unit-tested via a /tmp bun script — 5 scenarios, all pass):
+- ✅ **Test A — T20I: no-ball → free hit → BOWLED rejected.** After no-ball: `freeHit=true`, runs=1, balls=0, commentary="No ball (+1) — FREE HIT next ball". After attempting BOWLED: `freeHit=false` (consumed), `wickets=0` (rejected), `balls=1` (ball still counts), striker stays in, striker.balls=1, bowler.wickets=0 (not credited), commentary="FREE HIT! Babar survives (bowled not allowed on free hit)".
+- ✅ **Test B — T20I: no-ball → free hit → RUN OUT allowed.** After run-out of non-striker: `wickets=1` (allowed on free hit), `freeHit=false` (consumed), non-striker slot cleared, bowler.wickets=0 (run-out doesn't credit bowler).
+- ✅ **Test C — T20I: no-ball → wide (free hit carries) → BOWLED rejected.** After wide: `freeHit=true` (carried forward, wide doesn't consume), `balls=0` (wide doesn't count). After BOWLED: `wickets=0` (rejected), `freeHit=false` (consumed).
+- ✅ **Test D — T20I: no-ball → no-ball (free hit continues) → FOUR.** After 2nd no-ball: `freeHit=true` (extends), runs=2, balls=0. After FOUR: `freeHit=false` (consumed), runs=6, balls=1 (first legal delivery).
+- ✅ **Test E — Test match: no-ball → NO free hit, BOWLED allowed.** After no-ball in Test: `freeHit=false` (Tests don't apply the rule), commentary="No ball (+1)" (no free-hit mention). After BOWLED: `wickets=1` (allowed), bowler.wickets=1, striker.out=true.
+- ✅ `bun run lint` → 0 errors.
+
+Stage Summary:
+- The free-hit policy now applies in limited-overs matches (ODI/T20I/T10) — a no-ball makes the next LEGAL delivery a free hit. Bowler-credited dismissals (bowled/caught/lbw/stumped/hit-wkt) on a free hit are REJECTED by the engine (the batsman survives, but the ball still counts and the free hit is consumed). Run-out and retired-out remain valid on a free hit. No-balls and wides during a free hit keep it pending until a legal ball is bowled. Tests are excluded entirely (no free hits). The UI shows: (1) an animated amber "Free hit" pill badge in the LiveScoreboard when free hit is active, (2) an amber banner inside the WicketDialog with an inline warning if the admin picks a bowler-credited dismissal type during a free hit. Commentary logs both the free-hit-scheduled message ("No ball (+1) — FREE HIT next ball") and the rejection message ("FREE HIT! Batsman survives (bowled not allowed on free hit)") so the commentary feed tells the full story.

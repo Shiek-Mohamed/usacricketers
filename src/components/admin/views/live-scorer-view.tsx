@@ -15,6 +15,7 @@ import {
   applyBall,
   stateToScorecard,
   oversString,
+  BOWLER_CREDITED_WICKETS,
   type LiveMatchState,
   type BallEvent,
   type WicketType,
@@ -440,6 +441,7 @@ export function LiveScorerView() {
                     name: currentInnings.bowlers.find((b) => b.id === liveState.bowlerId)?.name ?? "Bowler",
                   }}
                   fieldingPlayers={playersByTeam[currentInnings.bowlingTeamId] ?? []}
+                  freeHit={currentInnings.freeHit}
                   onConfirm={(ev) => {
                     handleBall(ev)
                     setWicketOpen(false)
@@ -708,6 +710,12 @@ function LiveScoreboard({
             <span className="ml-2 text-lg font-normal text-slate-300">
               ({overs} ov)
             </span>
+            {inn.freeHit && (
+              <span className="ml-3 inline-flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-extrabold uppercase tracking-wide text-amber-950 animate-pulse">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-950" />
+                Free hit
+              </span>
+            )}
           </div>
           <div className="mt-1 text-xs text-slate-300">
             CRR {runRate}
@@ -921,6 +929,7 @@ function WicketDialog({
   nonStriker,
   bowler,
   fieldingPlayers,
+  freeHit,
   onConfirm,
 }: {
   open: boolean
@@ -929,6 +938,11 @@ function WicketDialog({
   nonStriker: { id: string; name: string }
   bowler: { id: string; name: string }
   fieldingPlayers: { id: string; name: string; role?: string }[]
+  /** True when the current ball is a free hit — bowler-credited dismissals
+   *  (bowled/caught/lbw/stumped/hit-wkt) will be REJECTED by the engine.
+   *  The dialog shows a hint banner so the admin knows to pick Run Out or
+   *  Retired Out instead. */
+  freeHit?: boolean
   onConfirm: (ev: {
     kind: "wicket"
     wicketType: WicketType
@@ -986,6 +1000,14 @@ function WicketDialog({
         ? nonStriker.name
         : "?"
 
+  // Free-hit-derived warning: when the current ball is a free hit AND the
+  // selected dismissal type is bowler-credited, the engine will REJECT the
+  // wicket (batsman survives). Show a warning so the admin knows.
+  const freeHitWillReject =
+    !!freeHit &&
+    BOWLER_CREDITED_WICKETS.has(wicketType) &&
+    wicketType !== "retired"
+
   function handleConfirm() {
     onConfirm({
       kind: "wicket",
@@ -1011,6 +1033,24 @@ function WicketDialog({
             fielder(s) involved. The dismissal text updates live in the preview.
           </DialogDescription>
         </DialogHeader>
+
+        {/* Free-hit banner — appears when the current ball is a free hit. */}
+        {freeHit && (
+          <div className="rounded-md border border-amber-400 bg-amber-50 px-3 py-2 text-xs dark:bg-amber-950/40">
+            <div className="flex items-center gap-1.5 font-bold uppercase tracking-wide text-amber-800 dark:text-amber-300">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-600" />
+              Free hit in effect
+            </div>
+            <p className="mt-1 text-amber-700 dark:text-amber-400">
+              Bowler-credited dismissals (bowled, caught, lbw, stumped, hit
+              wicket) are <strong>not allowed</strong> on a free hit — the
+              batsman survives and only run-out / retired-out stand.
+              {freeHitWillReject
+                ? " Picking this dismissal will be rejected by the engine — pick Run Out instead."
+                : ""}
+            </p>
+          </div>
+        )}
 
         <div className="grid gap-3 py-2">
           {/* Dismissal type */}

@@ -400,7 +400,7 @@ export function LiveScorerView() {
                 <Picker
                   title={needStriker ? "New batsman (striker's end)" : "New batsman (non-striker's end)"}
                   players={(playersByTeam[currentInnings!.battingTeamId] ?? []).filter(
-                    (p) => !currentInnings!.batsmen.some((b) => b.id === p.id || b.out)
+                    (p) => !currentInnings!.batsmen.some((b) => b.id === p.id)
                   )}
                   placeholder="Select new batsman"
                   confirmLabel="Add batsman"
@@ -1144,38 +1144,54 @@ function Picker({
         <Plus className="h-4 w-4" />
         <h3 className="text-sm font-bold uppercase tracking-wide">{title}</h3>
       </div>
-      <Select value={val} onValueChange={setVal}>
-        <SelectTrigger className="w-full">
-          <SelectValue placeholder={placeholder} />
-        </SelectTrigger>
-        <SelectContent>
-          {players.map((p) => (
-            <SelectItem key={p.id} value={p.id}>
-              {p.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <div className="mt-2 flex items-center justify-between gap-2">
-        <span className="text-xs text-amber-700 dark:text-amber-400">
-          {selected ? (
-            <>
-              Selected: <span className="font-semibold">{selected.name}</span>
-            </>
-          ) : (
-            "Pick a player above, then confirm."
-          )}
-        </span>
-        <Button
-          size="sm"
-          disabled={!val}
-          onClick={() => val && onPick(val)}
-          className="gap-1.5"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          {confirmLabel}
-        </Button>
-      </div>
+      {players.length === 0 ? (
+        // Empty-state — the team has no bench players available (rare, but
+        // happens if a team was created without enough players seeded, or
+        // everyone has already batted). Tell the admin how to fix it instead
+        // of opening a broken dropdown.
+        <div className="rounded-md border border-dashed bg-amber-100/60 px-3 py-4 text-center text-xs text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+          No eligible players left in the squad.
+          <br />
+          Add more players to the team via{" "}
+          <span className="font-semibold">Admin → Teams → bulk-add players</span>{" "}
+          (the green Users icon on the team row), then come back here.
+        </div>
+      ) : (
+        <>
+          <Select value={val} onValueChange={setVal}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder={placeholder} />
+            </SelectTrigger>
+            <SelectContent>
+              {players.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <span className="text-xs text-amber-700 dark:text-amber-400">
+              {selected ? (
+                <>
+                  Selected: <span className="font-semibold">{selected.name}</span>
+                </>
+              ) : (
+                "Pick a player above, then confirm."
+              )}
+            </span>
+            <Button
+              size="sm"
+              disabled={!val}
+              onClick={() => val && onPick(val)}
+              className="gap-1.5"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {confirmLabel}
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   )
 }

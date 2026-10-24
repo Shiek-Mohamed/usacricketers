@@ -851,3 +851,34 @@ Verification:
 
 Stage Summary:
 - Dot balls are no longer blank in the live commentary feed — they show "0 · dot ball" with a distinct muted styling so they visually recede (matching the Cricinfo convention where dots are de-emphasized vs runs/wickets/boundaries). The fix applies to both the admin live-scorer's commentary panel and the public match-detail page's commentary section.
+
+---
+Task ID: 24
+Agent: orchestrator (Z.ai)
+Task: "The dropdown is not working when [selecting] a batsman" — the New-batsman picker appeared empty / unclickable after the first wicket.
+
+Root cause:
+- In the task-22 refactor I changed the bench-list filter from
+  `!batsmen.some((b) => b.id === p.id)` to
+  `!batsmen.some((b) => b.id === p.id || b.out)`.
+- The intent was "exclude players who are already batting OR have already batted and been dismissed" — both shouldn't bat again.
+- But the JavaScript semantics of `||` inside `some()` evaluate per-batsman: `some(b => b.id === p.id || b.out)` returns true if ANY batsman has the same id as p OR ANY batsman has `out === true`. So once the first wicket fell (one batsman has `out: true`), the predicate was true for EVERY bench player — the whole list got filtered out → the dropdown opened empty → "the dropdown is not working".
+
+Verification of the bug:
+- Reproduced via a bun unit script: 11-player team, after first wicket (striker out, non-striker in):
+  - OLD (buggy) filter `!batsmen.some(b => b.id === p.id || b.out)` → bench size **0** ← the bug
+  - NEW (fixed) filter `!batsmen.some(b => b.id === p.id)` → bench size **9** (11 - the out striker - the non-striker) ✅
+- DB check confirmed the team RSA actually has 11 players in the roster, so the empty dropdown wasn't a data issue — it was the filter regression.
+
+Work Log:
+- **Reverted the bench-list filter** in `live-scorer-view.tsx` back to the correct `!batsmen.some((b) => b.id === p.id)` — excludes only players who are already in the batsmen array. This correctly covers BOTH currently-batting players (out=false) AND already-dismissed players (out=true) — both have `b.id === p.id` so both are excluded; bench players (not yet in batsmen) all pass.
+- **Empty-state for the Picker**: if `players.length === 0` (genuine edge case — a team was created without enough bench players, or everyone has already batted), the Picker now shows a helpful amber-box message instead of opening a broken dropdown:
+  > "No eligible players left in the squad. Add more players to the team via Admin → Teams → bulk-add players (the green Users icon on the team row), then come back here."
+  This points the admin to the bulk-upload Players feature built in task 20.
+
+Verification:
+- ✅ `bun run lint` → 0 errors.
+- ✅ Bun unit script reproduced the bug (0 bench players with the old filter) and confirmed the fix (9 bench players with the new filter).
+
+Stage Summary:
+- The New-batsman dropdown now correctly shows the team's bench players (everyone not already in the batsmen list) after a wicket falls — was previously showing an empty list because of a `||` operator regression I introduced in task 22. Fixed by reverting to the original `b.id === p.id` filter. Plus added an empty-state message in the Picker for the genuine edge case of a team with no bench players (points the admin to the bulk-add-players feature).

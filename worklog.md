@@ -1019,3 +1019,35 @@ Verification:
 
 Stage Summary:
 - The image-upload SyntaxError was caused by a missing `/api/upload/route.ts` file (the UploadButton posts there but the route didn't exist — Next.js returned a 404 HTML page which res.json() couldn't parse). Now the route exists, returns JSON for all paths (success + 4 error paths), and is properly site-admin-guarded. The admin banners view's image upload tab works end-to-end — upload an image, get a URL back, attach to the banner, save.
+
+---
+Task ID: 28
+Agent: orchestrator (Z.ai)
+Task: Fix "the title is displaying but not the banner image" — banner image was rendering so small on the home page that the user thought it wasn't showing.
+
+Root cause:
+- The `<BannerSlot>` `<ImageBanner>` component had CSS `block max-h-[120px] w-full object-contain` on its `<img>`.
+- `w-full` forces the IMG element to be 100% of the 970px container width.
+- `max-h-[120px]` caps the IMG element's height at 120px.
+- `object-contain` makes the image CONTENT preserve its aspect ratio inside the (970×120) box — so the image is letterboxed.
+- For a 850×651 portrait-ish test image (aspect ~1.305), inside a 970×120 box (aspect 8.08): the image fits the height (120px) and is letterboxed horizontally — the visible image is only ~157×120px, centered in a 970×120 area. The user saw a small centered photo with lots of empty space on the sides and concluded "the banner image isn't showing".
+- The admin table thumbnail had CSS `max-h-10` (40px) — even smaller, so the admin couldn't visually verify the image was uploaded.
+
+Work Log:
+- **`<BannerSlot>` `<ImageBanner>` CSS fix** (`src/components/site/banner-slot.tsx`): changed from `block max-h-[120px] w-full object-contain` to `block mx-auto h-auto max-w-full`. Now the image displays at its natural aspect ratio, capped by the container width (max-w-full = up to 970px) — NOT letterboxed into a fixed-height box. A 970×90 leaderboard image renders at 970×90; a 728×90 renders at 728×90 (centered via mx-auto); a 300×250 renders at 300×250 (smaller than container, centered). A portrait photo (like the test image) renders at its natural (large) size — which makes the aspect-ratio mismatch obvious to the admin so they know to fix it. Updated the inline comment to document the rationale.
+- **Admin table thumbnail CSS fix** (`src/components/admin/views/admin-banners-view.tsx`): changed from `mt-1 max-h-10 rounded border` (40px thumbnail) to `mt-1 max-h-20 rounded border` (80px thumbnail) — admin can actually see the image in the table now.
+- **Admin dialog image-preview CSS fix**: changed from `max-h-16` (64px preview) to `max-h-24` (96px preview) in the create/edit dialog image tab so the admin sees a larger preview when reviewing the uploaded image.
+- **Dimensions hint in admin image tab**: added a paragraph below the Upload button explaining the recommended dimensions per placement slot — wide banners like 970×90 leaderboard or 728×90. Warns that portrait photos will render large and tall (natural aspect ratio, no cropping).
+
+Verification:
+- ✅ `bun run lint` → 0 errors.
+- ✅ Dev server still healthy on port 3000.
+- ✅ Created an image banner via curl (placement=home-live-hero, imageUrl=/uploads/...jpg, an 850×651 portrait test image).
+- ✅ Loaded home page via agent-browser; evaluated the BannerSlot DOM:
+  - Before fix: img was 970×120 box with letterboxed ~157×120 visible content (image looked tiny).
+  - After fix: img is 850×651 (full natural size), no letterboxing.
+- ✅ VLM screenshot analysis confirmed the banner image is now "visible and large" — VLM even mistook it for a "full-width hero image" because the portrait test image now renders at its natural 850×651 dimensions.
+- ✅ Cleaned up the test banner via DELETE → count 0.
+
+Stage Summary:
+- The banner image now displays at its natural aspect ratio (capped by container width) instead of being letterboxed into a fixed-height box. The admin table thumbnail is larger (80px max height) so the admin can visually verify the image was uploaded. The admin dialog image-preview is larger too (96px). A dimensions hint in the image tab recommends wide banner dimensions (970×90 leaderboard / 728×90 banner) per placement slot, and warns that portrait photos will render large. The admin can now clearly see whether their image uploaded and is displaying — no more "title showing but image missing" confusion.

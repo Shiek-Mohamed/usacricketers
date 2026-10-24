@@ -290,7 +290,7 @@ export function AdminBannersView() {
                             <img
                               src={b.imageUrl}
                               alt={b.altText || b.title}
-                              className="mt-1 max-h-10 rounded border"
+                              className="mt-1 max-h-20 rounded border"
                             />
                           )}
                         </TableCell>
@@ -405,7 +405,7 @@ export function AdminBannersView() {
                       <img
                         src={form.imageUrl}
                         alt={form.altText || "banner"}
-                        className="max-h-16 rounded"
+                        className="max-h-24 rounded"
                       />
                       <code className="flex-1 truncate text-xs text-muted-foreground">
                         {form.imageUrl}
@@ -421,6 +421,28 @@ export function AdminBannersView() {
                   ) : (
                     <UploadButton onUploaded={(url) => set("imageUrl", url)} />
                   )}
+                  <p className="text-[11px] text-muted-foreground">
+                    Recommended dimensions per placement slot —{" "}
+                    <code className="rounded bg-muted px-1 py-0.5">
+                      home-live-hero
+                    </code>
+                    ,{" "}
+                    <code className="rounded bg-muted px-1 py-0.5">
+                      home-above-results
+                    </code>
+                    ,{" "}
+                    <code className="rounded bg-muted px-1 py-0.5">
+                      home-above-news
+                    </code>{" "}
+                    and{" "}
+                    <code className="rounded bg-muted px-1 py-0.5">
+                      home-above-galleries
+                    </code>
+                    : upload a wide banner image (~970×90 leaderboard, or
+                    728×90 banner). Portrait photos render large and tall —
+                    the image displays at its natural aspect ratio capped by
+                    the slot width, with no cropping or letterboxing.
+                  </p>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="grid gap-1.5">

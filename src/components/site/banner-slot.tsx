@@ -232,11 +232,20 @@ function ImageBanner({ banner }: { banner: Banner }) {
   const img = (
     // biome-ignore lint: next/image requires width/height config; for ad
     // banners of varying IAB sizes, a plain <img loading="lazy"> is simpler.
+    //
+    // Display the image at its natural aspect ratio, capped by the container
+    // width (max-w-full) — NOT letterboxed into a fixed-height box. Banner
+    // ads come in standard IAB sizes (970×90 leaderboard, 728×90 banner,
+    // 300×250 medium-rectangle, etc.) and the admin should upload one sized
+    // for the slot. A 970×90 banner will display at 970×90; a 300×250 will
+    // display at 300×250 (smaller than the container, centered). Portrait
+    // photos uploaded by mistake will render large but that's the admin's
+    // responsibility — point them at the dimension hint in the admin UI.
     <img
       src={banner.imageUrl}
       alt={banner.altText || banner.title || "advertisement"}
       loading="lazy"
-      className="block max-h-[120px] w-full object-contain"
+      className="block mx-auto h-auto max-w-full"
     />
   )
   // Open in new tab for external links; rel="sponsored noopener" tells

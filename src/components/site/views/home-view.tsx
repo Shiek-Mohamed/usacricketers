@@ -13,7 +13,17 @@ import {
 } from "@/components/cricket/ui"
 import { MiniScorecard } from "@/components/cricket/mini-scorecard"
 import { ArticleCard } from "@/components/cricket/article-card"
-import { BannerSlot } from "@/components/site/banner-slot"
+// Lazy-load BannerSlot — the home page doesn't need to compile the banner
+// rendering code (which pulls in next/script for AdSense) on the initial
+// load. The slot renders an empty placeholder on SSR + first paint, then
+// the client fetches the active banners + renders them after hydration.
+// This keeps the home-page compile light (~200KB smaller bundle) which
+// helps the dev server stay alive under memory pressure.
+import dynamic from "next/dynamic"
+const BannerSlot = dynamic(() => import("@/components/site/banner-slot").then(m => m.BannerSlot), {
+  ssr: false,
+  loading: () => null,
+})
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"

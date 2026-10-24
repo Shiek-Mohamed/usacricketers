@@ -294,7 +294,8 @@ export function MatchDetailView() {
                         c.kind === "six" && "font-bold text-purple-700",
                         c.kind === "boundary" && "font-bold text-emerald-700",
                         c.kind === "over" && "font-semibold text-foreground",
-                        c.kind === "info" && "italic text-muted-foreground"
+                        c.kind === "info" && "italic text-muted-foreground",
+                        c.kind === "dot" && "text-muted-foreground/70 tabular-nums"
                       )}
                     >
                       {c.text}

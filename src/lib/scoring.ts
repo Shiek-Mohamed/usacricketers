@@ -67,7 +67,7 @@ export interface CommentaryEntry {
   ballNo: number
   over: string
   text: string
-  kind: "run" | "boundary" | "six" | "wicket" | "extra" | "over" | "info"
+  kind: "run" | "boundary" | "six" | "wicket" | "extra" | "over" | "info" | "dot"
 }
 
 export interface LiveMatchState {
@@ -352,6 +352,11 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
       bowler.overRuns += r
       if (r === 0) {
         bowler.dots += 1
+        // Don't leave the commentary text blank for a dot ball — show a
+        // visible "0 · dot ball" entry so the commentary feed reads
+        // ball-by-ball without gaps.
+        eventText = "0 · dot ball"
+        eventKind = "dot"
       } else if (r === 4) {
         striker.fours += 1
         bowler.foursConceded += 1

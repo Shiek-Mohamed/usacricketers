@@ -816,3 +816,38 @@ Stage Summary:
   1. **Prevention**: the picker now requires an explicit "Add batsman" / "Set bowler" button click after the dropdown selection — misclicks in the dropdown no longer write to live state.
   2. **Correction**: inline amber "Change" buttons next to each player's name in the LiveScoreboard — one click clears the slot, the picker re-opens, the admin picks the correct person. Disabled mid-over (with a "use Undo" hint) to prevent stats corruption.
 - Undo (top of card) still works as a catch-all and now reads "Undid last action" since it covers balls, picker picks, and Change-button clears.
+
+---
+Task ID: 23
+Agent: orchestrator (Z.ai)
+Task: When no runs are scored off a ball, the commentary section should not be left blank — it should show "0" or "dot ball".
+
+Root cause:
+- The scoring engine's `applyBall` "run" case had an if/else-if/else chain for `r === 0` / `r === 4` / `r === 6` / else. The `r === 0` branch only incremented `bowler.dots` — it never set `eventText` or `eventKind`, so they stayed as their defaults (`""` and `"run"`). The commentary feed rendered `c.text` directly → dot balls showed as blank cells, leaving gaps in the ball-by-ball commentary.
+
+Work Log:
+- **Engine** (`src/lib/scoring.ts`):
+  - Added `"dot"` to the `CommentaryEntry["kind"]` union (`"run" | "boundary" | "six" | "wicket" | "extra" | "over" | "info" | "dot"`).
+  - In the `r === 0` branch of `applyBall`'s "run" case, set `eventText = "0 · dot ball"` and `eventKind = "dot"` so dot balls render with visible text and a distinct kind for styling.
+- **Live scorer commentary feed** (`src/components/admin/views/live-scorer-view.tsx` CommentaryFeed component):
+  - Added a styling branch for `c.kind === "dot"` → `text-muted-foreground/70 tabular-nums` so dot balls visually de-emphasize (less prominent than runs/wickets/boundaries — the over column already disambiguates them by ball number).
+- **Public match-detail commentary feed** (`src/components/site/views/match-detail-view.tsx`):
+  - Same `c.kind === "dot"` styling branch added (`text-muted-foreground/70 tabular-nums`).
+
+Verification:
+- ✅ `bun run lint` → 0 errors.
+- ✅ Engine unit-tested via /tmp bun script: fired 6 balls (dot, 1, dot, FOUR, dot, dot). Commentary feed now reads ball-by-ball with no gaps:
+  ```
+   0.0  | info      | "TMA innings begins"
+   0.1  | dot       | "0 · dot ball"
+   0.2  | run       | "1 run — Babar"
+   0.3  | dot       | "0 · dot ball"
+   0.4  | boundary  | "FOUR! Rizwan 4"
+   0.5  | dot       | "0 · dot ball"
+   0.6  | dot       | "0 · dot ball"
+     1  | over      | "End of over 1 — TMA 5/0 (1)"
+  ```
+- ✅ 4 dot entries produced, all with non-empty text "0 · dot ball" (was blank before).
+
+Stage Summary:
+- Dot balls are no longer blank in the live commentary feed — they show "0 · dot ball" with a distinct muted styling so they visually recede (matching the Cricinfo convention where dots are de-emphasized vs runs/wickets/boundaries). The fix applies to both the admin live-scorer's commentary panel and the public match-detail page's commentary section.

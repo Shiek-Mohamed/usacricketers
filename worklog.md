@@ -786,3 +786,33 @@ Verification (engine unit-tested via a /tmp bun script — kept out of the proje
 
 Stage Summary:
 - The Wicket button now opens a modal that lets the admin pick the dismissal type (Bowled/Caught/LBW/Run Out/Stumped/Hit Wicket/Retired Out) AND select the fielder(s) involved (catcher for Caught, keeper auto-prefilled for Stumped, run-out fielder for Run Out). For run-outs, the admin can pick which batsman was out (striker or non-striker). The engine correctly credits the bowler only for bowled/caught/lbw/stumped/hit-wkt (NOT for run-out or retired-out), correctly marks the right batsman out (including non-striker for run-out at that end), and correctly skips ball-counting for retired-out. The dismissal text is built Cricinfo-style ("c Maxwell b Cummins", "run out (Carey)", "c &b Cummins", "st Carey b Cummins", "hit wkt b Cummins", "retired out") and shows up live on the public scorecard. All 4 dismissal-type unit tests pass end-to-end (caught, run-out-of-non-striker, bowled, retired-out).
+
+---
+Task ID: 22
+Agent: orchestrator (Z.ai)
+Task: "If I select a wrong bowler or batsman to go back and select the correct person" — affordance for undoing / re-picking a wrong picker selection.
+
+Work Log:
+- **Picker refactor — decouple selection from commit** (`Picker` component in `live-scorer-view.tsx`):
+  - Before: `onValueChange` from the Select fired `onPick(id)` immediately — a single accidental click in the dropdown wrote the wrong player to the live state, with no chance to recover before the picker closed.
+  - After: the dropdown only updates local `val` state. A separate explicit "Add batsman" / "Set bowler" / "Confirm" button is required to commit. Live preview shows the selected name before commit ("Selected: <Name>" or "Pick a player above, then confirm."). The two existing `<Picker>` callers got tailored `confirmLabel`s ("Add batsman" + "Set bowler").
+- **Inline "Change" buttons in the LiveScoreboard**: each of the three slots (Striker / Non-striker / Bowler) now has a small amber "Change" pill button rendered next to the player's name. Clicking it:
+  1. Pushes the current state to the history stack (so Undo can still recover if the admin changes their mind).
+  2. Clears that slot (`strikerId`/`nonStrikerId`/`bowlerId = null`).
+  3. The Picker re-shows automatically because `needStriker`/`needNonStriker`/`needBowler` becomes true when the slot is null.
+  4. The admin picks the correct player → confirms → play resumes.
+- **Three new parent-callback functions** in `LiveScorerView`: `changeStriker()`, `changeNonStriker()`, `changeBowler()` — each pushes prev state to history + clears the slot + shows a `Re-pick the {striker/non-striker/bowler}` toast. `<LiveScoreboard>` accepts the three new `onChange*` optional callbacks.
+- **Over-boundary guard** (safety): the Change buttons are **disabled mid-over** (`balls % 6 !== 0`) — mid-over swaps would mess up the bowler's figures + the batsman's balls-faced count. The disabled state has the helpful tooltip "Wait for end of over (or use Undo)" so the admin knows Undo is the fallback. At over-boundaries (start of an over, after a wicket fell at end of previous over, etc.) the buttons are enabled.
+- **`<ChangeButton>`** — a tiny reusable pill button (`RotateCcw` icon + "Change" label), with `disabled` + `hint` props. Hover hint says either "Re-pick striker" (enabled) or "Wait for end of over (or use Undo)" (disabled).
+- **Undo toast copy update**: `handleUndo` now toasts `"Undid last action"` (was `"Undid last ball"`) — clearer that Undo covers picker picks + Change-button clears too, not just balls. The Undo button at the top of the scorer card is unchanged (still always rendered, `disabled={history.length === 0}`).
+
+Verification:
+- ✅ `bun run lint` → 0 errors.
+- ✅ Dev server still listening on port 3000; `GET /` returns 200 in ~0.5s after the rebuild.
+- ✅ The Undo path was already covering picker picks (because `bringInBatsman`/`pickNextBowler` already pushed prev state to history before mutating) — the user just had no discoverable UI for it. The new inline "Change" buttons make that path obvious.
+
+Stage Summary:
+- Two complementary affordances for "I picked the wrong bowler/batsman":
+  1. **Prevention**: the picker now requires an explicit "Add batsman" / "Set bowler" button click after the dropdown selection — misclicks in the dropdown no longer write to live state.
+  2. **Correction**: inline amber "Change" buttons next to each player's name in the LiveScoreboard — one click clears the slot, the picker re-opens, the admin picks the correct person. Disabled mid-over (with a "use Undo" hint) to prevent stats corruption.
+- Undo (top of card) still works as a catch-all and now reads "Undid last action" since it covers balls, picker picks, and Change-button clears.

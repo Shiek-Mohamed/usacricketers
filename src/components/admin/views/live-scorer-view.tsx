@@ -178,7 +178,7 @@ export function LiveScorerView() {
     setHistory((h) => h.slice(0, -1))
     pushState(prev)
     persist(prev)
-    toast.success("Undid last ball")
+    toast.success("Undid last action")
   }
 
   function startInnings(
@@ -260,6 +260,39 @@ export function LiveScorerView() {
     pushState(state)
     persist(state)
     toast.success(`${p.name} to bowl`)
+  }
+
+  /** "I picked the wrong striker — let me re-pick." Pushes the current state
+   *  to the history stack (so Undo can recover it), then clears the strikerId
+   *  slot. The Picker re-shows automatically because `needStriker` becomes
+   *  true when strikerId === null. */
+  function changeStriker() {
+    if (!liveState || !liveState.strikerId) return
+    setHistory((h) => [...h, liveState].slice(-50))
+    const next = { ...liveState, strikerId: null as string | null }
+    pushState(next)
+    persist(next)
+    toast.info("Re-pick the striker")
+  }
+
+  /** Same as changeStriker but for the non-striker slot. */
+  function changeNonStriker() {
+    if (!liveState || !liveState.nonStrikerId) return
+    setHistory((h) => [...h, liveState].slice(-50))
+    const next = { ...liveState, nonStrikerId: null as string | null }
+    pushState(next)
+    persist(next)
+    toast.info("Re-pick the non-striker")
+  }
+
+  /** Same as changeStriker but for the bowler slot. */
+  function changeBowler() {
+    if (!liveState || !liveState.bowlerId) return
+    setHistory((h) => [...h, liveState].slice(-50))
+    const next = { ...liveState, bowlerId: null as string | null }
+    pushState(next)
+    persist(next)
+    toast.info("Re-pick the bowler")
   }
 
   function reset() {
@@ -354,7 +387,12 @@ export function LiveScorerView() {
             <div className="mt-4 space-y-5">
               {/* Live scoreboard summary */}
               {currentInnings && (
-                <LiveScoreboard state={liveState!} />
+                <LiveScoreboard
+                  state={liveState!}
+                  onChangeStriker={changeStriker}
+                  onChangeNonStriker={changeNonStriker}
+                  onChangeBowler={changeBowler}
+                />
               )}
 
               {/* Action prompts */}
@@ -365,6 +403,7 @@ export function LiveScorerView() {
                     (p) => !currentInnings!.batsmen.some((b) => b.id === p.id || b.out)
                   )}
                   placeholder="Select new batsman"
+                  confirmLabel="Add batsman"
                   onPick={bringInBatsman}
                 />
               )}
@@ -373,6 +412,7 @@ export function LiveScorerView() {
                   title="Next bowler"
                   players={playersByTeam[currentInnings!.bowlingTeamId] ?? []}
                   placeholder="Select bowler for next over"
+                  confirmLabel="Set bowler"
                   onPick={pickNextBowler}
                 />
               )}
@@ -619,7 +659,17 @@ function SetupPanel({
   )
 }
 
-function LiveScoreboard({ state }: { state: LiveMatchState }) {
+function LiveScoreboard({
+  state,
+  onChangeStriker,
+  onChangeNonStriker,
+  onChangeBowler,
+}: {
+  state: LiveMatchState
+  onChangeStriker?: () => void
+  onChangeNonStriker?: () => void
+  onChangeBowler?: () => void
+}) {
   const inn = state.innings[state.currentInnings]
   const striker = inn.batsmen.find((b) => b.id === state.strikerId)
   const nonStriker = inn.batsmen.find((b) => b.id === state.nonStrikerId)
@@ -633,6 +683,17 @@ function LiveScoreboard({ state }: { state: LiveMatchState }) {
     target && ballsLeft && ballsLeft > 0
       ? ((runsNeeded! / ballsLeft) * 6).toFixed(2)
       : null
+
+  // A slot can be safely "Changed" only at over-boundaries — mid-over swaps
+  // would mess up the bowler's figures + the batsman's balls-faced count.
+  // Disable the Change button once any ball of the current over has been
+  // bowled (i.e. balls % 6 !== 0). The exception is the bowler slot after a
+  // wicket (still mid-over) — the bowler can be subbed off due to injury in
+  // real cricket, but for our MVP we keep the rule simple: only at over
+  // boundaries. Undo is still available mid-over for fixing mistakes.
+  const atOverBoundary = inn.balls % 6 === 0
+  const canChangeBatsmen = atOverBoundary && state.status === "live"
+  const canChangeBowler = atOverBoundary && state.status === "live"
 
   return (
     <div className="rounded-lg border bg-gradient-to-br from-slate-900 to-slate-800 p-4 text-white sm:p-5">
@@ -657,21 +718,60 @@ function LiveScoreboard({ state }: { state: LiveMatchState }) {
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
         <div className="rounded-md bg-white/10 p-2.5">
-          <div className="text-[10px] uppercase text-slate-300">Striker</div>
+          <div className="flex items-center justify-between">
+            <div className="text-[10px] uppercase text-slate-300">Striker</div>
+            {striker && onChangeStriker && (
+              <ChangeButton
+                onClick={onChangeStriker}
+                disabled={!canChangeBatsmen}
+                hint={
+                  canChangeBatsmen
+                    ? "Re-pick striker"
+                    : "Wait for end of over (or use Undo)"
+                }
+              />
+            )}
+          </div>
           <div className="font-bold">{striker?.name ?? "—"}</div>
           <div className="text-slate-300">
             {striker ? `${striker.runs} (${striker.balls})` : "—"}
           </div>
         </div>
         <div className="rounded-md bg-white/10 p-2.5">
-          <div className="text-[10px] uppercase text-slate-300">Non-striker</div>
+          <div className="flex items-center justify-between">
+            <div className="text-[10px] uppercase text-slate-300">Non-striker</div>
+            {nonStriker && onChangeNonStriker && (
+              <ChangeButton
+                onClick={onChangeNonStriker}
+                disabled={!canChangeBatsmen}
+                hint={
+                  canChangeBatsmen
+                    ? "Re-pick non-striker"
+                    : "Wait for end of over (or use Undo)"
+                }
+              />
+            )}
+          </div>
           <div className="font-bold">{nonStriker?.name ?? "—"}</div>
           <div className="text-slate-300">
             {nonStriker ? `${nonStriker.runs} (${nonStriker.balls})` : "—"}
           </div>
         </div>
         <div className="col-span-2 rounded-md bg-white/10 p-2.5">
-          <div className="text-[10px] uppercase text-slate-300">Bowler</div>
+          <div className="flex items-center justify-between">
+            <div className="text-[10px] uppercase text-slate-300">Bowler</div>
+            {bowler && onChangeBowler && (
+              <ChangeButton
+                onClick={onChangeBowler}
+                disabled={!canChangeBowler}
+                hint={
+                  canChangeBowler
+                    ? "Re-pick bowler"
+                    : "Wait for end of over (or use Undo)"
+                }
+              />
+            )}
+          </div>
           <div className="flex items-center justify-between">
             <span className="font-bold">{bowler?.name ?? "—"}</span>
             <span className="text-slate-300">
@@ -683,6 +783,38 @@ function LiveScoreboard({ state }: { state: LiveMatchState }) {
         </div>
       </div>
     </div>
+  )
+}
+
+/** Tiny "Change" pill button rendered inline in the LiveScoreboard next to
+ *  each player's name. Click it to clear that slot → the picker re-shows →
+ *  the admin picks the correct person. Disabled mid-over (use Undo instead). */
+function ChangeButton({
+  onClick,
+  disabled,
+  hint,
+}: {
+  onClick: () => void
+  disabled?: boolean
+  hint?: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={hint}
+      aria-label={hint ?? "Change selection"}
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide transition-colors",
+        disabled
+          ? "cursor-not-allowed bg-white/5 text-slate-500"
+          : "bg-white/15 text-amber-300 hover:bg-amber-500/30 hover:text-amber-100"
+      )}
+    >
+      <RotateCcw className="h-2.5 w-2.5" />
+      Change
+    </button>
   )
 }
 
@@ -989,20 +1121,30 @@ function Picker({
   players,
   placeholder,
   onPick,
+  confirmLabel = "Confirm",
 }: {
   title: string
   players: { id: string; name: string }[]
   placeholder: string
   onPick: (id: string) => void
+  /** Label for the commit button. Use "Add batsman" / "Set bowler" etc.
+   *  Defaults to "Confirm". */
+  confirmLabel?: string
 }) {
   const [val, setVal] = useState("")
+  const selected = players.find((p) => p.id === val)
+  // Decouple selection from commit: changing the dropdown only updates the
+  // local `val` state. The commit (calling onPick) requires an explicit
+  // button click — so a misclick in the dropdown doesn't write to the live
+  // state. If the user picks the wrong name in the dropdown, they can just
+  // pick a different one before pressing Confirm.
   return (
-    <div className="rounded-lg border-2 border-amber-400 bg-amber-50 p-4">
-      <div className="mb-2 flex items-center gap-2 text-amber-800">
+    <div className="rounded-lg border-2 border-amber-400 bg-amber-50 p-4 dark:bg-amber-950/40">
+      <div className="mb-2 flex items-center gap-2 text-amber-800 dark:text-amber-300">
         <Plus className="h-4 w-4" />
         <h3 className="text-sm font-bold uppercase tracking-wide">{title}</h3>
       </div>
-      <Select value={val} onValueChange={(v) => { setVal(v); onPick(v); }}>
+      <Select value={val} onValueChange={setVal}>
         <SelectTrigger className="w-full">
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
@@ -1014,6 +1156,26 @@ function Picker({
           ))}
         </SelectContent>
       </Select>
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <span className="text-xs text-amber-700 dark:text-amber-400">
+          {selected ? (
+            <>
+              Selected: <span className="font-semibold">{selected.name}</span>
+            </>
+          ) : (
+            "Pick a player above, then confirm."
+          )}
+        </span>
+        <Button
+          size="sm"
+          disabled={!val}
+          onClick={() => val && onPick(val)}
+          className="gap-1.5"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          {confirmLabel}
+        </Button>
+      </div>
     </div>
   )
 }

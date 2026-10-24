@@ -54,6 +54,11 @@ model Player {
   teamId        String
   team          Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   role          String   @default("Batsman") // Batsman, Bowler, All-rounder, Wicket-keeper
+  // Explicit captain / keeper flags — used by the live scorer + scorecard to
+  // render the (c) / † suffixes. (Previously regex'd from `role`, which was
+  // brittle: a player whose role is "Batsman" can also be captain.)
+  isCaptain     Boolean  @default(false)
+  isKeeper      Boolean  @default(false)
   battingStyle  String   @default("Right-hand bat")
   bowlingStyle  String   @default("")
   battingStats  String   @default("{}") // JSON

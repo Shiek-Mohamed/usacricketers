@@ -7,13 +7,21 @@ import {
   isValidEmail,
 } from "@/lib/scorer-auth"
 import { serializeSiteAdmin } from "@/lib/serialize"
+import { rateLimit } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
 
 const COOKIE_MAX_AGE = 60 * 60 * 12 // 12 hours
 
-/** POST /api/admin/login — email + password → sets an httpOnly signed cookie. */
+/** POST /api/admin/login — email + password → sets an httpOnly signed cookie.
+ *
+ *  Rate-limited: 10 attempts per 10 minutes per IP — brute-force resistant
+ *  without being user-hostile. Returns 429 with `Retry-After` if exceeded. */
 export async function POST(req: NextRequest) {
+  // Rate-limit first — don't even read the body if the IP is over quota.
+  const limited = rateLimit(req, { limit: 10, windowMs: 10 * 60 * 1000 })
+  if (limited) return limited
+
   try {
     const body = await req.json()
     const email = String(body.email || "").trim()

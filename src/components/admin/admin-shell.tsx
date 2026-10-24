@@ -49,6 +49,18 @@ const navItems: { label: string; view: ViewKey; icon: React.ElementType }[] = [
   { label: "Banners", view: "admin-banners", icon: Megaphone },
 ]
 
+/** Grouped sidebar layout — 3 sections for less visual noise on long lists. */
+const navGroups: { title: string; views: Set<ViewKey> }[] = [
+  { title: "Cricket", views: new Set<ViewKey>(["admin-matches", "live-scorer", "admin-players", "admin-teams", "admin-series"]) },
+  { title: "Content", views: new Set<ViewKey>(["admin-articles", "admin-galleries", "admin-videos", "admin-banners", "admin-sidebar", "admin-import"]) },
+  { title: "System", views: new Set<ViewKey>(["admin-scorers", "admin-league-admins"]) },
+]
+
+function getGroup(view: ViewKey): string {
+  for (const g of navGroups) if (g.views.has(view)) return g.title
+  return "Overview"
+}
+
 export function AdminShell({
   title,
   count,
@@ -61,30 +73,57 @@ export function AdminShell({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Mobile horizontal nav */}
+      {/* Mobile horizontal nav — grouped by section, scrollable */}
       <div className="lg:hidden -mx-3 px-3">
         <div className="flex gap-1 overflow-x-auto pb-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
-          {navItems.map((item) => {
-            const Icon = item.icon
-            const active = view === item.view
+          {/* Dashboard first (always visible), then grouped sections */}
+          {(() => {
+            const dash = navItems.find((i) => i.view === "admin-dashboard")!
+            const Icon = dash.icon
+            const active = view === dash.view
             return (
               <Button
-                key={item.view}
+                key={dash.view}
                 size="sm"
                 variant={active ? "default" : "outline"}
                 className="shrink-0 gap-1.5"
-                onClick={() => navigate(item.view)}
+                onClick={() => navigate(dash.view)}
               >
                 <Icon className="h-3.5 w-3.5" />
-                {item.label}
+                {dash.label}
               </Button>
             )
-          })}
+          })()}
+          {navGroups.map((group) => (
+            <div key={group.title} className="flex items-center gap-1 shrink-0">
+              <span className="px-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {group.title}
+              </span>
+              {navItems
+                .filter((i) => group.views.has(i.view))
+                .map((item) => {
+                  const Icon = item.icon
+                  const active = view === item.view
+                  return (
+                    <Button
+                      key={item.view}
+                      size="sm"
+                      variant={active ? "default" : "outline"}
+                      className="shrink-0 gap-1.5"
+                      onClick={() => navigate(item.view)}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      {item.label}
+                    </Button>
+                  )
+                })}
+            </div>
+          ))}
         </div>
       </div>
 
       <div className="flex gap-6">
-        {/* Desktop sidebar */}
+        {/* Desktop sidebar — grouped with section headings */}
         <aside className="hidden lg:flex lg:w-60 lg:flex-col lg:sticky lg:top-20 self-start">
           <div className="rounded-xl border bg-card p-4">
             <div className="flex items-center gap-2">
@@ -99,14 +138,15 @@ export function AdminShell({
               </div>
             </div>
           </div>
-          <nav className="mt-3 flex flex-col gap-1 rounded-xl border bg-card p-2">
-            {navItems.map((item) => {
-              const Icon = item.icon
-              const active = view === item.view
+          <nav className="mt-3 flex flex-col gap-3 rounded-xl border bg-card p-2">
+            {/* Dashboard — always at top, outside groups */}
+            {(() => {
+              const dash = navItems.find((i) => i.view === "admin-dashboard")!
+              const Icon = dash.icon
+              const active = view === dash.view
               return (
                 <button
-                  key={item.view}
-                  onClick={() => navigate(item.view)}
+                  onClick={() => navigate(dash.view)}
                   className={cn(
                     "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                     active
@@ -115,10 +155,39 @@ export function AdminShell({
                   )}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  {item.label}
+                  {dash.label}
                 </button>
               )
-            })}
+            })()}
+            {/* Grouped sections */}
+            {navGroups.map((group) => (
+              <div key={group.title} className="flex flex-col gap-0.5">
+                <div className="px-3 pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {group.title}
+                </div>
+                {navItems
+                  .filter((i) => group.views.has(i.view))
+                  .map((item) => {
+                    const Icon = item.icon
+                    const active = view === item.view
+                    return (
+                      <button
+                        key={item.view}
+                        onClick={() => navigate(item.view)}
+                        className={cn(
+                          "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                          active
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "hover:bg-accent text-foreground"
+                        )}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        {item.label}
+                      </button>
+                    )
+                  })}
+              </div>
+            ))}
           </nav>
           <p className="mt-3 px-2 text-[11px] text-muted-foreground">
             Admin mode — changes are live

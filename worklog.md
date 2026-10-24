@@ -1074,3 +1074,71 @@ Stage Summary:
 - The banner system is correctly built and the banner IS in the database. The "banner isn't showing up" issue is caused by the dev server getting OOM-killed during Turbopack compiles — when the server dies, the home page request fails (HTTP 000) and/or the client-side banner fetch fails, so no banner renders.
 - The fix from a user's perspective: refresh the home page. Turbopack caches compiles, so the first compile is heavy (and might OOM-kill the server), but the second attempt uses the cached compile and survives. Once the cache is warm, the home page renders normally + the BannerSlot fetches the banner from the (still-alive) API and renders it.
 - Lazy-loading the BannerSlot component via `next/dynamic` reduces the home page's compile memory footprint by ~150-200MB, which gives the dev server more headroom to survive the initial compile.
+
+---
+Task ID: 30
+Agent: orchestrator (Z.ai)
+Task: Execute the 5 top recommendations from task-29's "what can we improve" — admin sidebar grouping, login rate-limiting, strike-rotation override, Player isCaptain/isKeeper fields, Test 4-innings support.
+
+Work Log:
+- **#20 — Admin sidebar grouped into 3 sections** (`src/components/admin/admin-shell.tsx`):
+  - Defined `navGroups: [{ title: "Cricket" | "Content" | "System", views: Set<ViewKey> }]`.
+  - Cricket: Matches, Live Scorer, Players, Teams, Tournaments.
+  - Content: Articles, Galleries, Videos, Banners, Sidebar, Import.
+  - System: Scorers, League Admins.
+  - Dashboard sits above the groups (always visible).
+  - Desktop sidebar: 3 collapsible-style section headings with their nav items.
+  - Mobile horizontal nav: same Dashboard-then-groups layout in scrollable pill form.
+- **#2 — Login rate-limiting** on 3 routes:
+  - `src/app/api/admin/login/route.ts`, `src/app/api/scorer/login/route.ts`, `src/app/api/league-admin/login/route.ts`.
+  - Each: `const limited = rateLimit(req, { limit: 10, windowMs: 10 * 60 * 1000 })` at the top of POST — 10 attempts / 10 minutes / IP. Returns 429 with `Retry-After` header if exceeded. No-ops otherwise.
+  - Verified via curl: 10 wrong-password attempts → 401; 11th + 12th → 429 (rate-limited). The `Retry-After` header tells the client when to retry.
+- **#7 — Strike-rotation override (Swap ends)** (`src/components/admin/views/live-scorer-view.tsx`):
+  - New `swapEnds()` function in LiveScorerView — pushes prev state to history (Undo recovers) + swaps strikerId ↔ nonStrikerId. Toasts "Ends swapped".
+  - `LiveScoreboard` accepts new `onSwapEnds?: () => void` prop.
+  - Renders a small "Swap ends" button (`ArrowLeftRight` icon) pinned to the inner edge between the Striker + Non-striker cells. Visible only when both batsmen are at the crease. Always enabled (not over-boundary-gated) — swapping ends is a pure relabel that doesn't affect stats.
+  - Use case: when the auto strike-rotation logic disagrees with reality (batsmen crossed on a caught-and-bowled, odd run on a wide, runner substituted, etc.).
+- **#15 — Player `isCaptain` / `isKeeper` fields** (drop the brittle regex on `role`):
+  - Prisma schema: added `isCaptain Boolean @default(false)` + `isKeeper Boolean @default(false)` to Player. `bun run db:push` applied.
+  - Types: added `isCaptain: boolean` + `isKeeper: boolean` to `Player` interface in `src/lib/types.ts`.
+  - Serialization: `serializePlayer` now includes both fields.
+  - API: POST `/api/players` + PUT `/api/players/[id]` accept + persist both fields. POST `/api/players/bulk` reads them from each row.
+  - Admin UI: `players-view.tsx` form gets a new "Captain / Keeper tags" column with two checkboxes next to the role Select. The hint says "Independent of the role field — a batsman can also be captain." openEdit pre-fills from `p.isCaptain` / `p.isKeeper`.
+  - Bulk-upload parser: `parsePlayerRows` now auto-detects captain (role contains "captain" or "(c)") + keeper (role contains "keeper" / "wicket" / "†") and sets the booleans. The admin can edit per-player later.
+  - Live scorer: dropped ALL the `/captain/i.test(p.role)` + `/keeper|wicket/i.test(p.role)` regex calls in `startInnings`, `bringInBatsman`, the WicketDialog's keeper auto-pick, and the fielder SelectItem rendering — all now read `p.isCaptain` / `p.isKeeper` directly.
+- **#6 — 4-innings Test match support** (the big one):
+  - **Engine (`src/lib/scoring.ts`)**: refactored `endInnings` to be format-aware.
+    - `const isTest = state.maxOvers === 0` → unlimited overs = Test match = up to 4 innings.
+    - `const maxInnings = isTest ? 4 : 2`.
+    - When the current innings ends, swap batting/bowling sides + push a new innings onto the stack. The 4-innings Test batting order works out automatically:
+      - innings 0: A bats, B bowls → innings 1: B bats, A bowls
+      - innings 1: B bats, A bowls → innings 2: A bats, B bowls (A's 2nd innings)
+      - innings 2: A bats, B bowls → innings 3: B bats, A bowls (B's 2nd innings = chase)
+    - Chase target only set on the FINAL innings of the match:
+      - Limited-overs (2 innings): innings[1].target = innings[0].runs + 1
+      - Test (4 innings): innings[3].target = (innings[0].runs + innings[2].runs) - innings[1].runs + 1
+    - New `computeMatchResult()` helper for the final-innings case:
+      - Limited-overs: chasing team wins by wickets if target reached, ties at target-1, loses by runs otherwise.
+      - Test: Team B wins by wickets if they reach the target; Team A wins by runs (margin = A's total - B's total) if B is all out short; "Match drawn" otherwise (declaration or time-out without result).
+    - New `declareInnings(state)` export: captain declares the current innings closed. Only valid for Tests (limited-overs declarations return the state unchanged). Pushes a "X declared at Y/Z" commentary entry, then calls `endInnings(state, "declared")`. The innings is marked `declared: true` so the scorecard can show the (d) suffix.
+  - **UI (`src/components/admin/views/live-scorer-view.tsx`)**:
+    - Imported `declareInnings` from `@/lib/scoring`.
+    - New `handleDeclare()` function — guards against limited-overs (`maxOvers > 0`) + non-live status, pushes prev state to history, calls `declareInnings`, persists, toasts "Innings declared".
+    - New amber "Declare" button (Flag icon) in the action-bar next to Undo + Save. Only renders when `liveState.maxOvers === 0 && liveState.status === "live"` — i.e. only in live Test matches. Hidden for ODI/T20I/T10.
+
+Verification:
+- ✅ `bun run lint` → 0 errors after each piece (sidebar / rate-limit / swap-ends / player-fields / 4-innings).
+- ✅ Rate-limit verified via curl: 10 wrong-password attempts → 401; 11th + 12th → 429 Too Many Requests with `Retry-After` header. The lib's in-process token-bucket tracks per-IP and resets after the 10-minute window.
+- ✅ Test 4-innings flow verified via /tmp bun script:
+  - Test A: IND declares 3 times (innings 1/2/3), AUS chases the computed target (14 runs = 8+6-1+1) by hitting 3 sixes → status=completed, result="AUS won by 10 wickets". ✅
+  - Test B: All 4 innings declared short of any chase → status=completed, result="Match drawn". ✅
+- ✅ Cleaned up the test "Sample banner" banner via DELETE.
+- ✅ Dev server restarts cleanly on port 3000 (recurring OOM during Turbopack compiles remains the only instability — that's a 4 GB sandbox limitation, not a code issue).
+
+Stage Summary:
+- All 5 top recommendations shipped:
+  - #20 admin sidebar grouped into Cricket / Content / System sections (cleaner navigation).
+  - #2 login rate-limiting on all 3 auth routes (10 attempts / 10 min / IP — brute-force resistant).
+  - #7 "Swap ends" button in the LiveScoreboard — overrides the auto strike-rotation when it disagrees with reality (caught-and-bowled crossing, etc.).
+  - #15 Player `isCaptain` / `isKeeper` boolean fields — replaces the brittle regex on the role string. Bulk-upload parser auto-detects from the role column. Admin form has explicit checkboxes. Live scorer reads the fields directly.
+  - #6 4-innings Test match support — engine allows N innings (limited-overs = 2, Test = 4) + handles the chase target computation for both formats + new `declareInnings()` export + amber "Declare" button in the UI (Test-only). Result computation handles wins-by-wickets, wins-by-runs, ties, and draws.

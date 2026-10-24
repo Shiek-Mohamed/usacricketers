@@ -30,6 +30,8 @@ export async function PUT(
       name: body.name,
       teamId: body.teamId,
       role: body.role,
+      isCaptain: body.isCaptain === undefined ? undefined : !!body.isCaptain,
+      isKeeper: body.isKeeper === undefined ? undefined : !!body.isKeeper,
       battingStyle: body.battingStyle,
       bowlingStyle: body.bowlingStyle || "",
       battingStats:

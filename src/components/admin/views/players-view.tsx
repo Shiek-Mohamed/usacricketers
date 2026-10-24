@@ -83,6 +83,8 @@ interface PlayerFormState {
   name: string
   teamId: string
   role: string
+  isCaptain: boolean
+  isKeeper: boolean
   battingStyle: string
   bowlingStyle: string
   bio: string
@@ -95,6 +97,8 @@ const emptyForm: PlayerFormState = {
   name: "",
   teamId: "",
   role: "Batsman",
+  isCaptain: false,
+  isKeeper: false,
   battingStyle: "Right-hand bat",
   bowlingStyle: "",
   bio: "",
@@ -184,6 +188,8 @@ export function AdminPlayersView() {
       name: p.name,
       teamId: p.teamId,
       role: p.role,
+      isCaptain: !!p.isCaptain,
+      isKeeper: !!p.isKeeper,
       battingStyle: p.battingStyle,
       bowlingStyle: p.bowlingStyle,
       bio: p.bio,
@@ -211,6 +217,8 @@ export function AdminPlayersView() {
         name: form.name,
         teamId: form.teamId,
         role: form.role,
+        isCaptain: form.isCaptain,
+        isKeeper: form.isKeeper,
         battingStyle: form.battingStyle,
         bowlingStyle: form.bowlingStyle,
         bio: form.bio,
@@ -414,6 +422,37 @@ export function AdminPlayersView() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="grid gap-1.5">
+                <Label>Captain / Keeper tags</Label>
+                <div className="flex h-9 items-center gap-4">
+                  <label className="flex items-center gap-1.5 text-xs font-medium cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.isCaptain}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, isCaptain: e.target.checked }))
+                      }
+                      className="h-4 w-4 rounded border-input accent-primary"
+                    />
+                    Captain <span className="text-muted-foreground">(c)</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs font-medium cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.isKeeper}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, isKeeper: e.target.checked }))
+                      }
+                      className="h-4 w-4 rounded border-input accent-primary"
+                    />
+                    Keeper <span className="text-muted-foreground">†</span>
+                  </label>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Used by the live scorer + public scorecard. Independent of the
+                  role field — a batsman can also be captain.
+                </p>
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="battingStyle">Batting Style</Label>

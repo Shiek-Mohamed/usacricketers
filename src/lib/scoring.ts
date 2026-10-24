@@ -629,9 +629,13 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
 
 export function endInnings(state: LiveMatchState, reason: string): LiveMatchState {
   const inn = state.innings[state.currentInnings]
-  const isFirst = state.currentInnings === 0
+  const inningsCount = state.innings.length
   const innings = [...state.innings]
-  innings[state.currentInnings] = { ...inn }
+  // Mark the current innings as ended (and `declared` if the captain declared).
+  innings[state.currentInnings] = {
+    ...inn,
+    declared: reason === "declared" ? true : inn.declared,
+  }
 
   let commentary = state.commentary
   commentary = [
@@ -645,61 +649,148 @@ export function endInnings(state: LiveMatchState, reason: string): LiveMatchStat
     ...commentary,
   ].slice(0, 120)
 
-  if (isFirst) {
-    // Set up 2nd innings with chase target
-    const target = inn.runs + 1
-    const newInnings: ScorerInnings = {
-      battingTeamId: inn.bowlingTeamId,
-      battingTeamShortName: inn.bowlingTeamShortName,
-      bowlingTeamId: inn.battingTeamId,
-      bowlingTeamShortName: inn.battingTeamShortName,
-      runs: 0,
-      wickets: 0,
-      balls: 0,
-      batsmen: [],
-      bowlers: [],
-      fallOfWickets: [],
-      declared: false,
-      target,
-      extrasByes: 0,
-      extrasLegByes: 0,
-      extrasWides: 0,
-      extrasNoBalls: 0,
-      squad: [],
-      freeHit: false,
-    }
-    innings.push(newInnings)
-    return {
-      ...state,
-      innings,
-      currentInnings: 1,
-      strikerId: null,
-      nonStrikerId: null,
-      bowlerId: null,
-      note: `${inn.battingTeamShortName} set ${target} to win. ${inn.bowlingTeamShortName} to chase.`,
-      commentary,
-    }
+  // Test matches (maxOvers === 0) play up to 4 innings; limited-overs matches
+  // (maxOvers > 0) play 2 innings.
+  const isTest = state.maxOvers === 0
+  const maxInnings = isTest ? 4 : 2
+
+  // If this was the final innings of the match, compute the result.
+  if (inningsCount >= maxInnings) {
+    return computeMatchResult(state, innings, commentary)
   }
-  // 2nd innings end → result
-  const target = inn.target ?? 0
-  let result = ""
-  const chaser = inn.battingTeamShortName
-  const setter = inn.bowlingTeamShortName
-  if (inn.runs >= target) {
-    const wktsLeft = 10 - inn.wickets
-    result = `${chaser} won by ${wktsLeft} wicket${wktsLeft !== 1 ? "s" : ""}`
-  } else if (inn.runs === target - 1) {
-    result = "Match tied"
+
+  // Otherwise, set up the next innings. Swap batting/bowling sides — in a
+  // 4-innings Test the same team bats in innings 0 + 2 (and the other in
+  // 1 + 3), which is exactly what swapping from the previous innings gives:
+  //   innings 0: A bats, B bowls   →  innings 1: B bats, A bowls
+  //   innings 1: B bats, A bowls   →  innings 2: A bats, B bowls
+  //   innings 2: A bats, B bowls  →  innings 3: B bats, A bowls
+  const newInnings: ScorerInnings = {
+    battingTeamId: inn.bowlingTeamId,
+    battingTeamShortName: inn.bowlingTeamShortName,
+    bowlingTeamId: inn.battingTeamId,
+    bowlingTeamShortName: inn.battingTeamShortName,
+    runs: 0,
+    wickets: 0,
+    balls: 0,
+    batsmen: [],
+    bowlers: [],
+    fallOfWickets: [],
+    declared: false,
+    target: null,
+    extrasByes: 0,
+    extrasLegByes: 0,
+    extrasWides: 0,
+    extrasNoBalls: 0,
+    squad: [],
+    freeHit: false,
+  }
+
+  // Chase target: only set on the FINAL innings of the match (the team
+  // batting last needs to know how many to win).
+  //   • Limited-overs (2 innings): innings 1 target = innings[0].runs + 1
+  //   • Test (4 innings): innings 3 target =
+  //     (innings[0].runs + innings[2].runs) - innings[1].runs + 1
+  //     (Team A's two innings totals, minus Team B's first innings, plus 1 to win)
+  let targetNote = ""
+  if (!isTest && inningsCount === 1) {
+    // Limited-overs 2nd innings chase.
+    newInnings.target = innings[0].runs + 1
+    targetNote = `${inn.battingTeamShortName} set ${newInnings.target} to win. ${inn.bowlingTeamShortName} to chase.`
+  } else if (isTest && inningsCount === 3) {
+    // Test 4th innings chase.
+    // innings[0] = Team A 1st innings
+    // innings[1] = Team B 1st innings
+    // innings[2] = Team A 2nd innings (just ended — A's total)
+    // innings[3] = Team B 2nd innings (about to start — chasing)
+    const teamATotal = innings[0].runs + innings[2].runs
+    const teamBFirstInnings = innings[1].runs
+    const target = teamATotal - teamBFirstInnings + 1
+    newInnings.target = target
+    targetNote = `${inn.battingTeamShortName} declared at ${inn.runs}/${inn.wickets}. ${inn.bowlingTeamShortName} needs ${target} runs to win.`
   } else {
-    const margin = target - 1 - inn.runs
-    result = `${setter} won by ${margin} run${margin !== 1 ? "s" : ""}`
+    targetNote = `${inn.battingTeamShortName} innings ended (${reason}). ${inn.bowlingTeamShortName} to bat next.`
   }
+
+  innings.push(newInnings)
+  return {
+    ...state,
+    innings,
+    currentInnings: inningsCount,
+    strikerId: null,
+    nonStrikerId: null,
+    bowlerId: null,
+    note: targetNote,
+    commentary,
+  }
+}
+
+/**
+ * Compute the final match result from the completed innings.
+ *
+ * Limited-overs (2 innings): the chasing team won / tied / lost based on
+ * whether they reached the target.
+ *
+ * Test (4 innings): compare Team A's total (innings 0 + 2) vs Team B's total
+ * (innings 1 + 3). If the chasing team (B in innings 3) reached the target,
+ * they won by wickets. If they were bowled out short, Team A won by runs.
+ * If time ran out (innings 3 ended without all-out or target reached), draw.
+ */
+function computeMatchResult(
+  state: LiveMatchState,
+  innings: ScorerInnings[],
+  commentary: CommentaryEntry[]
+): LiveMatchState {
+  const isTest = state.maxOvers === 0
+
+  let result = ""
+  let note = ""
+
+  if (!isTest) {
+    // Limited-overs: innings[1] is the chase.
+    const chase = innings[1]
+    const target = chase.target ?? 0
+    const chaser = chase.battingTeamShortName
+    const setter = chase.bowlingTeamShortName
+    if (chase.runs >= target) {
+      const wktsLeft = 10 - chase.wickets
+      result = `${chaser} won by ${wktsLeft} wicket${wktsLeft !== 1 ? "s" : ""}`
+    } else if (chase.runs === target - 1) {
+      result = "Match tied"
+    } else {
+      const margin = target - 1 - chase.runs
+      result = `${setter} won by ${margin} run${margin !== 1 ? "s" : ""}`
+    }
+    note = result
+  } else {
+    // Test: compare Team A (innings 0 + 2) vs Team B (innings 1 + 3).
+    const teamA = innings[0].battingTeamShortName
+    const teamB = innings[1].battingTeamShortName
+    const teamATotal = innings[0].runs + innings[2].runs
+    const teamBTotal = innings[1].runs + innings[3].runs
+    const chase = innings[3]
+    const target = chase.target ?? Infinity
+    if (chase.runs >= target) {
+      // Team B chased it down — won by wickets.
+      const wktsLeft = 10 - chase.wickets
+      result = `${teamB} won by ${wktsLeft} wicket${wktsLeft !== 1 ? "s" : ""}`
+    } else if (chase.wickets >= 10) {
+      // Team B all out short — Team A won by runs (margin = A's total - B's total).
+      const margin = teamATotal - teamBTotal
+      result = `${teamA} won by ${Math.abs(margin)} run${Math.abs(margin) !== 1 ? "s" : ""}`
+    } else {
+      // Innings ended (declaration or time) without a result — Test draw.
+      result = "Match drawn"
+    }
+    note = result
+  }
+
   return {
     ...state,
     innings,
     status: "completed",
     result,
-    note: result,
+    note,
     strikerId: null,
     nonStrikerId: null,
     bowlerId: null,
@@ -707,13 +798,47 @@ export function endInnings(state: LiveMatchState, reason: string): LiveMatchStat
       {
         id: uid(),
         ballNo: state.ballNo,
-        over: oversString(inn.balls),
+        over: oversString(innings[innings.length - 1].balls),
         text: `Result: ${result}`,
         kind: "info",
       },
       ...commentary,
     ].slice(0, 120),
   }
+}
+
+/**
+ * Captain declares the current innings closed. Only valid for Test matches
+ * (limited-overs matches don't have declarations). Sets `declared: true`
+ * on the current innings, then triggers the standard endInnings flow with
+ * reason "declared" so the next innings is set up correctly.
+ *
+ * The declaration can happen at any point — the captain doesn't need to be
+ * all out or out of overs. Common reasons: setting a chase target for the
+ * opposition, time preservation, etc.
+ */
+export function declareInnings(state: LiveMatchState): LiveMatchState {
+  if (state.maxOvers > 0) {
+    // Limited-overs — declarations aren't allowed.
+    return state
+  }
+  // Add a commentary note before calling endInnings so the declaration is
+  // visible in the feed.
+  const inn = state.innings[state.currentInnings]
+  const declaredCommentary = [
+    {
+      id: uid(),
+      ballNo: state.ballNo,
+      over: oversString(inn.balls),
+      text: `${inn.battingTeamShortName} declared at ${inn.runs}/${inn.wickets}`,
+      kind: "info" as const,
+    },
+    ...state.commentary,
+  ].slice(0, 120)
+  return endInnings(
+    { ...state, commentary: declaredCommentary },
+    "declared"
+  )
 }
 
 /** Convert the live state to the public Scorecard format (read by ScorecardView). */

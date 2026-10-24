@@ -200,6 +200,8 @@ function TournamentEditor({
             rows.map((r) => ({
               name: r.name,
               role: r.role,
+              isCaptain: r.isCaptain,
+              isKeeper: r.isKeeper,
               battingStyle: r.battingStyle,
               bowlingStyle: r.bowlingStyle,
             }))

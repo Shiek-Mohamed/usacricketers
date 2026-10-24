@@ -28,6 +28,8 @@ export async function POST(req: NextRequest) {
       name: body.name,
       teamId: body.teamId,
       role: body.role || "Batsman",
+      isCaptain: !!body.isCaptain,
+      isKeeper: !!body.isKeeper,
       battingStyle: body.battingStyle || "Right-hand bat",
       bowlingStyle: body.bowlingStyle || "",
       battingStats: body.battingStats || "{}",

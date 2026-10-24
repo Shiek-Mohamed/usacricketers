@@ -123,6 +123,8 @@ export interface Player {
   name: string
   teamId: string
   role: string
+  isCaptain: boolean
+  isKeeper: boolean
   battingStyle: string
   bowlingStyle: string
   battingStats: BattingStat

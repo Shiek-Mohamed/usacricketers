@@ -15,6 +15,7 @@ import {
   applyBall,
   stateToScorecard,
   oversString,
+  declareInnings,
   BOWLER_CREDITED_WICKETS,
   type LiveMatchState,
   type BallEvent,
@@ -54,6 +55,8 @@ import {
   Save,
   CircleDot,
   Plus,
+  ArrowLeftRight,
+  Flag,
 } from "lucide-react"
 import type { Player } from "@/lib/types"
 
@@ -201,21 +204,21 @@ export function LiveScorerView() {
     let state = initState(match!, battingFirstId)
     // Pre-populate the squad with the full batting-team roster so the
     // "Did not bat" section of the public scorecard lists bench players.
+    // Captain/keeper tags come from the explicit Player model fields
+    // (was previously a brittle regex on the role string).
     for (const p of battingPlayers) {
       state = addSquadMember(state, p.id, p.name, {
-        // crude role-based captain/keeper hint — refine when Player has
-        // explicit captain/keeper fields
-        isCaptain: /captain/i.test(p.role || ""),
-        isKeeper: /keeper|wicket/i.test(p.role || ""),
+        isCaptain: !!p.isCaptain,
+        isKeeper: !!p.isKeeper,
       })
     }
     state = addBatsman(state, striker.id, striker.name, {
-      isCaptain: /captain/i.test(striker.role || ""),
-      isKeeper: /keeper|wicket/i.test(striker.role || ""),
+      isCaptain: !!striker.isCaptain,
+      isKeeper: !!striker.isKeeper,
     })
     state = addBatsman(state, nonStriker.id, nonStriker.name, {
-      isCaptain: /captain/i.test(nonStriker.role || ""),
-      isKeeper: /keeper|wicket/i.test(nonStriker.role || ""),
+      isCaptain: !!nonStriker.isCaptain,
+      isKeeper: !!nonStriker.isKeeper,
     })
     state = setBatsmen(state, striker.id, nonStriker.id)
     state = setBowler(state, bowler.id, bowler.name)
@@ -231,8 +234,8 @@ export function LiveScorerView() {
     const p = battingPlayers.find((x) => x.id === playerId)
     if (!p) return
     let state = addBatsman(liveState, p.id, p.name, {
-      isCaptain: /captain/i.test(p.role || ""),
-      isKeeper: /keeper|wicket/i.test(p.role || ""),
+      isCaptain: !!p.isCaptain,
+      isKeeper: !!p.isKeeper,
     })
     // Fill whichever slot is currently empty — the striker's end if a normal
     // wicket fell (strikerId === null), or the non-striker's end if a run-out
@@ -296,11 +299,54 @@ export function LiveScorerView() {
     toast.info("Re-pick the bowler")
   }
 
+  /** Swap the striker and non-striker ends. Used when the auto strike-rotation
+   *  logic disagrees with reality (e.g. batsmen crossed on a caught-and-
+   *  bowled, odd run on a wide, runner substituted, etc.). Allowed at any
+   *  time — doesn't affect stats, just relabels who's on strike. */
+  function swapEnds() {
+    if (!liveState) return
+    if (!liveState.strikerId || !liveState.nonStrikerId) {
+      toast.error("Need both batsmen at the crease to swap ends")
+      return
+    }
+    setHistory((h) => [...h, liveState].slice(-50))
+    const next = {
+      ...liveState,
+      strikerId: liveState.nonStrikerId,
+      nonStrikerId: liveState.strikerId,
+    }
+    pushState(next)
+    persist(next)
+    toast.success("Ends swapped")
+  }
+
   function reset() {
     setHistory([])
     // clear live cache
     // (clearState not destructured here; use pushState(null) approach via a clear)
     pushState({ ...liveState!, status: "live", result: "" })
+  }
+
+  /** Test-match declaration: captain ends the current innings without being
+   *  all out. No-op for limited-overs matches (those don't have declarations).
+   *  Pushes the prev state to history (so Undo can recover) then runs the
+   *  engine's declareInnings which marks `declared: true` + sets up the
+   *  next innings / computes the result. */
+  function handleDeclare() {
+    if (!liveState) return
+    if (liveState.maxOvers > 0) {
+      toast.error("Declarations are only available in Test matches")
+      return
+    }
+    if (liveState.status !== "live") {
+      toast.error("Can't declare — innings already ended")
+      return
+    }
+    setHistory((h) => [...h, liveState].slice(-50))
+    const next = declareInnings(liveState)
+    pushState(next)
+    persist(next)
+    toast.success("Innings declared")
   }
 
   const showSetup = !liveState || liveState.innings.length === 0
@@ -361,6 +407,19 @@ export function LiveScorerView() {
                 <Button variant="outline" size="sm" onClick={handleUndo} className="gap-1" disabled={history.length === 0}>
                   <Undo2 className="h-3.5 w-3.5" /> Undo
                 </Button>
+                {/* Test-only: captain can declare the current innings closed
+                    without being all out. Hidden for limited-overs matches. */}
+                {liveState.maxOvers === 0 && liveState.status === "live" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDeclare}
+                    className="gap-1 border-amber-400 text-amber-700 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-950/40"
+                    title="Declare innings — Test matches only"
+                  >
+                    <Flag className="h-3.5 w-3.5" /> Declare
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
@@ -393,6 +452,7 @@ export function LiveScorerView() {
                   onChangeStriker={changeStriker}
                   onChangeNonStriker={changeNonStriker}
                   onChangeBowler={changeBowler}
+                  onSwapEnds={swapEnds}
                 />
               )}
 
@@ -666,11 +726,16 @@ function LiveScoreboard({
   onChangeStriker,
   onChangeNonStriker,
   onChangeBowler,
+  onSwapEnds,
 }: {
   state: LiveMatchState
   onChangeStriker?: () => void
   onChangeNonStriker?: () => void
   onChangeBowler?: () => void
+  /** Swap striker ↔ non-striker — override the auto strike-rotation logic
+   *  when it disagrees with reality (caught-and-bowled crossing, etc.).
+   *  Allowed at any time (not over-boundary-gated) — doesn't affect stats. */
+  onSwapEnds?: () => void
 }) {
   const inn = state.innings[state.currentInnings]
   const striker = inn.batsmen.find((b) => b.id === state.strikerId)
@@ -745,7 +810,7 @@ function LiveScoreboard({
             {striker ? `${striker.runs} (${striker.balls})` : "—"}
           </div>
         </div>
-        <div className="rounded-md bg-white/10 p-2.5">
+        <div className="relative rounded-md bg-white/10 p-2.5">
           <div className="flex items-center justify-between">
             <div className="text-[10px] uppercase text-slate-300">Non-striker</div>
             {nonStriker && onChangeNonStriker && (
@@ -764,6 +829,21 @@ function LiveScoreboard({
           <div className="text-slate-300">
             {nonStriker ? `${nonStriker.runs} (${nonStriker.balls})` : "—"}
           </div>
+          {/* Swap-ends button — pinned to the inner edge between the two
+              batsman cells. Visible only when both batsmen are at the crease.
+              Always enabled (not over-boundary-gated) because swapping ends
+              doesn't affect any stats — it's just a relabel. */}
+          {striker && nonStriker && onSwapEnds && (
+            <button
+              type="button"
+              onClick={onSwapEnds}
+              title="Swap striker ↔ non-striker (override the auto strike-rotation)"
+              aria-label="Swap striker and non-striker ends"
+              className="absolute -left-[14px] top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-slate-700 text-white shadow-md transition-colors hover:bg-slate-600"
+            >
+              <ArrowLeftRight className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
         <div className="col-span-2 rounded-md bg-white/10 p-2.5">
           <div className="flex items-center justify-between">
@@ -959,10 +1039,10 @@ function WicketDialog({
   // dialog — useState initial values act as the "reset on open".
 
   // The wicket-keeper on the fielding side (auto-prefilled for stumped).
+  // Uses the explicit `isKeeper` flag on the Player model — was previously
+  // a brittle regex on the role string.
   const keeperId = useMemo(() => {
-    const k = fieldingPlayers.find((p) =>
-      /keeper|wicket/i.test(p.role || "")
-    )
+    const k = fieldingPlayers.find((p) => p.isKeeper)
     return k?.id ?? ""
   }, [fieldingPlayers])
 
@@ -1113,8 +1193,8 @@ function WicketDialog({
                   {fieldingPlayers.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.name}
-                      {/keeper|wicket/i.test(p.role || "") && " †"}
-                      {/captain/i.test(p.role || "") && " (c)"}
+                      {p.isKeeper && " †"}
+                      {p.isCaptain && " (c)"}
                     </SelectItem>
                   ))}
                 </SelectContent>

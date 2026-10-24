@@ -24,6 +24,8 @@ export function serializePlayer(
     name: p.name,
     teamId: p.teamId,
     role: p.role,
+    isCaptain: p.isCaptain,
+    isKeeper: p.isKeeper,
     battingStyle: p.battingStyle,
     bowlingStyle: p.bowlingStyle,
     battingStats: parseBattingStats(p.battingStats),

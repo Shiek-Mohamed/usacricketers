@@ -71,6 +71,8 @@ function normaliseRole(raw: string): string {
 export interface ParsedPlayerRow {
   name: string
   role: string
+  isCaptain: boolean
+  isKeeper: boolean
   battingStyle: string
   bowlingStyle: string
 }
@@ -134,20 +136,37 @@ export function parsePlayerRows(input: string): ParsedPlayerRow[] {
       .map((name) => ({
         name,
         role: "Batsman",
+        isCaptain: false,
+        isKeeper: false,
         battingStyle: "Right-hand bat",
         bowlingStyle: "",
       }))
   }
 
   // Positional parse — [name, role?, battingStyle?, bowlingStyle?]
+  // Auto-detect captain/keeper from the role string (e.g. "Captain",
+  // "Wicket-keeper", "Keeper & Captain"). The admin can override per-player
+  // later via the player edit form — this is just a smart default.
   return rows
     .filter((r) => r.length >= 1 && r[0])
-    .map((r) => ({
-      name: r[0],
-      role: normaliseRole(r[1] ?? ""),
-      battingStyle: (r[2] ?? "Right-hand bat").trim() || "Right-hand bat",
-      bowlingStyle: (r[3] ?? "").trim(),
-    }))
+    .map((r) => {
+      const roleStr = r[1] ?? ""
+      const roleLower = roleStr.toLowerCase()
+      return {
+        name: r[0],
+        role: normaliseRole(roleStr),
+        isCaptain:
+          roleLower.includes("captain") ||
+          roleLower.includes("(c)") ||
+          roleLower.includes(" (c)"),
+        isKeeper:
+          roleLower.includes("keeper") ||
+          roleLower.includes("wicket") ||
+          roleLower.includes("†"),
+        battingStyle: (r[2] ?? "Right-hand bat").trim() || "Right-hand bat",
+        bowlingStyle: (r[3] ?? "").trim(),
+      }
+    })
     .filter((p) => p.name)
 }
 
@@ -205,6 +224,8 @@ export function BulkPlayersDialog({
         preview.map((p) => ({
           name: p.name,
           role: p.role,
+          isCaptain: p.isCaptain,
+          isKeeper: p.isKeeper,
           battingStyle: p.battingStyle,
           bowlingStyle: p.bowlingStyle,
         }))

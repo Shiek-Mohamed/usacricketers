@@ -4,10 +4,15 @@ import {
   verifyPassword,
   issueLeagueAdminToken,
 } from "@/lib/scorer-auth"
+import { rateLimit } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
 
+/** POST /api/league-admin/login — rate-limited (10 attempts / 10 min / IP). */
 export async function POST(req: NextRequest) {
+  const limited = rateLimit(req, { limit: 10, windowMs: 10 * 60 * 1000 })
+  if (limited) return limited
+
   try {
     const body = await req.json()
     const username = String(body.username || "").trim()

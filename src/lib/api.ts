@@ -51,6 +51,8 @@ export const api = {
       players: Array<{
         name: string
         role?: string
+        isCaptain?: boolean
+        isKeeper?: boolean
         battingStyle?: string
         bowlingStyle?: string
         bio?: string

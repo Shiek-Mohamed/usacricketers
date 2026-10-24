@@ -104,6 +104,8 @@ export async function POST(req: NextRequest) {
       name: rawName,
       teamId,
       role: String(row.role || "Batsman").trim() || "Batsman",
+      isCaptain: !!row.isCaptain,
+      isKeeper: !!row.isKeeper,
       battingStyle:
         String(row.battingStyle || "Right-hand bat").trim() ||
         "Right-hand bat",
@@ -132,6 +134,8 @@ export async function POST(req: NextRequest) {
           name: p.name,
           teamId: p.teamId,
           role: p.role,
+          isCaptain: p.isCaptain,
+          isKeeper: p.isKeeper,
           battingStyle: p.battingStyle,
           bowlingStyle: p.bowlingStyle,
           bio: p.bio,

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { api } from "./api"
-import type { Article, Gallery, Match, PaginatedArticles, Player, Series, SidebarBlock, Team, Video } from "./types"
+import type { Article, Banner, Gallery, Match, PaginatedArticles, Player, Series, SidebarBlock, Team, Video } from "./types"
 
 interface FetchState<T> {
   data: T | null
@@ -96,3 +96,7 @@ export function useAllData() {
   const articles = useArticles()
   return { matches, teams, players, series, articles }
 }
+
+// Banners — admin view fetches ALL (drafts + expired), public slots fetch by
+// placement (the BannerSlot component calls api.banners.list directly).
+export const useBannersAll = () => useFetch<Banner[]>(() => api.banners.listAll())

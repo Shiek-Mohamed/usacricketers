@@ -201,6 +201,7 @@ export type ViewKey =
   | "admin-import"
   | "admin-galleries"
   | "admin-videos"
+  | "admin-banners"
   | "admin-scorers"
   | "admin-league-admins"
   | "live-scorer"
@@ -410,4 +411,39 @@ export interface LeagueAdminSession {
   }
   token: string
   managedSeriesIds: string[]
+}
+
+/* --------------------------------- Banners -------------------------------- */
+
+export type BannerType = "image" | "adsense" | "html"
+
+export interface Banner {
+  id: string
+  type: BannerType
+  title: string
+  placement: string
+  order: number
+  published: boolean
+  startDate: string | null
+  endDate: string | null
+  impressions: number
+  clicks: number
+  weight: number
+
+  // type="image"
+  imageUrl: string | null
+  linkUrl: string | null
+  altText: string | null
+
+  // type="adsense"
+  adsenseClient: string | null
+  adsenseSlot: string | null
+  adsenseFormat: string | null
+  responsive: boolean
+
+  // type="html"
+  htmlContent: string | null
+
+  createdAt: string
+  updatedAt: string
 }

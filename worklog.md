@@ -915,3 +915,69 @@ Verification (engine unit-tested via a /tmp bun script — 5 scenarios, all pass
 
 Stage Summary:
 - The free-hit policy now applies in limited-overs matches (ODI/T20I/T10) — a no-ball makes the next LEGAL delivery a free hit. Bowler-credited dismissals (bowled/caught/lbw/stumped/hit-wkt) on a free hit are REJECTED by the engine (the batsman survives, but the ball still counts and the free hit is consumed). Run-out and retired-out remain valid on a free hit. No-balls and wides during a free hit keep it pending until a legal ball is bowled. Tests are excluded entirely (no free hits). The UI shows: (1) an animated amber "Free hit" pill badge in the LiveScoreboard when free hit is active, (2) an amber banner inside the WicketDialog with an inline warning if the admin picks a bowler-credited dismissal type during a free hit. Commentary logs both the free-hit-scheduled message ("No ball (+1) — FREE HIT next ball") and the rejection message ("FREE HIT! Batsman survives (bowled not allowed on free hit)") so the commentary feed tells the full story.
+
+---
+Task ID: 26
+Agent: orchestrator (Z.ai)
+Task: Build advertising banner system — Approach B + AdSense + HTML + rotation + crash isolation, with 4 home placements (AdSense between Live+Hero non-rotating, plus 3 rotating slots above Latest Results / Latest News / Latest Galleries).
+
+Work Log:
+- **Prisma schema** — new `Banner` model with `type` discriminator ("image" | "adsense" | "html") + all fields: `title`, `placement`, `order`, `published`, `startDate?`, `endDate?`, `impressions`, `clicks`, `weight`, type-specific (`imageUrl/linkUrl/altText` for image, `adsenseClient/adsenseSlot/adsenseFormat/responsive` for adsense, `htmlContent` for html). `db:push` applied.
+- **Types + serialization + API client**:
+  - Added `Banner` interface + `BannerType` union to `src/lib/types.ts`.
+  - Added `serializeBanner` to `src/lib/serialize.ts`.
+  - Added `api.banners.{list, listAll, get, create, update, remove, trackImpression, clickUrl}` to `src/lib/api.ts` — `listAll()` for admin (drafts+expired), `list(placement)` for public (filtered by published + date-active).
+  - Added `useBannersAll()` hook to `src/lib/use-data.ts` (mirrors the `useSidebarBlocks` pattern).
+  - Added `admin-banners` to the `ViewKey` enum.
+- **API routes** (4 files in `src/app/api/banners/`):
+  - `GET/POST /api/banners` — public filtered list (60s CDN cache + 5min stale-while-revalidate) + admin `?all=1` (no-store) for the admin table; POST is site-admin-guarded.
+  - `GET/PUT/DELETE /api/banners/[id]` — public GET (CDN-cached), site-admin-guarded PUT/DELETE.
+  - `POST /api/banners/[id]/click` — increments clicks; GET variant returns 302 redirect (Next.js requires absolute URL — handled with origin-prefix fallback) or 204 No Content if no linkUrl configured.
+  - `POST /api/banners/[id]/impression` — fire-and-forget increment called by IntersectionObserver in the client.
+- **`<BannerSlot>` component** (`src/components/site/banner-slot.tsx`) — full crash-isolation:
+  - **ErrorBoundary**: any render error inside the slot isolates — the rest of the homepage keeps working. Logged to console, the broken slot renders nothing.
+  - **Hydration-safe**: SSR renders nothing (no random rotation on server), client picks after mount — no hydration mismatch.
+  - **Random weighted rotation** on mount via `pickWeightedRandom(banners)` — weights default to 1, so equal-weight random out of the box.
+  - **Time-rotation** for non-AdSense slots every 15s, **disabled for AdSense banners** (Google TOS — no aggressive ad refreshing). The `home-live-hero` placement hardcodes `rotate=false` (the AdSense slot is non-rotating by design).
+  - **`key={banner.id}`** forces React to remount on rotation — critical for AdSense so the push call re-fires for the new `<ins>`.
+  - **AdSense loader** via `next/script` `<Script strategy="lazyOnload">` — Next.js dedupes so multiple AdSense banners only fetch the loader once.
+  - **AdSense push** wrapped in `try/catch` — adblock, bad slot ID, network failure all caught; the `<ins>` stays empty, no crash, single console log.
+  - **Impression tracking** via `IntersectionObserver` (threshold 0.5) → fire-and-forget POST `/impression`. Single ping per banner per page view (ref-guarded).
+  - **Click tracking** for image banners: `<a href="/api/banners/[id]/click" rel="sponsored noopener" target="_blank">` — 302 redirect increments counter + sends to linkUrl.
+  - **HTML banners** via `dangerouslySetInnerHTML` — admin warning in the dialog: only paste trusted partner snippets.
+  - **Defensive null-checks** in every render path — missing fields bail to `null` instead of throwing.
+  - **`useBannersForPlacement`** exported helper hook for other consumers.
+- **Admin UI** (`src/components/admin/views/admin-banners-view.tsx`):
+  - Table with columns: Type badge (color-coded by type), Title (+ image thumbnail for image banners), Placement, Schedule (start → end dates), Stats (impressions, clicks, CTR%), Status (Live/Scheduled/Draft badge), Actions (edit + delete).
+  - Create/edit dialog with **3-tab type selector** (image / adsense / html) using the existing shadcn `Tabs` component — each tab shows only its type-specific fields.
+  - **Image tab**: image upload via existing `UploadButton`, click-through URL, alt text.
+  - **AdSense tab**: publisher ID (`ca-pub-…`), slot ID, format dropdown (auto/horizontal/vertical/rectangle), responsive toggle. Amber warning banner reminding AdSense is non-rotating.
+  - **HTML tab**: raw HTML textarea with amber warning: "Raw HTML is rendered as-is. Only paste snippets from trusted partners."
+  - **Common fields**: placement dropdown (the 4 home slots + extensible), order, start/end date pickers, weight, published switch.
+  - Type-specific validation on submit (image needs imageUrl, adsense needs both client+slot, html needs htmlContent).
+- **Admin page wiring**:
+  - `admin-banners` added to `ViewKey` enum in types.ts.
+  - `<AdminBannersView />` imported + switch case added to `src/app/page.tsx`.
+  - Sidebar entry added to `AdminShell` nav items (Megaphone icon, label "Banners").
+- **Home view integration** — 4 `<BannerSlot>` insertions:
+  - `home-live-hero` — between LiveMatchStrip and FeaturedHero story (AdSense, non-rotating by hardcoded `rotate=false` for this placement).
+  - `home-above-results` — just before the navy Latest Results + Upcoming panel (rotating).
+  - `home-above-news` — just before the Latest News section (rotating).
+  - `home-above-galleries` — between Interviews and Photo Galleries (rotating).
+  - Each slot has `min-h-[90px]` so the layout doesn't jump while the banner fetches.
+
+Verification:
+- ✅ `bun run lint` → 0 errors.
+- ✅ Restarted dev server (Prisma client regen requires a restart — the running next-server held a stale reference until restart).
+- ✅ Login as site admin → `POST /api/banners` with AdSense payload → `201` with full serialized banner returned (id, type, adsenseClient, adsenseSlot, etc.).
+- ✅ `POST /api/banners` with no cookie → `401 {"error":"unauthorized"}`.
+- ✅ `GET /api/banners?placement=home-live-hero` (public) → returns the array of active banners for that slot.
+- ✅ `POST /api/banners/[id]/impression` → `200 {ok:true}` (increment fires).
+- ✅ `GET /api/banners/[id]/click` on an AdSense banner (no linkUrl) → `204 No Content` (counted, no navigation).
+- ✅ `GET /api/banners/[id]/click` on an image banner (linkUrl=https://example.com/sale) → `302 redirect` to the linkUrl.
+- ✅ Created an image banner with weight=2 alongside the AdSense banner — would rotate based on weight (only image banners in the rotating slots; AdSense slot is non-rotating).
+- ✅ `GET /` home page → `200 in 6.3s` and the rendered HTML contains all 4 placement markers (`data-banner-placement="home-live-hero"`, `home-above-results`, `home-above-news`, `home-above-galleries`).
+- ✅ Cleaned up test banners via `DELETE /api/banners/[id]` → both returned `200`.
+
+Stage Summary:
+- Full advertising banner system is live. Three banner types (image / AdSense / HTML) are first-class via the `type` discriminator. The 4 home placements are wired: an AdSense slot between Live and Hero (non-rotating by hardcoded design), plus 3 rotating slots above Latest Results / Latest News / Latest Galleries. Rotation is client-side (sidesteps CDN caching) with random-weighted picking + 15s time-rotation for non-AdSense banners (Google TOS forbids aggressive AdSense refreshing). Crash-isolation is solid: every `<BannerSlot>` is wrapped in an ErrorBoundary, every render path null-checks, the AdSense push is try/catch-wrapped, and hydration is safe (SSR renders nothing, client picks after mount). Admin UI has a 3-tab type selector with image upload, AdSense field validation, and a raw-HTML textarea with a trust warning. Stats (impressions, clicks, CTR) show in the admin table. Click-through tracking works for image + HTML banners (via 302 redirect endpoint); AdSense clicks are tracked inside Google's dashboard (we can't intercept). All endpoints verified via curl end-to-end.

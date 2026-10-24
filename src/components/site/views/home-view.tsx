@@ -13,6 +13,7 @@ import {
 } from "@/components/cricket/ui"
 import { MiniScorecard } from "@/components/cricket/mini-scorecard"
 import { ArticleCard } from "@/components/cricket/article-card"
+import { BannerSlot } from "@/components/site/banner-slot"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -305,6 +306,9 @@ export function HomeView() {
           <LiveMatchStrip match={liveMatch} />
         ) : null}
 
+        {/* AD SLOT — between Live and the hero (AdSense, non-rotating) */}
+        <BannerSlot placement="home-live-hero" />
+
         {/* Featured hero story (split layout: text card + large image) */}
         {heroLoading ? (
           <HomeHeroSkeleton />
@@ -325,6 +329,9 @@ export function HomeView() {
           </div>
         )}
       </section>
+
+      {/* AD SLOT — above Latest Results (rotating) */}
+      <BannerSlot placement="home-above-results" />
 
       {/* Latest Results + Upcoming Matches — navy panel */}
       {(completedMatches.length > 0 || upcomingMatches.length > 0) && (
@@ -380,6 +387,9 @@ export function HomeView() {
         </div>
       )}
 
+      {/* AD SLOT — above Latest News (rotating) */}
+      <BannerSlot placement="home-above-news" />
+
       {/* Latest News */}
       <section>
         <SectionTitle
@@ -414,6 +424,9 @@ export function HomeView() {
 
       {/* Interviews — styled per the provided sample design */}
       <InterviewsSection articles={interviewData?.items ?? []} />
+
+      {/* AD SLOT — above Photo Galleries (rotating) */}
+      <BannerSlot placement="home-above-galleries" />
 
       {/* Photo Galleries — 4-column card grid (sample design) */}
       <GalleriesSection />

@@ -1,5 +1,5 @@
 import { parseBattingStats, parseBowlingStats, parseCategories, parseScorecard } from "./types"
-import type { Article, Gallery, LeagueAdmin, Match, PhotoItem, Player, Scorer, Series, SidebarBlock, SiteAdmin, Team, Video } from "./types"
+import type { Article, Banner, Gallery, LeagueAdmin, Match, PhotoItem, Player, Scorer, Series, SidebarBlock, SiteAdmin, Team, Video } from "./types"
 import type { Prisma } from "@prisma/client"
 
 export function serializeTeam(t: Prisma.TeamGetPayload<Record<string, never>>): Team {
@@ -201,5 +201,34 @@ export function serializeSiteAdmin(
     active: a.active,
     createdAt: a.createdAt.toISOString(),
     updatedAt: a.updatedAt.toISOString(),
+  }
+}
+
+
+export function serializeBanner(
+  b: Prisma.BannerGetPayload<Record<string, never>>
+): Banner {
+  return {
+    id: b.id,
+    type: (b.type as Banner["type"]) ?? "image",
+    title: b.title,
+    placement: b.placement,
+    order: b.order,
+    published: b.published,
+    startDate: b.startDate ? b.startDate.toISOString() : null,
+    endDate: b.endDate ? b.endDate.toISOString() : null,
+    impressions: b.impressions,
+    clicks: b.clicks,
+    weight: b.weight,
+    imageUrl: b.imageUrl,
+    linkUrl: b.linkUrl,
+    altText: b.altText,
+    adsenseClient: b.adsenseClient,
+    adsenseSlot: b.adsenseSlot,
+    adsenseFormat: b.adsenseFormat,
+    responsive: b.responsive,
+    htmlContent: b.htmlContent,
+    createdAt: b.createdAt.toISOString(),
+    updatedAt: b.updatedAt.toISOString(),
   }
 }

@@ -32,6 +32,7 @@ import { AdminSidebarView } from "@/components/admin/views/admin-sidebar-view"
 import { AdminImportView } from "@/components/admin/views/admin-import-view"
 import { AdminGalleriesView } from "@/components/admin/views/admin-galleries-view"
 import { AdminVideosView } from "@/components/admin/views/admin-videos-view"
+import { AdminBannersView } from "@/components/admin/views/admin-banners-view"
 import { AdminScorerView } from "@/components/admin/views/admin-scorers-view"
 import { AdminLeagueAdminsView } from "@/components/admin/views/admin-league-admins-view"
 import { AdminLoginView } from "@/components/site/views/admin-login-view"
@@ -119,6 +120,8 @@ export default function Home() {
         return <AdminGalleriesView />
       case "admin-videos":
         return <AdminVideosView />
+      case "admin-banners":
+        return <AdminBannersView />
       case "admin-scorers":
         return <AdminScorerView />
       case "admin-league-admins":

@@ -261,3 +261,44 @@ model LeagueAdminAssignment {
   @@unique([adminId, seriesId])
   @@index([seriesId])
 }
+
+// Advertising banners — three kinds via the `type` discriminator:
+//   • "image"   — classic image banner with click-through (tracked via /click redirect)
+//   • "adsense" — Google AdSense ad unit (loader script + <ins> + push)
+//   • "html"    — raw HTML snippet (affiliate iframes, sponsored tags, custom)
+//
+// Multiple banners sharing the same `placement` form the rotation pool for
+// that slot — the client picks one (random weighted, optionally time-
+// rotating). AdSense banners never time-rotate (Google TOS).
+model Banner {
+  id           String    @id @default(cuid())
+  type         String    @default("image") // "image" | "adsense" | "html"
+  title        String
+  placement    String    @default("home-live-hero")
+  order        Int       @default(0)
+  published   Boolean   @default(true)
+  startDate    DateTime?
+  endDate      DateTime?
+  impressions  Int       @default(0)
+  clicks       Int       @default(0)
+  weight       Int       @default(1) // higher = more likely to be picked
+
+  // type="image"
+  imageUrl     String?
+  linkUrl      String?
+  altText      String?
+
+  // type="adsense"
+  adsenseClient String? // ca-pub-XXXXXXXXXXXXXXXX (publisher ID, same across all your ads)
+  adsenseSlot   String? // 1234567890 (slot ID, unique per ad unit)
+  adsenseFormat String? // "auto" | "horizontal" | "vertical" | "rectangle"
+  responsive    Boolean  @default(true)
+
+  // type="html"
+  htmlContent  String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([published, placement, order])
+}

@@ -1,6 +1,6 @@
 "use client"
 
-import type { Article, Gallery, Match, PaginatedArticles, Player, Series, SidebarBlock, Team, Video } from "./types"
+import type { Article, Banner, Gallery, Match, PaginatedArticles, Player, Series, SidebarBlock, Team, Video } from "./types"
 
 async function jsonOrThrow<T>(res: Response): Promise<T> {
   if (!res.ok) throw new Error(`Request failed: ${res.status}`)
@@ -189,5 +189,40 @@ export const api = {
       fetch(`/api/videos/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }).then(jsonOrThrow<Video>),
     remove: (id: string) =>
       fetch(`/api/videos/${id}`, { method: "DELETE" }).then(jsonOrThrow),
+  },
+  banners: {
+    /** Fetch all active banners for a given placement slot. Public endpoint,
+     *  CDN-cached. Returns ALL active banners (filtered by date+published);
+     *  the client picks one + rotates as needed. */
+    list: (placement: string) =>
+      fetch(`/api/banners?placement=${encodeURIComponent(placement)}`).then(
+        jsonOrThrow<Banner[]>
+      ),
+    /** Admin-only: fetch all banners (including drafts + expired) for the
+     *  admin table view. */
+    listAll: () => fetch("/api/banners?all=1").then(jsonOrThrow<Banner[]>),
+    get: (id: string) => fetch(`/api/banners/${id}`).then(jsonOrThrow<Banner>),
+    create: (data: Partial<Banner>) =>
+      fetch("/api/banners", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }).then(jsonOrThrow<Banner>),
+    update: (id: string, data: Partial<Banner>) =>
+      fetch(`/api/banners/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }).then(jsonOrThrow<Banner>),
+    remove: (id: string) =>
+      fetch(`/api/banners/${id}`, { method: "DELETE" }).then(jsonOrThrow),
+    /** Fire-and-forget impression ping — called from the client when a banner
+     *  scrolls into view. */
+    trackImpression: (id: string) =>
+      fetch(`/api/banners/${id}/impression`, { method: "POST" }).catch(() => {}),
+    /** Banner click-through URL — image/html banners link here, the endpoint
+     *  increments the click counter then 302-redirects to banner.linkUrl.
+     *  Direct navigation (no fetch). */
+    clickUrl: (id: string) => `/api/banners/${id}/click`,
   },
 }

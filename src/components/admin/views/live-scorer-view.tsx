@@ -16,6 +16,8 @@ import {
   stateToScorecard,
   oversString,
   declareInnings,
+  enforceFollowOn,
+  startSuperOver,
   BOWLER_CREDITED_WICKETS,
   type LiveMatchState,
   type BallEvent,
@@ -57,6 +59,8 @@ import {
   Plus,
   ArrowLeftRight,
   Flag,
+  Repeat,
+  Zap,
 } from "lucide-react"
 import type { Player } from "@/lib/types"
 
@@ -404,6 +408,36 @@ export function LiveScorerView() {
     toast.success("Innings declared")
   }
 
+  /** Enforce the follow-on in a Test match. Only valid when Team A leads by
+   *  200+ runs after Team B's 1st innings. Team B bats again immediately. */
+  function handleFollowOn() {
+    if (!liveState) return
+    setHistory((h) => [...h, liveState].slice(-50))
+    const next = enforceFollowOn(liveState)
+    if (next === liveState) {
+      toast.error("Follow-on requires a 200+ run lead in a Test after innings 1")
+      return
+    }
+    pushState(next)
+    persist(next)
+    toast.success("Follow-on enforced")
+  }
+
+  /** Start a super-over after a tied limited-overs match. Creates 2 new
+   *  1-over innings (one per team). */
+  function handleSuperOver() {
+    if (!liveState) return
+    setHistory((h) => [...h, liveState].slice(-50))
+    const next = startSuperOver(liveState)
+    if (next === liveState) {
+      toast.error("Super-over only available for tied limited-overs matches")
+      return
+    }
+    pushState(next)
+    persist(next)
+    toast.success("Super Over started")
+  }
+
   const showSetup = !liveState || liveState.innings.length === 0
   const currentInnings = liveState?.innings[liveState.currentInnings]
   // Need a new batsman if either end is empty after a wicket (a run-out can
@@ -475,6 +509,36 @@ export function LiveScorerView() {
                     <Flag className="h-3.5 w-3.5" /> Declare
                   </Button>
                 )}
+                {/* Follow-on: Test only, after innings 1 (innings.length === 2),
+                    when Team A leads by 200+. */}
+                {liveState.maxOvers === 0 &&
+                  liveState.innings.length === 2 &&
+                  liveState.status === "live" &&
+                  liveState.innings[0].runs - liveState.innings[1].runs >= 200 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleFollowOn}
+                      className="gap-1 border-blue-400 text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-950/40"
+                      title="Enforce follow-on — Team B bats again (200+ run lead)"
+                    >
+                      <Repeat className="h-3.5 w-3.5" /> Follow-on
+                    </Button>
+                  )}
+                {/* Super-over: limited-overs, match tied + completed. */}
+                {liveState.maxOvers > 0 &&
+                  liveState.status === "completed" &&
+                  liveState.result === "Match tied" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSuperOver}
+                      className="gap-1 border-purple-500 text-purple-700 hover:bg-purple-50 dark:text-purple-300 dark:hover:bg-purple-950/40"
+                      title="Play a super-over tiebreaker (1 over per team)"
+                    >
+                      <Zap className="h-3.5 w-3.5" /> Super Over
+                    </Button>
+                  )}
                 <Button
                   variant="outline"
                   size="sm"

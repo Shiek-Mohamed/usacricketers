@@ -76,6 +76,11 @@ function InningsCard({
         <FallOfWickets fow={innings.fallOfWickets} />
       )}
 
+      {/* Partnerships */}
+      {innings.partnerships && innings.partnerships.length > 0 && (
+        <Partnerships partnerships={innings.partnerships} />
+      )}
+
       {/* Bowling */}
       <BowlingBlock innings={innings} />
     </div>
@@ -477,6 +482,26 @@ function FallOfWickets({ fow }: { fow: string[] }) {
           <span key={i} className="inline-flex items-center gap-2">
             {i > 0 && <span className="text-muted-foreground/40">,</span>}
             <span className="tabular-nums text-muted-foreground">{w}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* ---- Partnerships (Cricinfo-style: each wicket partnership) ---- */
+
+function Partnerships({ partnerships }: { partnerships: string[] }) {
+  return (
+    <div className="border-b border-border/60 px-4 py-2.5">
+      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        Partnerships
+      </div>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+        {partnerships.map((p, i) => (
+          <span key={i} className="inline-flex items-center gap-2">
+            {i > 0 && <span className="text-muted-foreground/40">,</span>}
+            <span className="tabular-nums text-muted-foreground">{p}</span>
           </span>
         ))}
       </div>

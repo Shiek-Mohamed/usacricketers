@@ -1174,3 +1174,36 @@ Remaining (deferred due to context window):
 
 Verification:
 - ✅ `bun run lint` → 0 errors after all 3 features.
+
+---
+Task ID: 32
+Agent: orchestrator (Z.ai)
+Task: Complete the remaining live scorer feature gaps — #8 partnership tracker, #13 follow-on tracking, #10 super-over support, #9 DLS (deferred).
+
+Work Log:
+- **#8 — Completed partnership tracker** (engine + scorecard rendering):
+  - **Schema**: Added `partnerships: { wicket, runs, balls, batsman1, batsman2 }[]` + `partnershipStartRuns: number` + `partnershipStartBalls: number` to `ScorerInnings` interface. Initialized in `initState` + `endInnings` (new innings creation).
+  - **Engine `applyBall`**: Added local `partnerships` + `partnershipStartRuns` + `partnershipStartBalls` variables (read from `inn.*`). In the wicket case (after `fallOfWickets` is updated), computes the partnership runs (current runs - start runs) + balls (current balls - start balls), records both batsmen's names, pushes to the partnerships array, then resets the start values for the next partnership. The `newInnings` object at the bottom of `applyBall` writes these back to the innings state.
+  - **Types**: Added `partnerships?: string[]` + `isFollowOn?: boolean` + `isSuperOver?: boolean` to the `Innings` interface in `types.ts`.
+  - **`stateToScorecard`**: Renders partnerships as an array of formatted strings (`"1-23 (Smith & Jones, 15 balls)"`) + the `isFollowOn` / `isSuperOver` flags.
+  - **Scorecard rendering**: New `<Partnerships>` component in `scorecard.tsx` — rendered between the Fall of Wickets section and the Bowling block. Comma-separated format matching Cricinfo's style.
+- **#13 — Follow-on tracking for Tests**:
+  - **`enforceFollowOn(state)` export**: Only valid for Tests (maxOvers === 0), after innings 1 (innings.length === 2), with a 200+ run lead (innings[0].runs - innings[1].runs >= 200). Creates a new innings with Team B batting again (same batting/bowling sides — no swap, which is the whole point of the follow-on). Sets `followOn: true` on the new innings. Logs a commentary entry.
+  - **`endInnings` follow-on handling**: When the follow-on innings (innings[2]) ends:
+    - If Team B's overall total (innings[1].runs + innings[2].runs) < Team A's 1st innings (innings[0].runs): Team A wins by an innings + (A total - B total) runs. Match ends.
+    - Otherwise: Team A bats innings 3 (their 2nd innings), chasing (B overall total - A 1st innings + 1) runs.
+  - **UI**: Blue "Follow-on" button (Repeat icon) in the action bar. Only renders when Test + after innings 1 + lead >= 200 + match is live. Clicking it fires `handleFollowOn()` which pushes prev state to history + calls `enforceFollowOn()`.
+- **#10 — Super-over support**:
+  - **`startSuperOver(state)` export**: Only valid for limited-overs matches (maxOvers > 0) where the match result is "Match tied". Creates a new innings with Team A batting (1 over, `isSuperOver: true`), sets `state.maxOvers = 1` (1 over per team), resets `status` to "live". The admin then picks striker + non-striker + bowler and scores the super-over.
+  - **`endInnings` super-over handling**: When a super-over innings ends:
+    - 1st super-over innings → create the 2nd super-over innings (Team B batting, chase target = Team A's super-over score + 1, `isSuperOver: true`).
+    - 2nd super-over innings → call `computeSuperOverResult()`.
+  - **`computeSuperOverResult()`**: Compares both super-over innings' runs. The team with more runs wins the super-over. If equal, "Super Over tied" (admin can start another one via the button).
+  - **UI**: Purple "Super Over" button (Zap icon) in the action bar. Only renders when limited-overs + status "completed" + result "Match tied".
+- **#9 — DLS par-score**: Deferred. DLS (Duckworth-Lewis-Stern) requires published resource tables (licensed by the ICC) encoding the relationship between overs remaining, wickets lost, and resource percentage. Encoding the full 2D table would be a separate task. A simplified resource-based approximation is possible but would need careful validation against known DLS results to be trustworthy. Noted as a future enhancement.
+
+Verification:
+- ✅ `bun run lint` → 0 errors after all changes.
+- ✅ Partnership tracking: verified the engine records partnerships on each wicket (local variables + newInnings object write-back).
+- ✅ Follow-on: verified the `enforceFollowOn` function creates a new innings with the same batting/bowling sides (no swap) + `followOn: true`. The `endInnings` follow-on case handles both the "innings victory" (B overall < A 1st) and "chase" (B overall >= A 1st → A bats innings 3).
+- ✅ Super-over: verified `startSuperOver` creates the 1st super-over innings + `endInnings` creates the 2nd with chase target + `computeSuperOverResult` compares the two.

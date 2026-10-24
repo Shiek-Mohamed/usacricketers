@@ -67,6 +67,27 @@ export interface ScorerInnings {
    *  (bowled/caught/lbw/stumped/hit-wkt) are NOT allowed on a free hit —
    *  only run-out and retired-out stand. */
   freeHit: boolean
+  /** Completed partnerships — recorded when a wicket falls. Each entry
+   *  has the wicket number, runs scored, balls faced, and both batsmen's
+   *  names. The opening partnership is wicket 1. */
+  partnerships: {
+    wicket: number
+    runs: number
+    balls: number
+    batsman1: string
+    batsman2: string
+  }[]
+  /** Runs on the board when the current partnership started. Used to
+   *  compute the partnership runs when the next wicket falls. */
+  partnershipStartRuns: number
+  /** Balls bowled when the current partnership started. */
+  partnershipStartBalls: number
+  /** True if this innings was played as a follow-on (Team B bats again
+   *  immediately after their 1st innings in a Test match, because Team A
+   *  enforced the follow-on with a 200+ run lead). */
+  followOn: boolean
+  /** True if this innings is a super-over (1-over tiebreaker). */
+  isSuperOver: boolean
 }
 
 export interface CommentaryEntry {
@@ -182,6 +203,11 @@ export function initState(match: Match, battingFirstTeamId: string): LiveMatchSt
     extrasNoBalls: 0,
     squad: [],
     freeHit: false,
+    partnerships: [],
+    partnershipStartRuns: 0,
+    partnershipStartBalls: 0,
+    followOn: false,
+    isSuperOver: false,
   }
   return {
     matchId: match.id,
@@ -347,6 +373,10 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
   let extrasLegByes = inn.extrasLegByes
   let extrasWides = inn.extrasWides
   let extrasNoBalls = inn.extrasNoBalls
+  // Partnership tracking — start runs/balls for the current partnership.
+  let partnerships = inn.partnerships ?? []
+  let partnershipStartRuns = inn.partnershipStartRuns ?? 0
+  let partnershipStartBalls = inn.partnershipStartBalls ?? 0
   // Free-hit tracking. `isFreeHit` = the CURRENT ball is a free hit (only
   // applies in limited-overs matches — maxOvers > 0). `freeHit` is the value
   // that will be carried into the NEXT ball's state.
@@ -543,6 +573,25 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
         },
       ]
 
+      // Record the completed partnership (runs + balls since the last
+      // wicket / innings start). The other batsman is the one NOT out.
+      const otherBatsman = batsmen.find(
+        (b) => b.id === (isStrikerOut ? nonStrikerId : strikerId)
+      )
+      partnerships = [
+        ...partnerships,
+        {
+          wicket: wickets,
+          runs: runs - partnershipStartRuns,
+          balls: balls - partnershipStartBalls,
+          batsman1: outBatsman.name,
+          batsman2: otherBatsman?.name ?? "?",
+        },
+      ]
+      // Reset the start for the next partnership.
+      partnershipStartRuns = runs
+      partnershipStartBalls = balls
+
       // Set the right slot to null so the UI prompts for the replacement at
       // the correct end.
       if (isStrikerOut) {
@@ -616,6 +665,11 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
     extrasWides,
     extrasNoBalls,
     freeHit,
+    partnerships,
+    partnershipStartRuns,
+    partnershipStartBalls,
+    followOn: inn.followOn ?? false,
+    isSuperOver: inn.isSuperOver ?? false,
   }
   const innings = [...state.innings]
   innings[state.currentInnings] = newInnings
@@ -688,6 +742,111 @@ export function endInnings(state: LiveMatchState, reason: string): LiveMatchStat
   const isTest = state.maxOvers === 0
   const maxInnings = isTest ? 4 : 2
 
+  // Super-over special case: if the current innings was a super-over, the
+  // normal maxInnings check doesn't apply (we already had 2 innings before
+  // the super-over started). Instead, count super-over innings: if this is
+  // the 1st, create the 2nd (chase target); if this is the 2nd, compute
+  // the super-over result.
+  if (inn.isSuperOver) {
+    const soInnings = innings.filter((i) => i.isSuperOver)
+    if (soInnings.length < 2) {
+      // This was the 1st super-over innings → create the 2nd with chase.
+      const target = inn.runs + 1
+      const newSO: ScorerInnings = {
+        battingTeamId: inn.bowlingTeamId,
+        battingTeamShortName: inn.bowlingTeamShortName,
+        bowlingTeamId: inn.battingTeamId,
+        bowlingTeamShortName: inn.battingTeamShortName,
+        runs: 0, wickets: 0, balls: 0,
+        batsmen: [], bowlers: [], fallOfWickets: [],
+        declared: false, target,
+        extrasByes: 0, extrasLegByes: 0, extrasWides: 0, extrasNoBalls: 0,
+        squad: [], freeHit: false,
+        partnerships: [], partnershipStartRuns: 0, partnershipStartBalls: 0,
+        followOn: false,
+        isSuperOver: true,
+      }
+      innings.push(newSO)
+      return {
+        ...state,
+        innings,
+        currentInnings: inningsCount,
+        strikerId: null, nonStrikerId: null, bowlerId: null,
+        note: `Super Over: ${inn.battingTeamShortName} scored ${inn.runs}. ${inn.bowlingTeamShortName} needs ${target} to win.`,
+        commentary: [
+          {
+            id: uid(),
+            ballNo: state.ballNo,
+            over: "0",
+            text: `Super Over: ${inn.battingTeamShortName} ${inn.runs}/${inn.wickets}. ${inn.bowlingTeamShortName} needs ${target}.`,
+            kind: "info" as const,
+          },
+          ...commentary,
+        ].slice(0, 120),
+      }
+    }
+    // Both super-over innings done → compute the result.
+    return computeSuperOverResult(state, innings, commentary)
+  }
+
+  // Follow-on special case: if the current innings was a follow-on (Team B
+  // batting again in a Test), and Team B's overall total is still less than
+  // Team A's 1st innings total, Team A wins by an innings + runs (no need
+  // for Team A's 2nd innings). Otherwise, Team A bats their 2nd innings
+  // (innings 3) chasing Team B's overall total + 1.
+  if (inn.followOn) {
+    const teamATotal = innings[0].runs
+    const teamBOverall = innings[1].runs + innings[2].runs
+    if (teamBOverall < teamATotal) {
+      // Team A wins by an innings + runs. Match ends.
+      const margin = teamATotal - teamBOverall
+      const result = `${innings[0].battingTeamShortName} won by an innings and ${margin} run${margin !== 1 ? "s" : ""}`
+      return {
+        ...state,
+        innings,
+        status: "completed",
+        result,
+        note: result,
+        strikerId: null, nonStrikerId: null, bowlerId: null,
+        commentary: [
+          {
+            id: uid(),
+            ballNo: state.ballNo,
+            over: oversString(inn.balls),
+            text: `Result: ${result}`,
+            kind: "info" as const,
+          },
+          ...commentary,
+        ].slice(0, 120),
+      }
+    }
+    // Team B surpassed Team A → Team A bats innings 3, chasing.
+    const target = teamBOverall - teamATotal + 1
+    const newInnings: ScorerInnings = {
+      battingTeamId: innings[0].battingTeamId,
+      battingTeamShortName: innings[0].battingTeamShortName,
+      bowlingTeamId: innings[1].battingTeamId,
+      bowlingTeamShortName: innings[1].battingTeamShortName,
+      runs: 0, wickets: 0, balls: 0,
+      batsmen: [], bowlers: [], fallOfWickets: [],
+      declared: false, target,
+      extrasByes: 0, extrasLegByes: 0, extrasWides: 0, extrasNoBalls: 0,
+      squad: [], freeHit: false,
+      partnerships: [], partnershipStartRuns: 0, partnershipStartBalls: 0,
+      followOn: false,
+      isSuperOver: false,
+    }
+    innings.push(newInnings)
+    return {
+      ...state,
+      innings,
+      currentInnings: inningsCount,
+      strikerId: null, nonStrikerId: null, bowlerId: null,
+      note: `Team A needs ${target} runs to win.`,
+      commentary,
+    }
+  }
+
   // If this was the final innings of the match, compute the result.
   if (inningsCount >= maxInnings) {
     return computeMatchResult(state, innings, commentary)
@@ -718,6 +877,11 @@ export function endInnings(state: LiveMatchState, reason: string): LiveMatchStat
     extrasNoBalls: 0,
     squad: [],
     freeHit: false,
+    partnerships: [],
+    partnershipStartRuns: 0,
+    partnershipStartBalls: 0,
+    followOn: false,
+    isSuperOver: false,
   }
 
   // Chase target: only set on the FINAL innings of the match (the team
@@ -842,6 +1006,50 @@ function computeMatchResult(
 }
 
 /**
+ * Compute the super-over result. The team with more runs in their super-over
+ * innings wins. If equal, it's a tie (no further super-overs in our MVP —
+ * the admin can manually start another one via the Super Over button if
+ * the match is still tied).
+ */
+function computeSuperOverResult(
+  state: LiveMatchState,
+  innings: ScorerInnings[],
+  commentary: CommentaryEntry[]
+): LiveMatchState {
+  const soInnings = innings.filter((i) => i.isSuperOver)
+  const teamA = soInnings[0]
+  const teamB = soInnings[1]
+  let result = ""
+  if (teamA.runs > teamB.runs) {
+    result = `${teamA.battingTeamShortName} won the Super Over`
+  } else if (teamB.runs > teamA.runs) {
+    result = `${teamB.battingTeamShortName} won the Super Over`
+  } else {
+    result = "Super Over tied"
+  }
+  return {
+    ...state,
+    innings,
+    status: "completed",
+    result,
+    note: result,
+    strikerId: null,
+    nonStrikerId: null,
+    bowlerId: null,
+    commentary: [
+      {
+        id: uid(),
+        ballNo: state.ballNo,
+        over: "0",
+        text: `Super Over Result: ${result}`,
+        kind: "info" as const,
+      },
+      ...commentary,
+    ].slice(0, 120),
+  }
+}
+
+/**
  * Captain declares the current innings closed. Only valid for Test matches
  * (limited-overs matches don't have declarations). Sets `declared: true`
  * on the current innings, then triggers the standard endInnings flow with
@@ -873,6 +1081,123 @@ export function declareInnings(state: LiveMatchState): LiveMatchState {
     { ...state, commentary: declaredCommentary },
     "declared"
   )
+}
+
+/**
+ * Enforce the follow-on in a Test match. Only valid when:
+ *   • It's a Test (maxOvers === 0)
+ *   • We're at the end of innings 1 (Team B's first innings just finished)
+ *   • Team A's lead (innings[0].runs - innings[1].runs) is >= 200 runs
+ *
+ * When enforced, Team B bats again immediately (their 2nd innings becomes
+ * innings 2, and if Team B is bowled out short of Team A's total, Team A
+ * wins by an innings + runs — no need for Team A's 2nd innings at all).
+ *
+ * Without the follow-on, the standard endInnings flow would create innings
+ * 2 with Team A batting (their 2nd innings). With the follow-on, we create
+ * innings 2 with Team B batting again (same batting/bowling sides as
+ * innings 1, not swapped).
+ */
+export function enforceFollowOn(state: LiveMatchState): LiveMatchState {
+  if (state.maxOvers > 0) return state  // Tests only
+  if (state.innings.length !== 2) return state  // must be after innings 1 (0-indexed)
+  const lead = state.innings[0].runs - state.innings[1].runs
+  if (lead < 200) return state  // need 200+ run lead
+
+  const inn = state.innings[1]  // Team B's 1st innings (just ended)
+  // Create Team B's 2nd innings — same batting side, same bowling side
+  // (no swap — that's the whole point of the follow-on).
+  const newInnings: ScorerInnings = {
+    battingTeamId: inn.battingTeamId,
+    battingTeamShortName: inn.battingTeamShortName,
+    bowlingTeamId: inn.bowlingTeamId,
+    bowlingTeamShortName: inn.bowlingTeamShortName,
+    runs: 0, wickets: 0, balls: 0,
+    batsmen: [], bowlers: [], fallOfWickets: [],
+    declared: false, target: null,
+    extrasByes: 0, extrasLegByes: 0, extrasWides: 0, extrasNoBalls: 0,
+    squad: [], freeHit: false,
+    partnerships: [], partnershipStartRuns: 0, partnershipStartBalls: 0,
+    followOn: true,
+    isSuperOver: false,
+  }
+  const innings = [...state.innings, newInnings]
+  const commentary = [
+    {
+      id: uid(),
+      ballNo: state.ballNo,
+      over: "0",
+      text: `${inn.battingTeamShortName} follow-on enforced — they bat again (lead was ${lead} runs)`,
+      kind: "info" as const,
+    },
+    ...state.commentary,
+  ].slice(0, 120)
+  return {
+    ...state,
+    innings,
+    currentInnings: 2,
+    strikerId: null,
+    nonStrikerId: null,
+    bowlerId: null,
+    note: `Follow-on enforced. ${inn.battingTeamShortName} bats again.`,
+    commentary,
+  }
+}
+
+/**
+ * Start a super-over after a tied limited-overs match. Creates 2 new
+ * innings (1 over each):
+ *   • innings N:   Team 1 bats (1 over, no target)
+ *   • innings N+1: Team 2 bats (1 over, target = Team 1's super-over score + 1)
+ *
+ * Only valid for limited-overs matches (maxOvers > 0) where the match
+ * result is "Match tied". The super-over has its own maxOvers = 1.
+ */
+export function startSuperOver(state: LiveMatchState): LiveMatchState {
+  if (state.maxOvers <= 0) return state  // limited-overs only
+  if (state.status !== "completed") return state
+  if (state.result !== "Match tied") return state
+
+  const inn1 = state.innings[0]  // Team A's innings
+  // Super-over innings 1: Team A bats again (same batting side)
+  const so1: ScorerInnings = {
+    battingTeamId: inn1.battingTeamId,
+    battingTeamShortName: inn1.battingTeamShortName,
+    bowlingTeamId: inn1.bowlingTeamId,
+    bowlingTeamShortName: inn1.bowlingTeamShortName,
+    runs: 0, wickets: 0, balls: 0,
+    batsmen: [], bowlers: [], fallOfWickets: [],
+    declared: false, target: null,
+    extrasByes: 0, extrasLegByes: 0, extrasWides: 0, extrasNoBalls: 0,
+    squad: [], freeHit: false,
+    partnerships: [], partnershipStartRuns: 0, partnershipStartBalls: 0,
+    followOn: false,
+    isSuperOver: true,
+  }
+  const innings = [...state.innings, so1]
+  const commentary = [
+    {
+      id: uid(),
+      ballNo: state.ballNo,
+      over: "0",
+      text: `SUPER OVER — ${inn1.battingTeamShortName} to bat first`,
+      kind: "info" as const,
+    },
+    ...state.commentary,
+  ].slice(0, 120)
+  return {
+    ...state,
+    innings,
+    currentInnings: innings.length - 1,
+    maxOvers: 1,  // super-over = 1 over per side
+    status: "live",
+    result: "",
+    strikerId: null,
+    nonStrikerId: null,
+    bowlerId: null,
+    note: `Super Over — ${inn1.battingTeamShortName} bats first (1 over)`,
+    commentary,
+  }
 }
 
 /** Convert the live state to the public Scorecard format (read by ScorecardView). */
@@ -949,6 +1274,11 @@ export function stateToScorecard(state: LiveMatchState): Scorecard {
       didNotBat: (inn.squad || []).
         filter((s) => !inn.batsmen.some((b) => b.id === s.id))
         .map((s) => ({ name: s.name, isCaptain: s.isCaptain, isKeeper: s.isKeeper })),
+      partnerships: (inn.partnerships ?? []).map((p) =>
+        `${p.wicket}-${p.runs} (${p.batsman1} & ${p.batsman2}, ${oversString(p.balls)} balls)`
+      ),
+      isFollowOn: inn.followOn ?? false,
+      isSuperOver: inn.isSuperOver ?? false,
     }
   })
   return {

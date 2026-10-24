@@ -79,6 +79,9 @@ export interface Innings {
     noBalls: number
   }
   didNotBat?: { name: string; isCaptain?: boolean; isKeeper?: boolean }[]
+  partnerships?: string[]
+  isFollowOn?: boolean
+  isSuperOver?: boolean
 }
 
 export interface Scorecard {

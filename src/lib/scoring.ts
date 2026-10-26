@@ -173,6 +173,9 @@ export function maxOversForFormat(format: string): number {
   if (format === "T25") return 25
   if (format === "T30") return 30
   if (format === "T35") return 35
+  // Custom formats: parse "T8" → 8, "T15" → 15, "T40" → 40, etc.
+  const customMatch = format.match(/^T(\d+)$/i)
+  if (customMatch) return parseInt(customMatch[1], 10)
   return 0 // Test = unlimited
 }
 

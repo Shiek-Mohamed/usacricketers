@@ -33,7 +33,7 @@ import { BulkPlayersDialog } from "@/components/admin/bulk-players/bulk-players-
 import { parsePlayerRows } from "@/components/admin/bulk-players/bulk-players-dialog"
 
 const SCROLLBAR = "[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border"
-const FORMATS = ["Test", "ODI", "T20I", "T10", "T25", "T30", "T35"] as const
+const FORMATS = ["Test", "ODI", "T20I", "T10", "T25", "T30", "T35", "Custom"] as const
 const STATUSES = ["upcoming", "ongoing", "completed"] as const
 
 export function AdminSeriesView() {
@@ -131,6 +131,11 @@ function TournamentEditor({
   const [name, setName] = useState(tournament?.name ?? "")
   const [shortName, setShortName] = useState(tournament?.shortName ?? "")
   const [format, setFormat] = useState(tournament?.format ?? "T20I")
+  const [customOvers, setCustomOvers] = useState(() => {
+    // If editing a custom format like "T8", extract the number.
+    const match = tournament?.format?.match(/^T(\d+)$/i)
+    return match ? parseInt(match[1], 10) : 12
+  })
   const [season, setSeason] = useState(tournament?.season ?? "2025")
   const [status, setStatus] = useState(tournament?.status ?? "upcoming")
   const [description, setDescription] = useState(tournament?.description ?? "")
@@ -161,7 +166,10 @@ function TournamentEditor({
     if (!name.trim()) { toast.error("Name is required"); return }
     setSaving(true)
     try {
-      const payload = { name, shortName: shortName || name.slice(0, 20), format, season, status, description, startDate, endDate }
+      // When "Custom" is selected, store as "T{N}" (e.g. "T12", "T8") so
+      // maxOversForFormat() can parse it.
+      const actualFormat = format === "Custom" ? `T${customOvers}` : format
+      const payload = { name, shortName: shortName || name.slice(0, 20), format: actualFormat, season, status, description, startDate, endDate }
       if (tournament) { await api.series.update(tournament.id, payload); toast.success("Tournament saved") }
       else { await api.series.create(payload); toast.success("Tournament created") }
       onSave()
@@ -266,7 +274,29 @@ function TournamentEditor({
           <div className="grid gap-1.5"><Label htmlFor="t-name">Tournament name</Label><Input id="t-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Sunday T20 League 2025" /></div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="grid gap-1.5"><Label>Short name</Label><Input value={shortName} onChange={(e) => setShortName(e.target.value)} placeholder="STL 2025" /></div>
-            <div className="grid gap-1.5"><Label>Format</Label><Select value={format} onValueChange={setFormat}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{FORMATS.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent></Select></div>
+            <div className="grid gap-1.5">
+              <Label>Format</Label>
+              <Select
+                value={format === "Custom" || /^T\d+$/i.test(format) ? "Custom" : format}
+                onValueChange={(v) => setFormat(v)}
+              >
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>{FORMATS.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
+              </Select>
+              {format === "Custom" && (
+                <div className="flex items-center gap-2 mt-1">
+                  <Input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={customOvers}
+                    onChange={(e) => setCustomOvers(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
+                    className="w-20"
+                  />
+                  <span className="text-xs text-muted-foreground">overs per side</span>
+                </div>
+              )}
+            </div>
             <div className="grid gap-1.5"><Label>Season</Label><Input value={season} onChange={(e) => setSeason(e.target.value)} placeholder="2025" /></div>
             <div className="grid gap-1.5"><Label>Status</Label><Select value={status} onValueChange={setStatus}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{STATUSES.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent></Select></div>
           </div>

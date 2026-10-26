@@ -54,7 +54,7 @@ import { toast } from "sonner"
 import type { Match, Scorecard } from "@/lib/types"
 import { BulkMatchesDialog } from "@/components/admin/bulk-matches/bulk-matches-dialog"
 
-const FORMATS = ["Test", "ODI", "T20I", "T10", "T25", "T30", "T35"] as const
+const FORMATS = ["Test", "ODI", "T20I", "T10", "T25", "T30", "T35", "Custom"] as const
 const STATUSES = ["upcoming", "live", "completed", "abandoned"] as const
 const NONE_SERIES = "__none__"
 
@@ -433,9 +433,9 @@ export function AdminMatchesView() {
               <div className="grid gap-1.5">
                 <Label>Format</Label>
                 <Select
-                  value={form.format}
+                  value={form.format === "Custom" || /^T\d+$/i.test(form.format) ? "Custom" : form.format}
                   onValueChange={(v) =>
-                    setForm((f) => ({ ...f, format: v }))
+                    setForm((f) => ({ ...f, format: v === "Custom" ? "T12" : v }))
                   }
                 >
                   <SelectTrigger className="w-full">
@@ -449,6 +449,22 @@ export function AdminMatchesView() {
                     ))}
                   </SelectContent>
                 </Select>
+                {form.format === "Custom" && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <Input
+                      type="number"
+                      min="1"
+                      max="50"
+                      value={parseInt(form.format.match(/^T(\d+)$/i)?.[1] || "12")}
+                      onChange={(e) => {
+                        const overs = Math.max(1, Math.min(50, parseInt(e.target.value) || 1))
+                        setForm((f) => ({ ...f, format: `T${overs}` }))
+                      }}
+                      className="w-20"
+                    />
+                    <span className="text-xs text-muted-foreground">overs per side</span>
+                  </div>
+                )}
               </div>
               <div className="grid gap-1.5">
                 <Label>Status</Label>

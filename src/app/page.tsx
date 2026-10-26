@@ -15,6 +15,7 @@ import { TeamsView } from "@/components/site/views/teams-view"
 import { TeamDetailView } from "@/components/site/views/team-detail-view"
 import { PlayersView } from "@/components/site/views/players-view"
 import { PlayerDetailView } from "@/components/site/views/player-detail-view"
+import { PlayerTimelineView } from "@/components/site/views/player-timeline-view"
 import { PlayerComparisonView } from "@/components/site/views/player-comparison-view"
 import { StatsView } from "@/components/site/views/stats-view"
 import { ScheduleView } from "@/components/site/views/schedule-view"
@@ -85,6 +86,8 @@ export default function Home() {
         return <PlayersView />
       case "player-detail":
         return <PlayerDetailView />
+      case "player-timeline":
+        return <PlayerTimelineView />
       case "player-comparison":
         return <PlayerComparisonView />
       case "stats":

@@ -3,7 +3,9 @@ import { db } from "@/lib/db"
 import {
   verifyPassword,
   issueSiteAdminToken,
+  generateCSRFToken,
   SITE_ADMIN_COOKIE,
+  CSRF_COOKIE,
   isValidEmail,
 } from "@/lib/scorer-auth"
 import { serializeSiteAdmin } from "@/lib/serialize"
@@ -42,10 +44,22 @@ export async function POST(req: NextRequest) {
       name: admin.name,
     })
     const res = NextResponse.json(serializeSiteAdmin(admin), { status: 200 })
+    // Session cookie — httpOnly + SameSite=strict (blocks CSRF on cross-site
+    // requests entirely; admin must navigate from the same origin).
     res.cookies.set(SITE_ADMIN_COOKIE, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "strict",
+      path: "/",
+      maxAge: COOKIE_MAX_AGE,
+    })
+    // CSRF cookie — non-httpOnly so JavaScript can read it + attach as
+    // X-CSRF-Token header on POST/PUT/DELETE. Same double-submit pattern.
+    const csrfToken = generateCSRFToken()
+    res.cookies.set(CSRF_COOKIE, csrfToken, {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
       path: "/",
       maxAge: COOKIE_MAX_AGE,
     })

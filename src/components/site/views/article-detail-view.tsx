@@ -257,7 +257,7 @@ export function ArticleDetailView() {
     <SeoMeta
       title={article.title}
       description={article.excerpt}
-      image={article.imageUrl}
+      image={article.imageUrl || `${typeof window !== "undefined" ? window.location.origin : ""}/api/og-image?article=${article.id}`}
       url={seoUrl}
       type="article"
       publishedTime={article.publishedAt}

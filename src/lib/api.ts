@@ -7,24 +7,53 @@ async function jsonOrThrow<T>(res: Response): Promise<T> {
   return (await res.json()) as T
 }
 
+/** Read the CSRF token from the non-httpOnly cookie and attach it as
+ *  `X-CSRF-Token` header. Required for all POST/PUT/DELETE calls to
+ *  admin-guarded routes. No-op if no CSRF cookie is set (e.g. public
+ *  endpoints or pre-login state). */
+function withCSRF(init: RequestInit): RequestInit {
+  if (typeof document !== "undefined") {
+    const match = document.cookie.match(/(?:^|; )csrf-token=([^;]+)/)
+    if (match) {
+      const headers = new Headers(init.headers)
+      headers.set("X-CSRF-Token", match[1])
+      return { ...init, headers }
+    }
+  }
+  return init
+}
+
+/** POST/PUT/DELETE helper — wraps fetch with the CSRF header + JSON
+ *  content-type. Usage: `postJSON("/api/teams", data)` or
+ *  `putJSON("/api/teams/123", data)` or `delJSON("/api/teams/123")`. */
+async function postJSON<T>(url: string, body: unknown): Promise<T> {
+  return jsonOrThrow<T>(fetch(url, withCSRF({
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })))
+}
+async function putJSON<T>(url: string, body: unknown): Promise<T> {
+  return jsonOrThrow<T>(fetch(url, withCSRF({
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })))
+}
+async function delJSON<T>(url: string): Promise<T> {
+  return jsonOrThrow<T>(fetch(url, withCSRF({ method: "DELETE" })))
+}
+
 export const api = {
   teams: {
     list: () => fetch("/api/teams").then(jsonOrThrow<Team[]>),
     get: (id: string) => fetch(`/api/teams/${id}`).then(jsonOrThrow<Team>),
     create: (data: Partial<Team>) =>
-      fetch("/api/teams", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }).then(jsonOrThrow<Team>),
+      postJSON<Team>("/api/teams", data),
     update: (id: string, data: Partial<Team>) =>
-      fetch(`/api/teams/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }).then(jsonOrThrow<Team>),
+      putJSON<Team>(`/api/teams/${id}`, data),
     remove: (id: string) =>
-      fetch(`/api/teams/${id}`, { method: "DELETE" }).then(jsonOrThrow),
+      delJSON(`/api/teams/${id}`),
   },
   players: {
     list: (teamId?: string) =>
@@ -33,19 +62,11 @@ export const api = {
       ),
     get: (id: string) => fetch(`/api/players/${id}`).then(jsonOrThrow<Player>),
     create: (data: Partial<Player> & { teamId: string }) =>
-      fetch("/api/players", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }).then(jsonOrThrow<Player>),
+      postJSON<Player>("/api/players", data),
     update: (id: string, data: Partial<Player>) =>
-      fetch(`/api/players/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }).then(jsonOrThrow<Player>),
+      putJSON<Player>(`/api/players/${id}`, data),
     remove: (id: string) =>
-      fetch(`/api/players/${id}`, { method: "DELETE" }).then(jsonOrThrow),
+      delJSON(`/api/players/${id}`),
     bulkCreate: async (
       teamId: string,
       players: Array<{
@@ -64,12 +85,7 @@ export const api = {
       skippedNames: string[]
       players: Player[]
     }> => {
-      const res = await fetch("/api/players/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ teamId, players }),
-      })
-      return jsonOrThrow(res)
+      return postJSON("/api/players/bulk", { teamId, players })
     },
   },
   matches: {
@@ -79,19 +95,11 @@ export const api = {
       ),
     get: (id: string) => fetch(`/api/matches/${id}`).then(jsonOrThrow<Match>),
     create: (data: Partial<Match>) =>
-      fetch("/api/matches", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }).then(jsonOrThrow<Match>),
+      postJSON<Match>("/api/matches", data),
     update: (id: string, data: Partial<Match>) =>
-      fetch(`/api/matches/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }).then(jsonOrThrow<Match>),
+      putJSON<Match>(`/api/matches/${id}`, data),
     remove: (id: string) =>
-      fetch(`/api/matches/${id}`, { method: "DELETE" }).then(jsonOrThrow),
+      delJSON(`/api/matches/${id}`),
     bulkCreate: async (
       matches: Array<{
         team1Name: string
@@ -109,27 +117,22 @@ export const api = {
       skippedRows: string[]
       matches: Match[]
     }> => {
-      const res = await fetch("/api/matches/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ matches, seriesId }),
-      })
-      return jsonOrThrow(res)
+      return postJSON("/api/matches/bulk", { matches, seriesId })
     },
   },
   series: {
     list: () => fetch("/api/series").then(jsonOrThrow<Series[]>),
     get: (id: string) => fetch(`/api/series/${id}`).then(jsonOrThrow<Series>),
     create: (data: Partial<Series>) =>
-      fetch("/api/series", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }).then(jsonOrThrow<Series>),
+      postJSON<Series>("/api/series", data),
     update: (id: string, data: Partial<Series>) =>
-      fetch(`/api/series/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }).then(jsonOrThrow<Series>),
+      putJSON<Series>(`/api/series/${id}`, data),
     remove: (id: string) =>
-      fetch(`/api/series/${id}`, { method: "DELETE" }).then(jsonOrThrow),
+      delJSON(`/api/series/${id}`),
     addTeam: (seriesId: string, data: { teamId?: string; name?: string; shortName?: string; country?: string; primaryColor?: string; accentColor?: string }) =>
-      fetch(`/api/series/${seriesId}/teams`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }).then(jsonOrThrow<Team>),
+      postJSON<Team>(`/api/series/${seriesId}/teams`, data),
     removeTeam: (seriesId: string, teamId: string) =>
-      fetch(`/api/series/${seriesId}/teams/${teamId}`, { method: "DELETE" }).then(jsonOrThrow),
+      delJSON(`/api/series/${seriesId}/teams/${teamId}`),
   },
   articles: {
     list: (params?: {
@@ -152,19 +155,11 @@ export const api = {
     },
     get: (id: string) => fetch(`/api/articles/${id}`).then(jsonOrThrow<Article>),
     create: (data: Partial<Article>) =>
-      fetch("/api/articles", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }).then(jsonOrThrow<Article>),
+      postJSON<Article>("/api/articles", data),
     update: (id: string, data: Partial<Article>) =>
-      fetch(`/api/articles/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }).then(jsonOrThrow<Article>),
+      putJSON<Article>(`/api/articles/${id}`, data),
     remove: (id: string) =>
-      fetch(`/api/articles/${id}`, { method: "DELETE" }).then(jsonOrThrow),
+      delJSON(`/api/articles/${id}`),
   },
   sidebarBlocks: {
     list: (placement?: string, drafts = false) =>
@@ -174,29 +169,21 @@ export const api = {
     get: (id: string) =>
       fetch(`/api/sidebar-blocks/${id}`).then(jsonOrThrow<SidebarBlock>),
     create: (data: Partial<SidebarBlock>) =>
-      fetch("/api/sidebar-blocks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }).then(jsonOrThrow<SidebarBlock>),
+      postJSON<SidebarBlock>("/api/sidebar-blocks", data),
     update: (id: string, data: Partial<SidebarBlock>) =>
-      fetch(`/api/sidebar-blocks/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }).then(jsonOrThrow<SidebarBlock>),
+      putJSON<SidebarBlock>(`/api/sidebar-blocks/${id}`, data),
     remove: (id: string) =>
-      fetch(`/api/sidebar-blocks/${id}`, { method: "DELETE" }).then(jsonOrThrow),
+      delJSON(`/api/sidebar-blocks/${id}`),
   },
   galleries: {
     list: () => fetch("/api/galleries").then(jsonOrThrow<Gallery[]>),
     get: (id: string) => fetch(`/api/galleries/${id}`).then(jsonOrThrow<Gallery>),
     create: (data: Partial<Gallery>) =>
-      fetch("/api/galleries", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }).then(jsonOrThrow<Gallery>),
+      postJSON<Gallery>("/api/galleries", data),
     update: (id: string, data: Partial<Gallery>) =>
-      fetch(`/api/galleries/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }).then(jsonOrThrow<Gallery>),
+      putJSON<Gallery>(`/api/galleries/${id}`, data),
     remove: (id: string) =>
-      fetch(`/api/galleries/${id}`, { method: "DELETE" }).then(jsonOrThrow),
+      delJSON(`/api/galleries/${id}`),
   },
   videos: {
     list: (params?: { category?: string; featured?: boolean; limit?: number; drafts?: boolean }) => {
@@ -210,11 +197,11 @@ export const api = {
     },
     get: (id: string) => fetch(`/api/videos/${id}`).then(jsonOrThrow<Video>),
     create: (data: Partial<Video>) =>
-      fetch("/api/videos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }).then(jsonOrThrow<Video>),
+      postJSON<Video>("/api/videos", data),
     update: (id: string, data: Partial<Video>) =>
-      fetch(`/api/videos/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }).then(jsonOrThrow<Video>),
+      putJSON<Video>(`/api/videos/${id}`, data),
     remove: (id: string) =>
-      fetch(`/api/videos/${id}`, { method: "DELETE" }).then(jsonOrThrow),
+      delJSON(`/api/videos/${id}`),
   },
   banners: {
     /** Fetch all active banners for a given placement slot. Public endpoint,
@@ -229,23 +216,15 @@ export const api = {
     listAll: () => fetch("/api/banners?all=1").then(jsonOrThrow<Banner[]>),
     get: (id: string) => fetch(`/api/banners/${id}`).then(jsonOrThrow<Banner>),
     create: (data: Partial<Banner>) =>
-      fetch("/api/banners", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }).then(jsonOrThrow<Banner>),
+      postJSON<Banner>("/api/banners", data),
     update: (id: string, data: Partial<Banner>) =>
-      fetch(`/api/banners/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }).then(jsonOrThrow<Banner>),
+      putJSON<Banner>(`/api/banners/${id}`, data),
     remove: (id: string) =>
-      fetch(`/api/banners/${id}`, { method: "DELETE" }).then(jsonOrThrow),
+      delJSON(`/api/banners/${id}`),
     /** Fire-and-forget impression ping — called from the client when a banner
      *  scrolls into view. */
     trackImpression: (id: string) =>
-      fetch(`/api/banners/${id}/impression`, { method: "POST" }).catch(() => {}),
+      fetch(`/api/banners/${id}/impression`, withCSRF({ method: "POST" })).catch(() => {}),
     /** Banner click-through URL — image/html banners link here, the endpoint
      *  increments the click counter then 302-redirects to banner.linkUrl.
      *  Direct navigation (no fetch). */

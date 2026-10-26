@@ -137,6 +137,11 @@ export interface SiteAdminTokenPayload {
 }
 
 export const SITE_ADMIN_COOKIE = "sa-session"
+/** Non-httpOnly CSRF cookie — JavaScript can read it and attach the value
+ *  as an `X-CSRF-Token` header on POST/PUT/DELETE requests. The server
+ *  checks that the header matches the cookie (double-submit pattern). */
+export const CSRF_COOKIE = "csrf-token"
+export const CSRF_HEADER = "X-CSRF-Token"
 
 export function issueSiteAdminToken(p: {
   adminId: string
@@ -188,11 +193,30 @@ export function verifySiteAdminToken(
  *   const admin = requireSiteAdmin(req)
  *   if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
  */
+/** Generate a random CSRF token (32 hex chars). */
+export function generateCSRFToken(): string {
+  return randomBytes(16).toString("hex")
+}
+
 export function requireSiteAdmin(
   req: NextRequest
 ): SiteAdminTokenPayload | null {
   const cookie = req.cookies.get(SITE_ADMIN_COOKIE)?.value
-  return verifySiteAdminToken(cookie)
+  const admin = verifySiteAdminToken(cookie)
+  if (!admin) return null
+
+  // CSRF double-submit check: for state-changing methods (POST/PUT/DELETE),
+  // require the X-CSRF-Token header to match the csrf-token cookie.
+  const method = req.method.toUpperCase()
+  if (method === "POST" || method === "PUT" || method === "DELETE" || method === "PATCH") {
+    const csrfCookie = req.cookies.get(CSRF_COOKIE)?.value
+    const csrfHeader = req.headers.get(CSRF_HEADER.toLowerCase())
+    if (!csrfCookie || !csrfHeader || csrfCookie !== csrfHeader) {
+      return null // CSRF check failed — treat as unauthenticated
+    }
+  }
+
+  return admin
 }
 
 /* ----------------------------- db-backed checks ----------------------------- */

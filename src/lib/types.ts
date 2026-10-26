@@ -192,6 +192,7 @@ export type ViewKey =
   | "team-detail"
   | "players"
   | "player-detail"
+  | "player-timeline"
   | "stats"
   | "player-comparison"
   | "schedule"

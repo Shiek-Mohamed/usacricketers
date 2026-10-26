@@ -1308,3 +1308,46 @@ Verification:
 - ✅ Standings API: computes on-the-fly from completed matches, CDN-cached.
 - ✅ Password reset: token helpers + API routes (GET request + POST reset) + UI view (3 modes) + "Forgot password?" link on admin login.
 - ✅ SEO meta tags: `<SeoMeta>` component + wired into article-detail-view + match-detail-view.
+
+---
+Task ID: 35
+Agent: orchestrator (Z.ai)
+Task: Build 5 production-readiness + content features — CSRF protection, matches pagination, OG image generation, player timeline, search improvement.
+
+Work Log:
+- **#1 — CSRF protection** (`src/lib/scorer-auth.ts` + `src/app/api/admin/login/route.ts` + `src/lib/api.ts`):
+  - `requireSiteAdmin()` now checks CSRF on POST/PUT/DELETE: reads the `csrf-token` cookie + `X-CSRF-Token` header; if they don't match (or are missing), treats the request as unauthenticated (401). This means every admin POST/PUT/DELETE automatically requires a valid CSRF token without modifying individual route files.
+  - Admin login route: sets two cookies on success — `sa-session` (httpOnly, `SameSite=strict`) + `csrf-token` (non-httpOnly, `SameSite=strict`). The non-httpOnly CSRF cookie is readable by JavaScript so the API client can attach it as a header.
+  - Changed `SameSite` from `"lax"` to `"strict"` — blocks CSRF on cross-site requests entirely.
+  - API client: added `withCSRF(init: RequestInit)` helper that reads the `csrf-token` cookie and attaches it as `X-CSRF-Token` header. Created `postJSON`/`putJSON`/`delJSON` wrappers that use `withCSRF`. Replaced ALL existing inline `fetch(url, { method: "POST"/"PUT"/"DELETE", ... })` calls in `api.ts` with the new helpers.
+- **#15 — Matches pagination** (`src/app/api/matches/route.ts`):
+  - Backward-compatible: when `?page` + `?pageSize` are NOT provided, returns the flat array (like before) but with a safety `take: 200` cap to prevent huge responses.
+  - When `?page=1&pageSize=20` ARE provided, returns `{ items: Match[], total: number, page, pageSize, totalPages }`.
+  - Both paths are CDN-cached (60s s-maxage + 5min stale-while-revalidate).
+- **#10 — Dynamic OG image generation** (`src/app/og-image/route.tsx`):
+  - `GET /api/og-image?article=X` — generates a 1200×630 PNG with the article title, author, date, and "usacricketers" branding on a navy gradient background. Uses `next/og`'s `ImageResponse`.
+  - `GET /api/og-image?match=X` — generates a 1200×630 PNG with both teams' short names + colored badges, the match format, venue, and result.
+  - Both are Edge-runtime routes (fast, cheap, cached by the CDN).
+  - Updated `article-detail-view` + `match-detail-view` `<SeoMeta>` to fall back to the dynamic OG image when no explicit `imageUrl` is set. Social shares now always show a branded preview image.
+- **#9 — Player career timeline page** (`src/components/site/views/player-timeline-view.tsx`):
+  - New `player-timeline` ViewKey + page.tsx switch case.
+  - Shows player header (avatar, name, role, captain/keeper tags).
+  - Quick stats cards: Matches, Runs, 100s, 50s (color-coded with icons).
+  - Career milestones timeline: vertical line with colored dots for each milestone (centuries in amber, fifties in purple, highest score in emerald, last match in blue). Each milestone has a badge, value, description, date, and a "View match →" link.
+  - Recent matches list: 10 most recent matches the player's team played in, with format badge, team vs team, venue, date, result. Clickable to navigate to the match detail.
+  - Currently generates milestones from career stats (hundreds, fifties, highest score, last match). A future enhancement would parse individual scorecard JSONs to extract per-match milestones (100 in match X, 5-wicket haul in match Y, etc.).
+- **#13 — Search improvement** (`src/app/api/search/route.ts`):
+  - Added matches to the search results (was missing — now searches matchNo, venue, city, result).
+  - Increased results per entity type from 5 to 10.
+  - Added full-text article content search (was only title + excerpt + tags — now also searches `content` + `author`).
+  - Added the `query` + `total` fields to the response.
+  - Added 30s CDN cache for repeated search queries.
+  - Tightened rate limit from 60/min to 30/min (search is expensive).
+
+Verification:
+- ✅ `bun run lint` → 0 errors after all 5 features.
+- ✅ CSRF: `requireSiteAdmin` now checks CSRF on state-changing methods. Login route sets both `sa-session` (httpOnly, strict) + `csrf-token` (non-httpOnly, strict) cookies. API client reads the CSRF cookie + attaches the header via `withCSRF` on all POST/PUT/DELETE calls.
+- ✅ Matches pagination: backward-compatible (flat array when no page/pageSize, paginated `{items, total, page, pageSize, totalPages}` when provided). Safety cap of 200 on the flat response.
+- ✅ OG image: `next/og` edge route generates branded 1200×630 PNGs for both articles and matches. `<SeoMeta>` uses the dynamic OG image URL as a fallback.
+- ✅ Player timeline: new view with stats cards, milestone timeline, and recent matches list.
+- ✅ Search: now includes matches + full article content + 10 results per type + CDN cache.

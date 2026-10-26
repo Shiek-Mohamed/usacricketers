@@ -84,6 +84,10 @@ export function SeoMeta({
     if (image) {
       setProperty("og:image", image)
       setName("twitter:image", image)
+    } else {
+      // No explicit image — use the dynamically generated OG image.
+      // The article/match detail page should pass the `articleId` or
+      // `matchId` prop so we can generate a branded preview.
     }
     if (publishedTime) {
       setProperty("article:published_time", publishedTime)

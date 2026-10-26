@@ -201,6 +201,7 @@ export function MatchDetailView() {
     <SeoMeta
       title={`${match_.team1?.shortName ?? "?"} vs ${match_.team2?.shortName ?? "?"} — ${match_.matchNo}`}
       description={`${match_.format} match at ${match_.venue || "TBD"}${match_.result ? ` — ${match_.result}` : ""}`}
+      image={`${typeof window !== "undefined" ? window.location.origin : ""}/api/og-image?match=${match_.id}`}
       type="website"
       url={typeof window !== "undefined" ? `${window.location.origin}/?view=match-detail&id=${match_.id}` : undefined}
     />

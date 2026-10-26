@@ -9,6 +9,7 @@ import type { Article } from "@/lib/types"
 import { formatDate } from "@/components/cricket/ui"
 import { InnerPageLayout } from "@/components/site/inner-layout"
 import { ShareButtons } from "@/components/site/share-buttons"
+import { SeoMeta } from "@/components/site/seo-meta"
 import { CustomSidebarBlocks } from "@/components/site/custom-sidebar-blocks"
 import {
   ArticleListWidget,
@@ -246,7 +247,23 @@ export function ArticleDetailView() {
         .filter(Boolean)
     : []
 
+  // SEO meta tags (OG, Twitter cards, schema.org JSON-LD)
+  const seoUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/?view=article-detail&id=${article.id}`
+    : undefined
+
   return (
+    <>
+    <SeoMeta
+      title={article.title}
+      description={article.excerpt}
+      image={article.imageUrl}
+      url={seoUrl}
+      type="article"
+      publishedTime={article.publishedAt}
+      author={article.author}
+      keywords={tags}
+    />
     <InnerPageLayout
       mainWidth={600}
       header={
@@ -335,5 +352,6 @@ export function ArticleDetailView() {
         </Button>
       </div>
     </InnerPageLayout>
+    </>
   )
 }

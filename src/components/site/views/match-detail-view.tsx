@@ -36,6 +36,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ShareButtons } from "@/components/site/share-buttons"
+import { SeoMeta } from "@/components/site/seo-meta"
 
 function MatchHeaderCard({ match }: { match: Match }) {
   const sc = match.scorecard
@@ -196,6 +197,13 @@ export function MatchDetailView() {
   const isLive = match_.status === "live"
 
   return (
+    <>
+    <SeoMeta
+      title={`${match_.team1?.shortName ?? "?"} vs ${match_.team2?.shortName ?? "?"} — ${match_.matchNo}`}
+      description={`${match_.format} match at ${match_.venue || "TBD"}${match_.result ? ` — ${match_.result}` : ""}`}
+      type="website"
+      url={typeof window !== "undefined" ? `${window.location.origin}/?view=match-detail&id=${match_.id}` : undefined}
+    />
     <InnerPageLayout
       sidebar={
         <>
@@ -331,5 +339,6 @@ export function MatchDetailView() {
         )}
       </div>
     </InnerPageLayout>
+    </>
   )
 }

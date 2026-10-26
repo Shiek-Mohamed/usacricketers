@@ -49,9 +49,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Plus, Pencil, Trash2, Search, Info, Radio } from "lucide-react"
+import { Plus, Pencil, Trash2, Search, Info, Radio, CalendarPlus } from "lucide-react"
 import { toast } from "sonner"
 import type { Match, Scorecard } from "@/lib/types"
+import { BulkMatchesDialog } from "@/components/admin/bulk-matches/bulk-matches-dialog"
 
 const FORMATS = ["Test", "ODI", "T20I", "T10"] as const
 const STATUSES = ["upcoming", "live", "completed", "abandoned"] as const
@@ -112,6 +113,7 @@ export function AdminMatchesView() {
   const [form, setForm] = useState<MatchFormState>(emptyForm)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [bulkOpen, setBulkOpen] = useState(false)
 
   const filtered = (data ?? []).filter((m) => {
     const q = search.toLowerCase()
@@ -214,14 +216,24 @@ export function AdminMatchesView() {
       actionLabel="+ New Match"
       onAction={openCreate}
     >
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search by team, venue or format..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search by team, venue or format..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setBulkOpen(true)}
+          className="gap-1.5 whitespace-nowrap"
+        >
+          <CalendarPlus className="h-4 w-4" /> Bulk Schedule
+        </Button>
       </div>
 
       <Card>
@@ -614,6 +626,12 @@ export function AdminMatchesView() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* Bulk match scheduling dialog */}
+      <BulkMatchesDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        onDone={() => refetch()}
+      />
     </AdminShell>
   )
 }

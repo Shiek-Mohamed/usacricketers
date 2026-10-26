@@ -92,6 +92,30 @@ export const api = {
       }).then(jsonOrThrow<Match>),
     remove: (id: string) =>
       fetch(`/api/matches/${id}`, { method: "DELETE" }).then(jsonOrThrow),
+    bulkCreate: async (
+      matches: Array<{
+        team1Name: string
+        team2Name: string
+        format?: string
+        matchNo?: string
+        venue?: string
+        city?: string
+        startDate: string
+      }>,
+      seriesId?: string
+    ): Promise<{
+      created: number
+      skipped: number
+      skippedRows: string[]
+      matches: Match[]
+    }> => {
+      const res = await fetch("/api/matches/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ matches, seriesId }),
+      })
+      return jsonOrThrow(res)
+    },
   },
   series: {
     list: () => fetch("/api/series").then(jsonOrThrow<Series[]>),

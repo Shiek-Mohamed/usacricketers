@@ -158,6 +158,19 @@ export function AdminLoginView() {
             </Button>
           </form>
 
+          {/* Forgot password link */}
+          <div className="mt-2 flex justify-center">
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              onClick={() => navigate("admin-reset-password")}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              Forgot password?
+            </Button>
+          </div>
+
           <div className="mt-4 flex justify-center">
             <Button
               type="button"

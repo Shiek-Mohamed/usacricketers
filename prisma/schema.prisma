@@ -316,3 +316,27 @@ model Banner {
 
   @@index([published, placement, order])
 }
+
+// League standings — auto-updated when a match in a series completes.
+// One row per (series, team) pair. The Standings component reads this
+// instead of the hardcoded values it used before.
+model Standing {
+  id        String   @id @default(cuid())
+  seriesId  String
+  teamId    String
+  played    Int      @default(0)
+  won       Int      @default(0)
+  lost      Int      @default(0)
+  tied      Int      @default(0)
+  nrr       Float    @default(0) // net run rate (simplified: (runs/overs) - (opponent_runs/opponent_overs))
+  points    Int      @default(0) // typically 2 per win, 1 per tie, 0 per loss
+  forRuns   Int      @default(0) // total runs scored across innings
+  forOvers  Float    @default(0) // total overs faced (decimal — e.g. 42.4 = 42.67)
+  againstRuns  Int   @default(0) // total runs conceded
+  againstOvers Float @default(0) // total overs bowled
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([seriesId, teamId])
+  @@index([seriesId])
+}

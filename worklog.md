@@ -1262,3 +1262,49 @@ Stage Summary:
   - **Admin "recently edited"** — cross-entity activity feed on the dashboard showing the 6 most recently updated items across all content types, clickable to navigate to the relevant admin view.
   - **PWA** — installable app with offline support (cache-first shell + network-first API), push notification handler ready for when the score-service starts sending wicket alerts.
   - **Env externalization** — `.env.example` documents all configuration variables for deployment.
+
+---
+Task ID: 34
+Agent: orchestrator (Z.ai)
+Task: Build 5 features — bulk match scheduling, player comparison tool, series standings API, password reset flow, SEO meta tags.
+
+Work Log:
+- **#11 — Bulk match scheduling** (`src/app/api/matches/bulk/route.ts` + `src/components/admin/bulk-matches/bulk-matches-dialog.tsx`):
+  - POST `/api/matches/bulk` — site-admin-guarded. Accepts an array of `{ team1Name, team2Name, format?, venue?, city?, startDate, matchNo? }`. Looks up team IDs by short name or full name (case-insensitive). Creates all matches, reports skipped rows (unknown team names, same team, DB errors). Returns `{ created, skipped, skippedRows, matches }`.
+  - API client: `api.matches.bulkCreate(matches, seriesId?)` added.
+  - UI: Reusable `<BulkMatchesDialog>` component with the same smart CSV/TSV/pipe/semicolon parser as the bulk-player-upload. Live preview table showing team1, team2, format, venue, date for each parsed row. Default-format dropdown for name-only rows. "Create N matches" button.
+  - Wired into the admin matches view: "Bulk Schedule" button (CalendarPlus icon) next to the search bar. Opens the dialog, creates matches, refetches the table.
+- **#6 — Player comparison tool** (`src/components/site/views/player-comparison-view.tsx`):
+  - New `player-comparison` ViewKey + page.tsx switch case.
+  - Two `<Select>` dropdowns to pick Player 1 and Player 2 from all players (shows name + team short name).
+  - Side-by-side batting comparison table: Matches, Innings, Runs, Highest, Average, Strike Rate, 100s, 50s, 4s, 6s, Not Outs. Each row highlights the "better" player's value in bold green + shows ◀/▶ advantage arrow.
+  - Bowling comparison table (only if both players have bowling stats): Matches, Innings, Balls, Runs, Wickets, Best, Economy, Average, Strike Rate, Maidens.
+  - Visual bar comparison: horizontal bars for Runs, Average, Strike Rate, Wickets — green for Player 1, blue for Player 2. Width is proportional to the max of the two values.
+  - Uses the existing `InnerPageLayout` for consistent header/footer/sidebar.
+- **#10 — Series standings API** (`src/app/api/standings/route.ts`):
+  - GET `/api/standings?seriesId=X` — computes standings on-the-fly from all completed matches in the series. No manual DB maintenance needed — always reflects the latest match results.
+  - For each team: played, won, lost, tied, points (2 per win, 1 per tie), forRuns, forOvers, againstRuns, againstOvers, NRR (computed as forRR - againstRR).
+  - Sorted by points desc → NRR desc → won desc.
+  - CDN-cached (60s s-maxage + 5min stale-while-revalidate).
+  - Also added a `Standing` Prisma model for future server-side caching (not used by the API yet — the API computes on-the-fly which is simpler + always fresh).
+- **#15 — Password reset flow** (`src/lib/scorer-auth.ts` + `src/app/api/admin/reset-password/route.ts` + `src/components/site/views/admin-reset-password-view.tsx`):
+  - `issuePasswordResetToken(adminId, email)` — 15-minute TTL, HMAC-SHA256 signed with `type: "password-reset"` so it can never be confused with a session token.
+  - `verifyPasswordResetToken(token)` — validates signature + expiry + type.
+  - GET `/api/admin/reset-password?email=X` — rate-limited (5 per 10 min). Looks up admin by email. Always returns 200 (prevents email enumeration). In dev mode, returns the reset URL directly. In production with RESEND_API_KEY, emails the link.
+  - POST `/api/admin/reset-password` — rate-limited (5 per 10 min). Accepts `{ token, password }`. Verifies the token, updates the password hash. Returns 200 on success.
+  - UI: `<AdminResetPasswordView>` — 3 modes: (1) request form (email input → "Send reset link" button), (2) "check your email" confirmation screen, (3) reset form (token from URL param → new password + confirm → "Update password" button → success screen with "Sign in" link).
+  - "Forgot password?" link added to the admin-login-view below the sign-in button.
+- **#22 — SEO meta tags per page** (`src/components/site/seo-meta.tsx`):
+  - Reusable `<SeoMeta>` client component that injects Open Graph + Twitter Card + schema.org JSON-LD meta tags into the document head via `useEffect`. Works with SPA navigation (no SSR metadata export needed).
+  - Props: `title`, `description`, `image`, `url`, `type` ("article" | "website"), `publishedTime`, `author`, `keywords[]`.
+  - For articles: injects `og:type=article`, `article:published_time`, `article:author`, and a `NewsArticle` JSON-LD schema.
+  - For matches: injects `og:type=website` and a `WebPage` JSON-LD schema.
+  - Wired into `article-detail-view.tsx` (with full article data: title, excerpt, imageUrl, publishedAt, author, tags) + `match-detail-view.tsx` (with match title + description).
+
+Verification:
+- ✅ `bun run lint` → 0 errors after all 5 features.
+- ✅ Bulk match scheduling: API + API client + dialog component + matches-view wiring all compile cleanly.
+- ✅ Player comparison: ViewKey added + page.tsx switch case + component with batting/bowling comparison tables + visual bar chart.
+- ✅ Standings API: computes on-the-fly from completed matches, CDN-cached.
+- ✅ Password reset: token helpers + API routes (GET request + POST reset) + UI view (3 modes) + "Forgot password?" link on admin login.
+- ✅ SEO meta tags: `<SeoMeta>` component + wired into article-detail-view + match-detail-view.

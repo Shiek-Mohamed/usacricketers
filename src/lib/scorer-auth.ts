@@ -276,3 +276,44 @@ export function readBearerToken(authHeader: string | null): string | null {
   const m = authHeader.match(/^Bearer\s+(.+)$/i)
   return m ? m[1].trim() : null
 }
+
+/* ------------------------------ Password Reset ----------------------------- */
+
+/**
+ * Issue a short-lived password-reset token (15 min TTL). Same HMAC-SHA256
+ * signing as the session token, but with `type: "password-reset"` so it
+ * can never be confused with a session token.
+ */
+export function issuePasswordResetToken(adminId: string, email: string): string {
+  const body = {
+    type: "password-reset" as const,
+    adminId,
+    email,
+    exp: Date.now() + 1000 * 60 * 15, // 15 minutes
+  }
+  const payload = b64url(JSON.stringify(body))
+  return `${payload}.${sign(payload)}`
+}
+
+/** Verify a password-reset token. Returns the adminId + email, or null. */
+export function verifyPasswordResetToken(token: string): { adminId: string; email: string } | null {
+  const [payload, sig] = token.trim().split(".")
+  if (!payload || !sig) return null
+  const expected = sign(payload)
+  try {
+    const a = Buffer.from(sig)
+    const b = Buffer.from(expected)
+    if (a.length !== b.length || !timingSafeEqual(a, b)) return null
+  } catch {
+    return null
+  }
+  let body: { type: string; adminId: string; email: string; exp: number }
+  try {
+    body = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"))
+  } catch {
+    return null
+  }
+  if (!body || body.type !== "password-reset") return null
+  if (typeof body.exp !== "number" || body.exp < Date.now()) return null
+  return { adminId: body.adminId, email: body.email }
+}

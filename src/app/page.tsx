@@ -15,6 +15,7 @@ import { TeamsView } from "@/components/site/views/teams-view"
 import { TeamDetailView } from "@/components/site/views/team-detail-view"
 import { PlayersView } from "@/components/site/views/players-view"
 import { PlayerDetailView } from "@/components/site/views/player-detail-view"
+import { PlayerComparisonView } from "@/components/site/views/player-comparison-view"
 import { StatsView } from "@/components/site/views/stats-view"
 import { ScheduleView } from "@/components/site/views/schedule-view"
 import { PhotosView } from "@/components/site/views/photos-view"
@@ -36,6 +37,7 @@ import { AdminBannersView } from "@/components/admin/views/admin-banners-view"
 import { AdminScorerView } from "@/components/admin/views/admin-scorers-view"
 import { AdminLeagueAdminsView } from "@/components/admin/views/admin-league-admins-view"
 import { AdminLoginView } from "@/components/site/views/admin-login-view"
+import { AdminResetPasswordView } from "@/components/site/views/admin-reset-password-view"
 import { LiveScorerView } from "@/components/admin/views/live-scorer-view"
 import { ScorerLoginView } from "@/components/site/views/scorer-login-view"
 import { ScorerLandingView } from "@/components/site/views/scorer-landing-view"
@@ -83,6 +85,8 @@ export default function Home() {
         return <PlayersView />
       case "player-detail":
         return <PlayerDetailView />
+      case "player-comparison":
+        return <PlayerComparisonView />
       case "stats":
         return <StatsView />
       case "schedule":
@@ -100,6 +104,8 @@ export default function Home() {
       // Admin
       case "admin-login":
         return <AdminLoginView />
+      case "admin-reset-password":
+        return <AdminResetPasswordView />
       case "admin-dashboard":
         return <DashboardView />
       case "admin-articles":

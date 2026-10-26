@@ -1,7 +1,7 @@
 // Shared type definitions for the Cricket CMS
 
 export type MatchStatus = "upcoming" | "live" | "completed" | "abandoned"
-export type MatchFormat = "Test" | "ODI" | "T20I" | "T10"
+export type MatchFormat = "Test" | "ODI" | "T20I" | "T10" | "T25" | "T30" | "T35"
 export type SeriesStatus = "upcoming" | "ongoing" | "completed"
 
 export interface BattingStat {

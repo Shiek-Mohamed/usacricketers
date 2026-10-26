@@ -54,7 +54,7 @@ import { toast } from "sonner"
 import type { Match, Scorecard } from "@/lib/types"
 import { BulkMatchesDialog } from "@/components/admin/bulk-matches/bulk-matches-dialog"
 
-const FORMATS = ["Test", "ODI", "T20I", "T10"] as const
+const FORMATS = ["Test", "ODI", "T20I", "T10", "T25", "T30", "T35"] as const
 const STATUSES = ["upcoming", "live", "completed", "abandoned"] as const
 const NONE_SERIES = "__none__"
 

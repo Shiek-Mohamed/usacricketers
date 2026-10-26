@@ -33,7 +33,7 @@ import { BulkPlayersDialog } from "@/components/admin/bulk-players/bulk-players-
 import { parsePlayerRows } from "@/components/admin/bulk-players/bulk-players-dialog"
 
 const SCROLLBAR = "[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border"
-const FORMATS = ["Test", "ODI", "T20I", "T10"] as const
+const FORMATS = ["Test", "ODI", "T20I", "T10", "T25", "T30", "T35"] as const
 const STATUSES = ["upcoming", "ongoing", "completed"] as const
 
 export function AdminSeriesView() {

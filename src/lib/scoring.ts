@@ -170,6 +170,9 @@ export function maxOversForFormat(format: string): number {
   if (format === "ODI") return 50
   if (format === "T20I" || format === "T20") return 20
   if (format === "T10") return 10
+  if (format === "T25") return 25
+  if (format === "T30") return 30
+  if (format === "T35") return 35
   return 0 // Test = unlimited
 }
 

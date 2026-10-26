@@ -48,7 +48,16 @@ export async function GET(req: NextRequest) {
   // Category filtering is now array-aware: an article's `category` column
   // holds a JSON-array string (e.g. ["feature","interview"]); we filter
   // where the parsed array includes the requested category.
-  const where: Prisma.ArticleWhereInput = { published: true }
+  const where: Prisma.ArticleWhereInput = {
+    published: true,
+    // Scheduled publishing: articles with publishedAt in the future are
+    // not yet visible to the public. They'll appear automatically once the
+    // publishedAt time arrives — no cron job needed, just a query filter.
+    OR: [
+      { publishedAt: { lte: new Date() } },
+      { publishedAt: null },
+    ],
+  }
   if (category) {
     where.category = { contains: `"${category}"` }
   }

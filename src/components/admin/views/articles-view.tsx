@@ -267,9 +267,15 @@ export function AdminArticlesView() {
                       </TableCell>
                       <TableCell className="text-center">
                         {a.published ? (
-                          <Badge className="bg-emerald-600 text-white">
-                            Live
-                          </Badge>
+                          new Date(a.publishedAt) > new Date() ? (
+                            <Badge className="bg-amber-500 text-white">
+                              ⏰ Scheduled
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-emerald-600 text-white">
+                              Live
+                            </Badge>
+                          )
                         ) : (
                           <Badge variant="outline">Draft</Badge>
                         )}
@@ -470,6 +476,12 @@ export function AdminArticlesView() {
                     setForm((f) => ({ ...f, publishedAt: e.target.value }))
                   }
                 />
+                {form.published && new Date(form.publishedAt) > new Date() && (
+                  <p className="text-xs text-amber-600 font-medium">
+                    ⏰ This article is scheduled — it will go live at{" "}
+                    {new Date(form.publishedAt).toLocaleString()}.
+                  </p>
+                )}
               </div>
             </div>
             <div className="grid gap-1.5">

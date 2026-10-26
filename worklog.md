@@ -1351,3 +1351,34 @@ Verification:
 - ✅ OG image: `next/og` edge route generates branded 1200×630 PNGs for both articles and matches. `<SeoMeta>` uses the dynamic OG image URL as a fallback.
 - ✅ Player timeline: new view with stats cards, milestone timeline, and recent matches list.
 - ✅ Search: now includes matches + full article content + 10 results per type + CDN cache.
+
+---
+Task ID: 36
+Agent: orchestrator (Z.ai)
+Task: Build 3 content-velocity features — scheduled article publishing, embeddable live-score widget, auto-generated match previews.
+
+Work Log:
+- **#1 — Scheduled article publishing** (`src/app/api/articles/route.ts` + `src/components/admin/views/articles-view.tsx`):
+  - **No cron job needed** — the public articles GET query now filters `OR: [{ publishedAt: { lte: now } }, { publishedAt: null }]`. Articles with `published: true` but `publishedAt` in the future are invisible to the public until the timestamp arrives. They appear automatically.
+  - Admin article form: the existing `publishedAt` datetime-local picker now shows an amber "⏰ This article is scheduled — it will go live at [date]" hint when `published` is true + the date is in the future.
+  - Admin article table: the status badge now shows 3 states: **Live** (green, published + past date), **⏰ Scheduled** (amber, published + future date), **Draft** (outline, unpublished).
+- **#3 — Embeddable live-score widget** (`src/app/api/embed/match/[id]/route.ts` + `src/app/embed/match/[id]/page.tsx`):
+  - **API**: `GET /api/embed/match/[id]` — returns a minimal JSON payload with match status, teams (name/shortName/color), current score (last innings score/overs), result, venue, series. 5s CDN cache for live matches (polling-friendly), 60s for completed. `Access-Control-Allow-Origin: *` so partner sites can fetch directly via JS.
+  - **Embed page**: `/embed/match/[id]` — a full-page widget designed to be embedded as an iframe (`<iframe src="https://usacricketers.com/embed/match/abc123" width="320" height="160" frameborder="0">`). Navy gradient background, team colored badges, live indicator (pulsing red dot), current score, result. Polls the API every 10s for live matches / 60s for completed. "Powered by usacricketers.com" link at the bottom drives traffic back.
+  - Partner sites can either embed the iframe (simplest) or fetch the JSON API + build their own widget (custom).
+- **#2 — Auto-generated match previews** (`src/app/api/matches/[id]/preview/route.ts` + `src/components/admin/views/matches-view.tsx`):
+  - **API**: `POST /api/matches/[id]/preview` — site-admin-guarded. Reads the match + both teams + their players + series + head-to-head history. Generates a structured markdown article with:
+    - Match header (teams, format, match number, date, venue, series)
+    - Match preview paragraph (format-specific context — Test = endurance, ODI = balance, T20 = excitement)
+    - Head-to-head table (prior matches, wins/losses/ties between the same two teams)
+    - Key players section per team (top 3 run-scorers + top 2 wicket-takers from career stats)
+    - Venue + match officials (umpires, TV umpire, referee)
+    - "This preview was auto-generated — edit before publishing" footer
+  - Creates the article as a **DRAFT** (published: false) with proper tags (team short names, format, match no, preview) + category JSON + auto-generated slug. Admin reviews + edits + publishes.
+  - **UI**: New "Generate Preview" button (FileText icon) in the admin matches table next to the Score/Edit/Delete buttons. Clicking it fires the POST, shows a success toast, and refetches.
+
+Verification:
+- ✅ `bun run lint` → 0 errors.
+- ✅ Scheduled publishing: public GET filters by `publishedAt <= now` — articles with future dates are invisible until the timestamp arrives. No background process needed.
+- ✅ Embed widget: API returns minimal JSON + iframe page polls for live updates. CORS-enabled for partner sites.
+- ✅ Match previews: POST endpoint generates a structured markdown article from match data (head-to-head, key players, venue, officials). Creates as a draft. Admin button wired into the matches table.

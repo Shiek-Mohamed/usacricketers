@@ -49,7 +49,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Plus, Pencil, Trash2, Search, Info, Radio, CalendarPlus } from "lucide-react"
+import { Plus, Pencil, Trash2, Search, Info, Radio, CalendarPlus, FileText } from "lucide-react"
 import { toast } from "sonner"
 import type { Match, Scorecard } from "@/lib/types"
 import { BulkMatchesDialog } from "@/components/admin/bulk-matches/bulk-matches-dialog"
@@ -309,6 +309,30 @@ export function AdminMatchesView() {
                         >
                           <Radio className="h-3.5 w-3.5" />
                           <span className="hidden sm:inline">Score</span>
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={async () => {
+                            try {
+                              const res = await fetch(`/api/matches/${m.id}/preview`, { method: "POST", credentials: "include" })
+                              const data = await res.json()
+                              if (res.ok) {
+                                toast.success("Preview article generated", {
+                                  description: "Created as a draft — review and publish.",
+                                })
+                                refetch()
+                              } else {
+                                toast.error(data.error || "Failed to generate preview")
+                              }
+                            } catch (e) {
+                              toast.error("Failed to generate preview")
+                            }
+                          }}
+                          aria-label="Generate match preview article"
+                          title="Generate match preview article"
+                        >
+                          <FileText className="h-3.5 w-3.5" />
                         </Button>
                         <Button
                           size="icon"

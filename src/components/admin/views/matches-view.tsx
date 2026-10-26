@@ -315,18 +315,13 @@ export function AdminMatchesView() {
                           variant="ghost"
                           onClick={async () => {
                             try {
-                              const res = await fetch(`/api/matches/${m.id}/preview`, { method: "POST", credentials: "include" })
-                              const data = await res.json()
-                              if (res.ok) {
-                                toast.success("Preview article generated", {
-                                  description: "Created as a draft — review and publish.",
-                                })
-                                refetch()
-                              } else {
-                                toast.error(data.error || "Failed to generate preview")
-                              }
+                              const data = await api.matches.generatePreview(m.id)
+                              toast.success("Preview article generated", {
+                                description: "Created as a draft — review and publish.",
+                              })
+                              refetch()
                             } catch (e) {
-                              toast.error("Failed to generate preview")
+                              toast.error("Failed to generate preview", { description: String(e) })
                             }
                           }}
                           aria-label="Generate match preview article"

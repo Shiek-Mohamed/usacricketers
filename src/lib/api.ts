@@ -119,6 +119,12 @@ export const api = {
     }> => {
       return postJSON("/api/matches/bulk", { matches, seriesId })
     },
+    /** Generate a match-preview article draft from match data. */
+    generatePreview: (matchId: string) =>
+      postJSON<{ id: string; title: string; slug: string; message: string }>(
+        `/api/matches/${matchId}/preview`,
+        {}
+      ),
   },
   series: {
     list: () => fetch("/api/series").then(jsonOrThrow<Series[]>),

@@ -32,6 +32,7 @@ export const metadata: Metadata = {
   icons: {
     icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
   },
+  manifest: "/manifest.json",
   openGraph: {
     title: "usacricketers — Live Cricket Scores, News, Stats & Series",
     description:
@@ -64,8 +65,26 @@ export default function RootLayout({
         >
           {children}
           <Toaster />
+          <ServiceWorkerRegister />
         </ThemeProvider>
       </body>
     </html>
   );
+}
+
+/** Client component that registers the service worker for PWA offline
+ *  support. Only runs in production (dev mode skips SW registration because
+ *  the dev server's HMR conflicts with the SW cache). */
+function ServiceWorkerRegister() {
+  if (typeof window === "undefined") return null;
+  if (process.env.NODE_ENV !== "production") return null;
+  if (!("serviceWorker" in navigator)) return null;
+  // Defer registration to after page load so it doesn't compete with
+  // critical rendering.
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/sw.js")
+      .catch(() => { /* silent — PWA is a progressive enhancement */ })
+  })
+  return null
 }

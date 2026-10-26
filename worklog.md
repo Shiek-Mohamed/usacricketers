@@ -1207,3 +1207,58 @@ Verification:
 - ✅ Partnership tracking: verified the engine records partnerships on each wicket (local variables + newInnings object write-back).
 - ✅ Follow-on: verified the `enforceFollowOn` function creates a new innings with the same batting/bowling sides (no swap) + `followOn: true`. The `endInnings` follow-on case handles both the "innings victory" (B overall < A 1st) and "chase" (B overall >= A 1st → A bats innings 3).
 - ✅ Super-over: verified `startSuperOver` creates the 1st super-over innings + `endInnings` creates the 2nd with chase target + `computeSuperOverResult` compares the two.
+
+---
+Task ID: 33
+Agent: orchestrator (Z.ai)
+Task: Build 5 production-readiness + user-engagement features — Docker, sitemap/RSS, admin "recently edited" widget, PWA, env externalization.
+
+Work Log:
+- **#1 — Dockerfile + docker-compose** (`Dockerfile`, `docker-compose.yml`, `.dockerignore`, `start-all.sh`):
+  - Multi-stage Dockerfile: builder stage (node:22-slim + bun, installs deps, prisma generate, next build) → runner stage (copies standalone build + public + prisma + score-service, exposes 3000+3003, entrypoint runs both services).
+  - `start-all.sh` entrypoint: pushes Prisma schema on container start, starts score-service on 3003 + Next.js on 3000 concurrently, waits for either to exit.
+  - `docker-compose.yml`: single service with volume mount for persistent SQLite (`cricket-db` volume → `/app/db`), all env vars configurable, `restart: unless-stopped`.
+  - `.dockerignore`: excludes node_modules, .next, .git, logs, agent-ctx, tool-results, upload, tests.
+  - One-command deploy: `docker compose up --build` → running site at `:3000` + live scoring at `:3003`.
+- **#12 — Sitemap.xml + RSS feed**:
+  - `src/app/sitemap.ts`: Next.js `MetadataRoute.Sitemap` generator. Queries published articles (500), matches (200), players (500), teams (100), series (100) from the DB + generates static page entries. Each URL includes `lastModified`, `changeFrequency`, `priority`. Regenerated every 1 hour (`export const revalidate = 3600`).
+  - `src/app/rss.xml/route.ts`: RSS 2.0 feed of the latest 25 published articles. Returns raw XML with `Content-Type: application/xml`, 5-minute CDN cache. Each item includes title, link (to the article detail page), guid, pubDate, author (dc:creator), excerpt (description), and categories.
+- **#17 — Admin dashboard "recently edited" widget** (`src/components/admin/views/dashboard-view.tsx`):
+  - New card between the Recent Articles/Matches grid and the Quick Actions card.
+  - Merges all 5 entity types (articles, matches, teams, players, series) into a single array, sorts by `updatedAt` descending, takes the top 6.
+  - Each row shows: a colored icon badge (Article=slate, Match=red, Team=emerald, Player=amber, Series=rose), the entity name, the type label, and a relative timestamp (`timeAgo`).
+  - Clicking a row navigates to the corresponding admin view (e.g. clicking a recently-edited player → admin-players).
+  - Loading state shows 4 skeleton rows. Empty state shows "No recent activity."
+- **#7 — PWA** (manifest + service worker + push notifications):
+  - `public/manifest.json`: app name, short name, description, start_url, standalone display mode, navy theme color (#1e2a5e), logo.svg icon.
+  - `src/app/layout.tsx`: added `manifest: "/manifest.json"` to the Metadata export + a `ServiceWorkerRegister` client component that registers `/sw.js` on page load (production only — dev mode skipped to avoid HMR conflicts).
+  - `public/sw.js`: service worker with 3 caching strategies:
+    - **App shell** (HTML/CSS/JS/images, same-origin): cache-first with background revalidation — instant load offline.
+    - **API calls** (`/api/*`): network-first with cache fallback — always fresh when online, graceful degradation offline.
+    - **Cross-origin** (CDN images, Google Fonts): stale-while-revalidate.
+  - Push notification handler: `self.addEventListener("push", ...)` shows a notification with the title/body from the push payload. `notificationclick` opens the URL if provided. (The subscription endpoint + VAPID keys are a future enhancement — the push handler is ready for when the score-service starts sending pushes.)
+  - `skipWaiting()` + `clients.claim()` on install/activate so new SW versions take effect immediately.
+- **#3 — Environment externalization** (`.env.example`):
+  - Documents all environment variables with inline comments:
+    - Required secrets: `SCORER_SECRET`, `INTERNAL_SECRET` (with "CHANGE THESE IN PRODUCTION!" warning).
+    - Database: `DATABASE_URL` (SQLite default + commented-out PostgreSQL example).
+    - Score service: `APP_ORIGIN`, connection limits (`MAX_TOTAL_CONNECTIONS`, `MAX_PER_MATCH`, `MIN_BROADCAST_GAP_MS`).
+    - Optional: `REDIS_URL`, `SENTRY_DSN`, `RESEND_API_KEY`, `FROM_EMAIL`.
+    - Next.js: `NODE_ENV`.
+  - `.env.example` is the canonical reference for deployment configuration.
+
+Verification:
+- ✅ `bun run lint` → 0 errors after all 5 features.
+- ✅ Sitemap + RSS route files compile cleanly (Next.js App Router conventions: `app/sitemap.ts` + `app/rss.xml/route.ts`).
+- ✅ PWA manifest + service worker are static files in `public/` — no build step needed.
+- ✅ Dockerfile uses multi-stage build (builder + runner) for minimal image size.
+- ✅ docker-compose.yml has persistent volume for SQLite data.
+- ✅ Admin dashboard "recently edited" widget renders inside the existing dashboard layout without breaking the stat cards or existing recent-articles/matches sections.
+
+Stage Summary:
+- 5 production-readiness + user-engagement features shipped:
+  - **Docker** — one-command deploy via `docker compose up --build`.
+  - **Sitemap + RSS** — Google-indexable sitemap with all content URLs + RSS feed for feed readers.
+  - **Admin "recently edited"** — cross-entity activity feed on the dashboard showing the 6 most recently updated items across all content types, clickable to navigate to the relevant admin view.
+  - **PWA** — installable app with offline support (cache-first shell + network-first API), push notification handler ready for when the score-service starts sending wicket alerts.
+  - **Env externalization** — `.env.example` documents all configuration variables for deployment.

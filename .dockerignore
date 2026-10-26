@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+dev.log
+score-service.log
+*.md
+!README.md
+agent-ctx
+tool-results
+download
+upload
+tests

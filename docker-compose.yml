@@ -1,0 +1,29 @@
+# docker-compose.yml — one-command local deploy.
+# Usage: docker compose up --build
+# Then visit http://localhost:3000
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+      - "3003:3003"
+    environment:
+      # ─── Required secrets (override in .env or .env.local) ───
+      - SCORER_SECRET=${SCORER_SECRET:-cric-cms-scorer-secret-change-me}
+      - INTERNAL_SECRET=${INTERNAL_SECRET:-cric-cms-internal-change-me}
+      # ─── Optional integrations (leave empty to disable) ───
+      - SENTRY_DSN=${SENTRY_DSN:-}
+      - REDIS_URL=${REDIS_URL:-}
+      # ─── App config ───
+      - NODE_ENV=production
+      - DATABASE_URL=file:/app/db/custom.db
+    volumes:
+      # Persistent SQLite database (survives container restarts)
+      - cricket-db:/app/db
+    restart: unless-stopped
+
+volumes:
+  cricket-db:

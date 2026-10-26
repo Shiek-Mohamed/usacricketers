@@ -53,10 +53,8 @@ export async function GET(req: NextRequest) {
     // Scheduled publishing: articles with publishedAt in the future are
     // not yet visible to the public. They'll appear automatically once the
     // publishedAt time arrives — no cron job needed, just a query filter.
-    OR: [
-      { publishedAt: { lte: new Date() } },
-      { publishedAt: null },
-    ],
+    // (publishedAt has a @default(now()) so it's never NULL — no OR needed.)
+    publishedAt: { lte: new Date() },
   }
   if (category) {
     where.category = { contains: `"${category}"` }

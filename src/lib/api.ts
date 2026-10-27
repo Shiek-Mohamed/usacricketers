@@ -27,21 +27,24 @@ function withCSRF(init: RequestInit): RequestInit {
  *  content-type. Usage: `postJSON("/api/teams", data)` or
  *  `putJSON("/api/teams/123", data)` or `delJSON("/api/teams/123")`. */
 async function postJSON<T>(url: string, body: unknown): Promise<T> {
-  return jsonOrThrow<T>(fetch(url, withCSRF({
+  const res = await fetch(url, withCSRF({
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
-  })))
+  }))
+  return jsonOrThrow<T>(res)
 }
 async function putJSON<T>(url: string, body: unknown): Promise<T> {
-  return jsonOrThrow<T>(fetch(url, withCSRF({
+  const res = await fetch(url, withCSRF({
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
-  })))
+  }))
+  return jsonOrThrow<T>(res)
 }
 async function delJSON<T>(url: string): Promise<T> {
-  return jsonOrThrow<T>(fetch(url, withCSRF({ method: "DELETE" })))
+  const res = await fetch(url, withCSRF({ method: "DELETE" }))
+  return jsonOrThrow<T>(res)
 }
 
 export const api = {

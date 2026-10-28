@@ -147,15 +147,12 @@ export function NewsView() {
           </Card>
         ) : (
           <>
-            {/* Article list — main column. The previous bespoke 2-column
-                grid with "Most Read" + "Top Stories" sidebar cards has been
-                replaced by the standard InnerPageLayout sidebar (Recent
-                Results + Custom Blocks + Newsletter). If bespoke widgets
-                are needed again, they can be re-added via the admin
-                CustomSidebarBlocks UI with placement="article". */}
-            <div className="space-y-4">
+            {/* Article list — main column. Uses the rich default ArticleCard
+                variant (16:9 thumbnail + excerpt + author + tags) in a
+                2-column grid on desktop, single column on mobile. */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {articles.map((a) => (
-                <ArticleCard key={a.id} article={a} variant="horizontal" />
+                <ArticleCard key={a.id} article={a} />
               ))}
             </div>
 

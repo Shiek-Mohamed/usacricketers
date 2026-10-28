@@ -20,6 +20,9 @@ import { useEffect, useMemo, useState } from "react"
 import { useMatches, useTeams } from "@/lib/use-data"
 import type { Match } from "@/lib/types"
 import { MatchCard } from "@/components/site/schedule-card"
+import { InnerPageLayout } from "@/components/site/inner-layout"
+import { CustomSidebarBlocks } from "@/components/site/custom-sidebar-blocks"
+import { RecentResultsWidget } from "@/components/site/sidebar-widgets"
 import { Card } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -172,112 +175,122 @@ export function ScheduleView() {
   }, [filtered])
 
   return (
-    <div className="space-y-5">
-      {/* Page header */}
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-extrabold tracking-tight">
-          <CalendarDays className="h-6 w-6 text-red-600" aria-hidden="true" />
-          Schedule
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          International cricket fixtures — upcoming, live and recent results.
-        </p>
-      </div>
-
-      {/* Tabs: Upcoming / Recent / All */}
-      <Tabs
-        value={tab}
-        onValueChange={(v) => setTab(v as TabValue)}
-        aria-label="Schedule view tabs"
-      >
-        <TabsList>
-          <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
-          <TabsTrigger value="recent">Recent</TabsTrigger>
-          <TabsTrigger value="all">All</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
-      {/* Filters: format chips + team dropdown */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div
-          className="flex flex-wrap items-center gap-2"
-          role="group"
-          aria-label="Format filters"
+    <InnerPageLayout
+      header={
+        /* Page header — full-width top section */
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-extrabold tracking-tight">
+            <CalendarDays className="h-6 w-6 text-red-600" aria-hidden="true" />
+            Schedule
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            International cricket fixtures — upcoming, live and recent results.
+          </p>
+        </div>
+      }
+      sidebar={
+        <>
+          <RecentResultsWidget matches={allMatches} />
+          <CustomSidebarBlocks placement="schedule" />
+        </>
+      }
+    >
+      <div className="space-y-5">
+        {/* Tabs: Upcoming / Recent / All */}
+        <Tabs
+          value={tab}
+          onValueChange={(v) => setTab(v as TabValue)}
+          aria-label="Schedule view tabs"
         >
-          {FORMAT_FILTERS.map((f) => {
-            const active = format === f.key
-            return (
-              <button
-                key={f.key}
-                type="button"
-                onClick={() => setFormat(f.key)}
-                aria-pressed={active}
-                className={cn(
-                  "min-h-[36px] rounded-full border px-3.5 py-1 text-xs font-semibold transition-colors",
-                  active
-                    ? "border-transparent bg-primary text-primary-foreground"
-                    : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
-                )}
-              >
-                {f.label}
-              </button>
-            )
-          })}
-        </div>
+          <TabsList>
+            <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
+            <TabsTrigger value="recent">Recent</TabsTrigger>
+            <TabsTrigger value="all">All</TabsTrigger>
+          </TabsList>
+        </Tabs>
 
-        <Select value={teamId} onValueChange={setTeamId}>
-          <SelectTrigger
-            className="w-[180px]"
-            aria-label="Filter by team"
+        {/* Filters: format chips + team dropdown */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div
+            className="flex flex-wrap items-center gap-2"
+            role="group"
+            aria-label="Format filters"
           >
-            <SelectValue placeholder="All Teams" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Teams</SelectItem>
-            {(teamsData ?? []).map((t) => (
-              <SelectItem key={t.id} value={t.id}>
-                {t.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+            {FORMAT_FILTERS.map((f) => {
+              const active = format === f.key
+              return (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => setFormat(f.key)}
+                  aria-pressed={active}
+                  className={cn(
+                    "min-h-[36px] rounded-full border px-3.5 py-1 text-xs font-semibold transition-colors",
+                    active
+                      ? "border-transparent bg-primary text-primary-foreground"
+                      : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
+                  )}
+                >
+                  {f.label}
+                </button>
+              )
+            })}
+          </div>
 
-      {/* Content: month-grouped MatchCards */}
-      {loading ? (
-        <ScheduleSkeleton />
-      ) : grouped.length === 0 ? (
-        <EmptyState tab={tab} format={format} />
-      ) : (
-        <div className="space-y-6">
-          {grouped.map((g) => (
-            <div key={g.key} className="space-y-3">
-              <div className="sticky top-14 z-10 -mx-3 flex items-center gap-2 border-b bg-muted/95 px-3 py-2 backdrop-blur sm:mx-0 sm:rounded-md sm:px-4">
-                <span
-                  aria-hidden="true"
-                  className="h-4 w-1 rounded-full bg-red-600"
-                />
-                <h2 className="text-sm font-extrabold uppercase tracking-tight">
-                  {g.label}
-                </h2>
-                <span className="text-xs text-muted-foreground">
-                  · {g.matches.length}{" "}
-                  {g.matches.length === 1 ? "match" : "matches"}
-                </span>
-              </div>
-              <div className="space-y-3">
-                {g.matches.map((m) => (
-                  <MatchCard
-                    key={m.id}
-                    match={m}
-                    allMatches={allMatches}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
+          <Select value={teamId} onValueChange={setTeamId}>
+            <SelectTrigger
+              className="w-[180px]"
+              aria-label="Filter by team"
+            >
+              <SelectValue placeholder="All Teams" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Teams</SelectItem>
+              {(teamsData ?? []).map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-      )}
-    </div>
+
+        {/* Content: month-grouped MatchCards */}
+        {loading ? (
+          <ScheduleSkeleton />
+        ) : grouped.length === 0 ? (
+          <EmptyState tab={tab} format={format} />
+        ) : (
+          <div className="space-y-6">
+            {grouped.map((g) => (
+              <div key={g.key} className="space-y-3">
+                <div className="sticky top-14 z-10 -mx-3 flex items-center gap-2 border-b bg-muted/95 px-3 py-2 backdrop-blur sm:mx-0 sm:rounded-md sm:px-4">
+                  <span
+                    aria-hidden="true"
+                    className="h-4 w-1 rounded-full bg-red-600"
+                  />
+                  <h2 className="text-sm font-extrabold uppercase tracking-tight">
+                    {g.label}
+                  </h2>
+                  <span className="text-xs text-muted-foreground">
+                    · {g.matches.length}{" "}
+                    {g.matches.length === 1 ? "match" : "matches"}
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {g.matches.map((m) => (
+                    <MatchCard
+                      key={m.id}
+                      match={m}
+                      allMatches={allMatches}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </InnerPageLayout>
   )
 }

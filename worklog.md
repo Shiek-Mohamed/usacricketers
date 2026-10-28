@@ -1480,3 +1480,32 @@ Stage Summary:
 - MatchCard component is reusable with a `compact` prop for sidebar widgets (hides countdown/result/series-progress/Add-to-Calendar) — usable in future Home or Series-detail views without changes.
 - match-utils.ts helpers are pure functions with no React/IO — easy to unit-test if a test runner is added later.
 - All design constraints respected: no indigo/blue primary, mobile-first responsive, shadcn/ui only, sticky footer preserved, TypeScript strict compliant, no per-card timers (single 30s tick at parent level).
+
+---
+Task ID: 5b (follow-up to Task 5)
+Agent: orchestrator (Z.ai)
+Task: User feedback after Task 5 — the redesigned Schedule page was "too wide, don't need to be, it should contain the sidebar". Wrap the existing redesigned view in InnerPageLayout so it matches the main+sidebar pattern used by Match Detail, Series Detail, etc.
+
+Work Log:
+- Confirmed the issue: the redesigned schedule-view.tsx returned `<div className="space-y-5">...</div>` with the content stretching edge-to-edge. Other inner views (match-detail-view.tsx) wrap content in `InnerPageLayout` which gives a 2-column main+sidebar grid at lg breakpoint, stacking on mobile.
+- Read the existing InnerPageLayout component (`src/components/site/inner-layout.tsx`) — accepts `header` (full-width top section), `children` (main column), `sidebar` (300px widget column with lg:sticky lg:top-20), and optional `mainWidth` for capped article-style text columns.
+- Read the existing sidebar widgets (`src/components/site/sidebar-widgets.tsx`) — `RecentResultsWidget({ matches, title })` is the natural fit for a Schedule page sidebar (shows the last 4 completed matches with scorelines + result text). Also `CustomSidebarBlocks({ placement })` for admin-managed widgets.
+- Verified the CustomSidebarBlocks placement logic: a block matches if its `placement` is "all" OR the page-type is in the comma-separated list. So `placement="schedule"` returns "all" blocks plus any specifically-tagged "schedule" blocks. No existing blocks break.
+- Edited `/home/z/my-project/src/components/site/views/schedule-view.tsx`:
+  1. Added three imports: `InnerPageLayout`, `CustomSidebarBlocks`, `RecentResultsWidget`.
+  2. Wrapped the existing return JSX in `<InnerPageLayout>`:
+     - `header` prop = page title + subtitle (was previously inside the body div)
+     - `sidebar` prop = `<>` fragment containing `<RecentResultsWidget matches={allMatches} />` + `<CustomSidebarBlocks placement="schedule" />`
+     - `children` = the existing `<div className="space-y-5">` containing tabs + filters + match cards (unchanged internally)
+  3. All existing logic (data fetching, filtering, grouping, sticky month headers, tabs, format chips, team dropdown, single 30s tick) preserved — only the outer wrapper changed.
+
+Verification:
+- Lint: `bun run lint` exit 0, zero errors/warnings.
+- Desktop (1280×900) via agent-browser: two-column layout renders correctly. Main column constrained to a readable width (no more edge-to-edge stretching). Right sidebar shows "RECENT RESULTS" widget with 4 match entries + scorelines. VLM verdict: 8.5/10 — "transforms a potentially overwhelming data table into a scannable, magazine-style dashboard".
+- Mobile (390×844) via agent-browser: page stacks correctly — page header → main content (tabs + filters + match cards) → sidebar (RECENT RESULTS + FOLLOW USACRICKETERS widgets below the main content). This is the InnerPageLayout's built-in `grid-cols-1 lg:grid-cols-[1fr_300px]` behavior; no changes needed.
+- dev.log: clean compiles, no runtime errors.
+
+Stage Summary:
+- **One-line fix wrapped the redesigned Schedule page in InnerPageLayout** — matches the main+sidebar pattern used by other inner views (match-detail, series-detail, team-detail, player-detail). User's "too wide" feedback resolved.
+- Sidebar composition: `RecentResultsWidget` (system widget, shows last 4 completed matches) + `CustomSidebarBlocks placement="schedule"` (admin-managed widgets; allows future admin to add Schedule-page-specific sidebar blocks).
+- All Task 5 features preserved: matchup cards, status pills, countdowns, tabs, format + team filters, sticky month header, click-into-match-detail, mobile responsiveness.

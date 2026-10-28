@@ -1,18 +1,37 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { useMatches } from "@/lib/use-data"
-import { useAppStore } from "@/lib/store"
+/**
+ * ScheduleView — public schedule page.
+ *
+ * Replaces the previous "wall of white" list with ESPNcricinfo-style matchup
+ * cards (see MatchCard). Adds:
+ *   - Upcoming / Recent / All tabs (replaces a single upcoming-only list)
+ *   - Format filter chips (preserved from the previous version)
+ *   - Team dropdown filter (new — useful for "show me all IND fixtures")
+ *   - Month-grouped sticky headers (preserved)
+ *   - A single 30-second tick at the view level so countdowns stay fresh
+ *     without per-card timers
+ *
+ * The view is content-only — the surrounding `min-h-screen flex flex-col` +
+ * `mt-auto` footer lives in the shared site shell and is not touched here.
+ */
+
+import { useEffect, useMemo, useState } from "react"
+import { useMatches, useTeams } from "@/lib/use-data"
 import type { Match } from "@/lib/types"
-import {
-  TeamBadge,
-  FormatPill,
-  formatMatchTime,
-} from "@/components/cricket/ui"
+import { MatchCard } from "@/components/site/schedule-card"
 import { Card } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { CalendarDays } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { CalendarDays, MapPin, ChevronRight } from "lucide-react"
 
 const FORMAT_FILTERS = [
   { key: "all", label: "All" },
@@ -20,14 +39,17 @@ const FORMAT_FILTERS = [
   { key: "ODI", label: "ODI" },
   { key: "T20I", label: "T20I" },
   { key: "T10", label: "T10" },
-]
+] as const
 
-function monthKey(iso: string) {
+const TAB_VALUES = ["upcoming", "recent", "all"] as const
+type TabValue = (typeof TAB_VALUES)[number]
+
+function monthKey(iso: string): string {
   const d = new Date(iso)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
 }
 
-function monthLabel(iso: string) {
+function monthLabel(iso: string): string {
   const d = new Date(iso)
   return d.toLocaleDateString("en-US", {
     month: "long",
@@ -35,128 +57,109 @@ function monthLabel(iso: string) {
   })
 }
 
-function weekdayShort(iso: string) {
-  return new Date(iso).toLocaleDateString("en-US", { weekday: "short" })
-}
-
-function dayNumber(iso: string) {
-  return new Date(iso).getDate()
-}
-
-function shortMonth(iso: string) {
-  return new Date(iso).toLocaleDateString("en-US", { month: "short" })
-}
-
-function ScheduleRow({ match }: { match: Match }) {
-  const navigate = useAppStore((s) => s.navigate)
-  const t1 = match.team1
-  const t2 = match.team2
-
-  return (
-    <Card
-      className="cursor-pointer transition-shadow hover:shadow-md"
-      onClick={() => navigate("match-detail", match.id)}
-    >
-      <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-[auto_1fr_auto] sm:items-center sm:gap-4">
-        {/* Date */}
-        <div className="flex items-center gap-3 sm:flex-col sm:items-center sm:justify-center sm:border-r sm:pr-4">
-          <div className="text-center">
-            <div className="text-2xl font-extrabold leading-none tabular-nums text-foreground sm:text-3xl">
-              {dayNumber(match.startDate)}
-            </div>
-            <div className="text-[10px] font-semibold uppercase text-muted-foreground">
-              {shortMonth(match.startDate)}
-            </div>
-          </div>
-          <div className="text-[10px] font-semibold uppercase text-muted-foreground">
-            {weekdayShort(match.startDate)}
-          </div>
-          <div className="text-[10px] text-muted-foreground sm:hidden">
-            · {formatMatchTime(match.startDate)}
-          </div>
-        </div>
-
-        {/* Match info */}
-        <div className="min-w-0">
-          <div className="mb-2 flex flex-wrap items-center gap-2">
-            <FormatPill format={match.format} />
-            <span className="text-xs text-muted-foreground">
-              {match.matchNo}
-            </span>
-            {match.series?.shortName && (
-              <span className="truncate text-xs text-muted-foreground">
-                · {match.series.shortName}
-              </span>
-            )}
-          </div>
-          <div className="space-y-1.5">
-            {t1 && (
-              <div className="flex items-center gap-2">
-                <TeamBadge team={t1} size="sm" />
-                <span className="truncate text-sm font-semibold">
-                  {t1.name}
-                </span>
-              </div>
-            )}
-            {t2 && (
-              <div className="flex items-center gap-2">
-                <TeamBadge team={t2} size="sm" />
-                <span className="truncate text-sm font-semibold">
-                  {t2.name}
-                </span>
-              </div>
-            )}
-          </div>
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-            <span className="inline-flex items-center gap-1">
-              <MapPin className="h-3 w-3" />
-              {match.venue}
-              {match.city ? `, ${match.city}` : ""}
-            </span>
-            <span className="hidden sm:inline">·</span>
-            <span className="hidden sm:inline">
-              {formatMatchTime(match.startDate)}
-            </span>
-          </div>
-        </div>
-
-        {/* CTA */}
-        <div className="hidden items-center justify-end sm:flex">
-          <ChevronRight className="h-5 w-5 text-muted-foreground" />
-        </div>
-      </div>
-    </Card>
-  )
+interface MonthGroup {
+  key: string
+  label: string
+  matches: Match[]
 }
 
 function ScheduleSkeleton() {
   return (
     <div className="space-y-3">
       {Array.from({ length: 5 }).map((_, i) => (
-        <Skeleton key={i} className="h-24 w-full rounded-lg" />
+        <Skeleton key={i} className="h-28 w-full rounded-xl" />
       ))}
     </div>
   )
 }
 
+function EmptyState({
+  tab,
+  format,
+}: {
+  tab: TabValue
+  format: string
+}) {
+  const messages: Record<TabValue, string> = {
+    upcoming: "No upcoming matches for this filter.",
+    recent: "No recent results for this filter.",
+    all: "No matches for this filter.",
+  }
+  const fmtLabel =
+    FORMAT_FILTERS.find((f) => f.key === format)?.label ?? "this format"
+  return (
+    <Card className="grid min-h-[200px] place-items-center p-6">
+      <div className="text-center">
+        <div className="mb-2 text-3xl" aria-hidden="true">
+          📅
+        </div>
+        <p className="text-sm text-muted-foreground">
+          {messages[tab].replace("this filter", `${fmtLabel} filter`)}
+        </p>
+      </div>
+    </Card>
+  )
+}
+
 export function ScheduleView() {
   const { data, loading } = useMatches()
+  const { data: teamsData } = useTeams()
+  const [tab, setTab] = useState<TabValue>("upcoming")
   const [format, setFormat] = useState<string>("all")
+  const [teamId, setTeamId] = useState<string>("all")
 
-  const upcoming = useMemo(() => {
-    const all = (data ?? []).filter((m) => m.status === "upcoming")
-    const filtered =
-      format === "all" ? all : all.filter((m) => m.format === format)
-    return [...filtered].sort(
-      (a, b) =>
-        new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
-    )
-  }, [data, format])
+  // Single 30-second tick — re-renders the view so countdowns ("in 2h 15m")
+  // stay fresh without per-card setInterval timers.
+  const [tick, setTick] = useState(0)
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((n) => n + 1), 30_000)
+    return () => window.clearInterval(id)
+  }, [])
+  // Read `tick` so the linter doesn't tree-shake it away; the value itself
+  // isn't passed anywhere — re-rendering is the side-effect we want.
+  void tick
 
-  // Group by month
-  const grouped = useMemo(() => {
-    const groups: { key: string; label: string; matches: Match[] }[] = []
-    for (const m of upcoming) {
+  const allMatches = useMemo(() => data ?? [], [data])
+
+  // Filter by tab + format + team, then sort.
+  const filtered = useMemo(() => {
+    const matches = allMatches
+
+    const byTab = matches.filter((m) => {
+      if (tab === "upcoming") {
+        // Live matches show under Upcoming too — they're about to be in-play
+        // and the "TODAY/LIVE" pill differentiates them anyway.
+        return m.status === "upcoming" || m.status === "live"
+      }
+      if (tab === "recent") return m.status === "completed"
+      return true // all
+    })
+
+    const byFormat =
+      format === "all" ? byTab : byTab.filter((m) => m.format === format)
+
+    const byTeam =
+      teamId === "all"
+        ? byFormat
+        : byFormat.filter(
+            (m) => m.team1Id === teamId || m.team2Id === teamId
+          )
+
+    // Sort: upcoming asc (next first), completed desc (most recent first).
+    const sorted = [...byTeam].sort((a, b) => {
+      const aTime = new Date(a.startDate).getTime()
+      const bTime = new Date(b.startDate).getTime()
+      if (tab === "recent") return bTime - aTime
+      return aTime - bTime
+    })
+
+    return sorted
+  }, [allMatches, tab, format, teamId])
+
+  // Group by month (same logic as the previous version, preserved).
+  const grouped = useMemo<MonthGroup[]>(() => {
+    const groups: MonthGroup[] = []
+    for (const m of filtered) {
       const k = monthKey(m.startDate)
       let g = groups.find((g) => g.key === k)
       if (!g) {
@@ -166,69 +169,109 @@ export function ScheduleView() {
       g.matches.push(m)
     }
     return groups
-  }, [upcoming])
+  }, [filtered])
 
   return (
     <div className="space-y-5">
+      {/* Page header */}
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-extrabold tracking-tight">
-          <CalendarDays className="h-6 w-6 text-red-600" />
+          <CalendarDays className="h-6 w-6 text-red-600" aria-hidden="true" />
           Schedule
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Upcoming international cricket fixtures.
+          International cricket fixtures — upcoming, live and recent results.
         </p>
       </div>
 
-      {/* Format filter chips */}
-      <div className="flex flex-wrap items-center gap-2">
-        {FORMAT_FILTERS.map((f) => {
-          const active = format === f.key
-          return (
-            <button
-              key={f.key}
-              onClick={() => setFormat(f.key)}
-              className={cn(
-                "rounded-full border px-3.5 py-1 text-xs font-semibold transition-colors",
-                active
-                  ? "border-transparent bg-primary text-primary-foreground"
-                  : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
-              )}
-              aria-pressed={active}
-            >
-              {f.label}
-            </button>
-          )
-        })}
+      {/* Tabs: Upcoming / Recent / All */}
+      <Tabs
+        value={tab}
+        onValueChange={(v) => setTab(v as TabValue)}
+        aria-label="Schedule view tabs"
+      >
+        <TabsList>
+          <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
+          <TabsTrigger value="recent">Recent</TabsTrigger>
+          <TabsTrigger value="all">All</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {/* Filters: format chips + team dropdown */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div
+          className="flex flex-wrap items-center gap-2"
+          role="group"
+          aria-label="Format filters"
+        >
+          {FORMAT_FILTERS.map((f) => {
+            const active = format === f.key
+            return (
+              <button
+                key={f.key}
+                type="button"
+                onClick={() => setFormat(f.key)}
+                aria-pressed={active}
+                className={cn(
+                  "min-h-[36px] rounded-full border px-3.5 py-1 text-xs font-semibold transition-colors",
+                  active
+                    ? "border-transparent bg-primary text-primary-foreground"
+                    : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
+                )}
+              >
+                {f.label}
+              </button>
+            )
+          })}
+        </div>
+
+        <Select value={teamId} onValueChange={setTeamId}>
+          <SelectTrigger
+            className="w-[180px]"
+            aria-label="Filter by team"
+          >
+            <SelectValue placeholder="All Teams" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Teams</SelectItem>
+            {(teamsData ?? []).map((t) => (
+              <SelectItem key={t.id} value={t.id}>
+                {t.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
+      {/* Content: month-grouped MatchCards */}
       {loading ? (
         <ScheduleSkeleton />
       ) : grouped.length === 0 ? (
-        <Card className="grid min-h-[200px] place-items-center p-6">
-          <div className="text-center">
-            <div className="mb-2 text-3xl">📅</div>
-            <p className="text-sm text-muted-foreground">
-              No upcoming matches for this filter.
-            </p>
-          </div>
-        </Card>
+        <EmptyState tab={tab} format={format} />
       ) : (
         <div className="space-y-6">
           {grouped.map((g) => (
             <div key={g.key} className="space-y-3">
               <div className="sticky top-14 z-10 -mx-3 flex items-center gap-2 border-b bg-muted/95 px-3 py-2 backdrop-blur sm:mx-0 sm:rounded-md sm:px-4">
-                <span className="h-4 w-1 rounded-full bg-red-600" />
+                <span
+                  aria-hidden="true"
+                  className="h-4 w-1 rounded-full bg-red-600"
+                />
                 <h2 className="text-sm font-extrabold uppercase tracking-tight">
                   {g.label}
                 </h2>
                 <span className="text-xs text-muted-foreground">
-                  · {g.matches.length} {g.matches.length === 1 ? "match" : "matches"}
+                  · {g.matches.length}{" "}
+                  {g.matches.length === 1 ? "match" : "matches"}
                 </span>
               </div>
               <div className="space-y-3">
                 {g.matches.map((m) => (
-                  <ScheduleRow key={m.id} match={m} />
+                  <MatchCard
+                    key={m.id}
+                    match={m}
+                    allMatches={allMatches}
+                  />
                 ))}
               </div>
             </div>

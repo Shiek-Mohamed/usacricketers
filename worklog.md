@@ -1449,3 +1449,34 @@ Stage Summary:
 - Includes the XTransformPort gateway rule (critical for the socket.io score-service routing — anyone deploying MUST understand this).
 - Includes a runbook, rollback procedures, and scaling triggers — usable by a freelance deploy engineer (Role 2 in the hiring plan) as a standalone reference.
 - Notes the SQLite→Postgres migration step explicitly in Path B (the existing DEPLOY.md incorrectly implied the project was already on Postgres).
+
+---
+Task ID: 5
+Agent: orchestrator (Z.ai) + frontend-styling-expert (delegated)
+Task: Redesign the Schedule page from a flat "spreadsheet" list into an ESPNcricinfo-inspired matchup-card dashboard with team-vs-team hierarchy, status pills, countdowns, tabs and team filter.
+
+Work Log:
+- Read existing schedule-view.tsx (241 lines, current state) and ran it through VLM analysis. Verdict: "wall of white", "no urgency", "looks like a spreadsheet". Confirmed 8 problems: only upcoming shown, no live status differentiation, teams listed vertically (no VS), wasted right real estate, no countdown, weak series context, flat date block, only format filter.
+- Delegated the build to the frontend-styling-expert subagent with detailed specs: three files, layout contract per match card, all design constraints (no indigo/blue primary, mobile-first, shadcn only, sticky footer preserved, TypeScript strict, no per-card timers).
+- Subagent built three files:
+  1. /home/z/my-project/src/lib/match-utils.ts (NEW) — pure helpers: getStatusPill, getCountdown, getSeriesProgress, getResultSummary, addToCalendar. All well-typed, no JSX, JSDoc-documented.
+  2. /home/z/my-project/src/components/site/schedule-card.tsx (NEW) — reusable <MatchCard> component: 4px team-color left strip, status pill (top-right absolute), date tile (56×56 grid with day/month/weekday), matchup layout (team1 left | VS centre | team2 right, stacks vertically on mobile), countdown (amber, upcoming only), result preview (completed only), series progress badge, Add-to-Calendar ghost button with .ics blob download.
+  3. /home/z/my-project/src/components/site/views/schedule-view.tsx (REWRITE) — Tabs (Upcoming/Recent/All), format chips (All/Test/ODI/T20I/T10) + team <Select> dropdown, month-grouped MatchCards, single 30s tick interval at the ScheduleView level (no per-card timers).
+- Subagent reported one deliberate spec deviation: getSeriesProgress signature was extended to (match, allMatches?) because the Series interface doesn't attach matches[] (my spec was wrong about that). Backward-compatible (returns null when allMatches is omitted). MatchCard accepts optional allMatches prop and ScheduleView passes the full useMatches() list down.
+- Lint + type-check: bun run lint exit 0 (zero errors/warnings). tsc --noEmit reports zero new errors in the three new files (59 pre-existing errors in other files unchanged).
+
+Verification (done by orchestrator after subagent handoff):
+- Desktop view (1280×900): matchup cards render with VS separator, status pills clear (LIVE red pulse / UPCOMING slate / RESULT emerald), format chips + team dropdown both work, month grouping preserved, sticky month header preserved.
+- Mobile view (390×844): matchup layout collapses cleanly to stacked vertical (team1 → VS → team2), date tile + 4px color strip + status pills all visible, no horizontal overflow, no text cut-off.
+- Recent tab: completed matches show result preview (e.g., "NZ 109 — AUS 110/2 · Australia won by 8 wickets") with winner text appended.
+- Click-into-match-detail flow: clicking a match card navigates to the match-detail view (URL stays at / per the single-route pattern; Toss/Umpires content confirms the view switched).
+- Sticky footer: preserved (the redesign was content-only; root wrapper min-h-screen flex flex-col + mt-auto footer not touched).
+- dev.log: clean "✓ Compiled in" entries, no runtime errors, no TypeScript errors.
+- VLM analysis flagged a "rogue N badge" — investigated; doesn't exist in the DOM accessibility tree. Most likely a VLM misinterpretation of the team-color left strip or the VS text near the date tile. No fix needed.
+
+Stage Summary:
+- **Schedule page redesigned end-to-end**: 3 files (1 new lib, 1 new component, 1 view rewrite), 0 new lint errors, 0 type errors, 0 runtime errors.
+- New features delivered: matchup-style cards (Team1 | VS | Team2), status pills (LIVE pulse / TODAY / UPCOMING / RESULT / ABANDONED), countdown for upcoming matches ("Starts in 2h 15m"), result preview for completed matches (scores + winner text), series progress badge ("ENG lead 1-0"), Add-to-Calendar .ics download button, Tabs (Upcoming/Recent/All), team filter dropdown, format filter chips preserved, sticky month header preserved, month grouping preserved, click-into-match-detail preserved.
+- MatchCard component is reusable with a `compact` prop for sidebar widgets (hides countdown/result/series-progress/Add-to-Calendar) — usable in future Home or Series-detail views without changes.
+- match-utils.ts helpers are pure functions with no React/IO — easy to unit-test if a test runner is added later.
+- All design constraints respected: no indigo/blue primary, mobile-first responsive, shadcn/ui only, sticky footer preserved, TypeScript strict compliant, no per-card timers (single 30s tick at parent level).

@@ -1382,3 +1382,39 @@ Verification:
 - ✅ Scheduled publishing: public GET filters by `publishedAt <= now` — articles with future dates are invisible until the timestamp arrives. No background process needed.
 - ✅ Embed widget: API returns minimal JSON + iframe page polls for live updates. CORS-enabled for partner sites.
 - ✅ Match previews: POST endpoint generates a structured markdown article from match data (head-to-head, key players, venue, officials). Creates as a draft. Admin button wired into the matches table.
+
+---
+Task ID: 3
+Agent: orchestrator (Z.ai)
+Task: Import all videos from usacricketers.com (existing site, owned by project owner) into the Video table — the source site is PHP-based with YouTube embeds only.
+
+Work Log:
+- Verified source site structure: /videos.php listing page (paginated ~12/page, 4 pages total = 41 videos) → /video-detail.php?slug=<slug> detail pages each embedding a YouTube iframe (https://www.youtube.com/embed/<ID>).
+- Confirmed `Video` model in prisma/schema.prisma already supports everything needed: source ("youtube" | "upload"), videoUrl, youtubeId, thumbnailUrl, category, author (default "USA Cricketers"), publishedAt. No schema changes required.
+- Confirmed `cheerio@1.2.0` already in dependencies — used for HTML parsing.
+- Created `/home/z/my-project/scripts/import-usacricketers-videos.ts` — a Bun + Prisma + cheerio script that:
+  1. Scrapes listing pages following "Next »" pagination (resolves relative URLs against CURRENT page URL, not SOURCE_BASE, so `?page=2` lands on `/videos.php?page=2` not `/?page=2`)
+  2. For each video detail page, extracts: YouTube ID (from iframe[src*="youtube.com/embed/"]), h1 title, category (HIGHLIGHTS/INTERVIEWS/etc), date ("DD Mon YYYY"), description (skipping "No description provided")
+  3. Enriches via YouTube oEmbed endpoint (https://www.youtube.com/oembed?url=...&format=json) — canonical title + high-quality thumbnail URL. No API key needed.
+  4. Generates SEO-friendly slugs from titles (lowercase, hyphenated, alphanumeric-only, de-duped with -2/-3 suffix)
+  5. Description strategy: scraped description → YouTube oEmbed title → scraped title (in order of preference)
+  6. Upserts into Video table via Prisma (slug @unique → idempotent, safe to re-run)
+  7. 200ms delay between requests (polite to source site)
+  8. Self-contained PrismaClient (no query logging to keep console clean)
+- Added `"import:videos": "bun run scripts/import-usacricketers-videos.ts"` to package.json.
+- First run had a bug: relative URL `?page=2` was resolved against SOURCE_BASE, becoming `/?page=2` (homepage) instead of `/videos.php?page=2`. Fixed by resolving against `currentUrl` (the page being scraped) and taking the FIRST matching "Next »" link instead of the last.
+- Re-ran import successfully. Final results:
+  - Listed: 41 videos across 4 listing pages
+  - Scraped: 41/41 video detail pages successfully
+  - Created: 29 new Video records
+  - Updated: 12 existing records (the buggy first-run imports were enriched properly)
+  - Failed: 0
+  - Total videos in DB: 46 (5 pre-existing + 41 imported)
+
+Stage Summary:
+- **41 videos imported from usacricketers.com into the Video table** — all YouTube embeds, all with valid YouTube IDs, thumbnails auto-derived from oEmbed, SEO-friendly slugs, dates parsed correctly.
+- Category breakdown post-import: 43 Highlights, 1 Analysis, 1 Interviews, 1 Features (5 pre-existing records included).
+- The script is **idempotent** — re-running picks up only new videos and updates existing ones in place (slug @unique upsert).
+- **How to re-run**: `bun run import:videos` (takes ~30 seconds for 41 videos, mostly the 200ms politeness delay × 41 detail pages + 41 oEmbed requests + 4 listing pages).
+- The script reads `process.env.DATABASE_URL` automatically (Bun loads .env by default). No additional env setup needed.
+- **Future enhancement opportunity**: when ready to deploy, this script can be wired up as a scheduled job (e.g., daily cron via `cron` tool) to pick up new videos as they're published on the source site. Currently runs only on-demand.

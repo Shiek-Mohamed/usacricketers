@@ -1418,3 +1418,34 @@ Stage Summary:
 - **How to re-run**: `bun run import:videos` (takes ~30 seconds for 41 videos, mostly the 200ms politeness delay × 41 detail pages + 41 oEmbed requests + 4 listing pages).
 - The script reads `process.env.DATABASE_URL` automatically (Bun loads .env by default). No additional env setup needed.
 - **Future enhancement opportunity**: when ready to deploy, this script can be wired up as a scheduled job (e.g., daily cron via `cron` tool) to pick up new videos as they're published on the source site. Currently runs only on-demand.
+
+---
+Task ID: 4
+Agent: orchestrator (Z.ai)
+Task: Write comprehensive deployment instructions for the project (replacing the outdated Vercel-only DEPLOY.md).
+
+Work Log:
+- Read existing DEPLOY.md (100 lines, Vercel + Neon Postgres only — outdated, didn't reflect current SQLite state, ignored the existing Dockerfile/Caddyfile/docker-compose.yml already in the repo).
+- Read existing deploy infra files: Dockerfile (multi-stage build, Node 22 + Bun, Next.js standalone + score-service on ports 3000/3003), Caddyfile (single-port :81 gateway with XTransformPort rule), docker-compose.yml (single service, exposes 3000+3003, mounts /app/db as volume), start-all.sh (container entrypoint: prisma db push + score-service + Next.js concurrently), start-score-service.sh (local dev wrapper with auto-restart).
+- Rewrote /home/z/my-project/DEPLOY.md (495 lines) to cover:
+  1. Two deployment paths with clear comparison table:
+     - **Path A — Docker on a VPS** (recommended — preserves live scoring, uses existing Dockerfile/Caddyfile, ~$5-20/mo)
+     - **Path B — Vercel + Neon Postgres** (simpler but breaks live scoring, requires SQLite→Postgres migration)
+  2. Pre-deploy checklist (secrets generation with `openssl rand -hex 32`, DNS, Cloudflare, Sentry setup)
+  3. Path A — 8 steps from server provisioning through Litestream backup setup
+  4. Path B — 7 steps from SQLite→Postgres schema migration through Vercel domain setup
+  5. Environment variables reference (DATABASE_URL, SCORER_SECRET, INTERNAL_SECRET, NEXT_PUBLIC_BASE_URL, SENTRY_DSN, REDIS_URL)
+  6. Cloudflare setup (free tier — DNS proxy, Full SSL mode, Always Online, page rules)
+  7. Post-deploy verification checklist (10 items — homepage, videos, matches, admin login, live scoring, sitemap, Sentry, backups)
+  8. Rollback procedure for both paths (Docker: previous image tag + Litestream restore; Vercel: instant promotion of previous deployment; Neon: Time Travel restore)
+  9. Runbook — 7 common incidents with symptoms, causes, and fixes
+  10. When to scale — thresholds + actions for Stage 1/2/3 transition (P95 latency > 200ms, SQLite "database is locked" errors, concurrent connections > 200, memory > 1.5GB)
+  11. Maintenance schedule — weekly / monthly / before-big-match checklists
+  12. Quick reference — file inventory for deployment (Dockerfile, Caddyfile, docker-compose.yml, start-all.sh, .env, prisma/schema.prisma, scripts/import-usacricketers-videos.ts)
+
+Stage Summary:
+- **DEPLOY.md** rewritten from 100 lines → 495 lines, covers both Vercel+Neon and Docker+Caddy paths.
+- Aligns with the existing repo infra (Dockerfile, Caddyfile, docker-compose.yml, start-all.sh) — doesn't reinvent.
+- Includes the XTransformPort gateway rule (critical for the socket.io score-service routing — anyone deploying MUST understand this).
+- Includes a runbook, rollback procedures, and scaling triggers — usable by a freelance deploy engineer (Role 2 in the hiring plan) as a standalone reference.
+- Notes the SQLite→Postgres migration step explicitly in Path B (the existing DEPLOY.md incorrectly implied the project was already on Postgres).

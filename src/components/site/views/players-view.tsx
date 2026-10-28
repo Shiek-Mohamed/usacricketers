@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { Search, Users2 } from "lucide-react"
-import { usePlayers, useTeams } from "@/lib/use-data"
+import { useMatches, usePlayers, useTeams } from "@/lib/use-data"
 import { useAppStore } from "@/lib/store"
 import { PlayerAvatar, TeamBadge } from "@/components/cricket/ui"
 import { Card, CardContent } from "@/components/ui/card"
@@ -17,12 +17,16 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import type { Player } from "@/lib/types"
+import { InnerPageLayout } from "@/components/site/inner-layout"
+import { CustomSidebarBlocks } from "@/components/site/custom-sidebar-blocks"
+import { RecentResultsWidget } from "@/components/site/sidebar-widgets"
 
 const ALL_TEAMS = "__all__"
 
 export function PlayersView() {
   const navigate = useAppStore((s) => s.navigate)
   const { data: teams, loading: teamsLoading } = useTeams()
+  const { data: matchesData } = useMatches()
   const [teamId, setTeamId] = useState<string>(ALL_TEAMS)
   const { data: players, loading: playersLoading } = usePlayers(
     teamId === ALL_TEAMS ? undefined : teamId
@@ -37,76 +41,86 @@ export function PlayersView() {
   }, [players, query])
 
   return (
-    <section className="space-y-5">
-      <header className="flex flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <Users2 className="size-6 text-emerald-600" />
-          <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
-            Players
-          </h1>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          Search international cricketers and view career stats at a glance.
-        </p>
-      </header>
+    <InnerPageLayout
+      header={
+        <header className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <Users2 className="size-6 text-emerald-600" />
+            <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+              Players
+            </h1>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Search international cricketers and view career stats at a glance.
+          </p>
+        </header>
+      }
+      sidebar={
+        <>
+          <RecentResultsWidget matches={matchesData ?? []} />
+          <CustomSidebarBlocks placement="player" />
+        </>
+      }
+    >
+      <div className="space-y-5">
+        {/* Filters */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <Select
+            value={teamId}
+            onValueChange={(v) => setTeamId(v)}
+            disabled={teamsLoading}
+          >
+            <SelectTrigger className="w-full sm:w-56" aria-label="Filter by team">
+              <SelectValue placeholder="All Teams" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_TEAMS}>All Teams</SelectItem>
+              {teams?.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.shortName} · {t.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-      {/* Filters */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <Select
-          value={teamId}
-          onValueChange={(v) => setTeamId(v)}
-          disabled={teamsLoading}
-        >
-          <SelectTrigger className="w-full sm:w-56" aria-label="Filter by team">
-            <SelectValue placeholder="All Teams" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_TEAMS}>All Teams</SelectItem>
-            {teams?.map((t) => (
-              <SelectItem key={t.id} value={t.id}>
-                {t.shortName} · {t.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <div className="relative flex-1">
-          <Search className="text-muted-foreground absolute left-3 top-1/2 size-4 -translate-y-1/2" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by player name…"
-            className="pl-9"
-            aria-label="Search players"
-          />
-        </div>
-      </div>
-
-      {/* Grid */}
-      {playersLoading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-44 w-full rounded-xl" />
-          ))}
-        </div>
-      ) : filtered.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            No players found.
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((p) => (
-            <PlayerCard
-              key={p.id}
-              player={p}
-              onClick={() => navigate("player-detail", p.id)}
+          <div className="relative flex-1">
+            <Search className="text-muted-foreground absolute left-3 top-1/2 size-4 -translate-y-1/2" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by player name…"
+              className="pl-9"
+              aria-label="Search players"
             />
-          ))}
+          </div>
         </div>
-      )}
-    </section>
+
+        {/* Grid */}
+        {playersLoading ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-44 w-full rounded-xl" />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center text-sm text-muted-foreground">
+              No players found.
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((p) => (
+              <PlayerCard
+                key={p.id}
+                player={p}
+                onClick={() => navigate("player-detail", p.id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </InnerPageLayout>
   )
 }
 

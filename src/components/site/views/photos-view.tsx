@@ -6,41 +6,54 @@ import { Card } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Images, ChevronRight } from "lucide-react"
 import type { Gallery } from "@/lib/types"
+import { InnerPageLayout } from "@/components/site/inner-layout"
+import { CustomSidebarBlocks } from "@/components/site/custom-sidebar-blocks"
+import { NewsletterWidget } from "@/components/site/sidebar-widgets"
 
 export function PhotosView() {
   const { data, loading } = useGalleries()
   const navigate = useAppStore((s) => s.navigate)
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-extrabold tracking-tight">
-          <Images className="h-6 w-6 text-red-600" />
-          Photos
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Galleries from the cricket world — action, celebrations, and behind the scenes.
-        </p>
+    <InnerPageLayout
+      header={
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-extrabold tracking-tight">
+            <Images className="h-6 w-6 text-red-600" />
+            Photos
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Galleries from the cricket world — action, celebrations, and behind the scenes.
+          </p>
+        </div>
+      }
+      sidebar={
+        <>
+          <NewsletterWidget />
+          <CustomSidebarBlocks placement="gallery" />
+        </>
+      }
+    >
+      <div className="space-y-5">
+        {loading ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-56 rounded-lg" />
+            ))}
+          </div>
+        ) : (data ?? []).length === 0 ? (
+          <Card className="grid min-h-[200px] place-items-center p-6">
+            <p className="text-sm text-muted-foreground">No galleries yet.</p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {(data ?? []).map((g) => (
+              <GalleryCard key={g.id} gallery={g} onClick={() => navigate("gallery-detail", g.id)} />
+            ))}
+          </div>
+        )}
       </div>
-
-      {loading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-56 rounded-lg" />
-          ))}
-        </div>
-      ) : (data ?? []).length === 0 ? (
-        <Card className="grid min-h-[200px] place-items-center p-6">
-          <p className="text-sm text-muted-foreground">No galleries yet.</p>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {(data ?? []).map((g) => (
-            <GalleryCard key={g.id} gallery={g} onClick={() => navigate("gallery-detail", g.id)} />
-          ))}
-        </div>
-      )}
-    </div>
+    </InnerPageLayout>
   )
 }
 

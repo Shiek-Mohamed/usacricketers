@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import { CalendarDays, Trophy } from "lucide-react"
 import {
+  useMatches,
   useSeries,
 } from "@/lib/use-data"
 import { useAppStore } from "@/lib/store"
@@ -11,6 +12,9 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import type { Series } from "@/lib/types"
+import { InnerPageLayout } from "@/components/site/inner-layout"
+import { CustomSidebarBlocks } from "@/components/site/custom-sidebar-blocks"
+import { RecentResultsWidget } from "@/components/site/sidebar-widgets"
 
 type FilterKey = "all" | "upcoming" | "ongoing" | "completed"
 
@@ -40,6 +44,7 @@ function formatGradient(format: string): string {
 
 export function SeriesView() {
   const { data: series, loading } = useSeries()
+  const { data: matchesData } = useMatches()
   const navigate = useAppStore((s) => s.navigate)
   const [filter, setFilter] = useState<FilterKey>("all")
 
@@ -50,58 +55,68 @@ export function SeriesView() {
   }, [series, filter])
 
   return (
-    <section className="space-y-5">
-      <header className="flex flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <Trophy className="size-6 text-emerald-600" />
-          <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
-            Series
-          </h1>
+    <InnerPageLayout
+      header={
+        <header className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <Trophy className="size-6 text-emerald-600" />
+            <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+              Series
+            </h1>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Browse all cricket series — Tests, ODIs, T20Is and T10s.
+          </p>
+        </header>
+      }
+      sidebar={
+        <>
+          <RecentResultsWidget matches={matchesData ?? []} />
+          <CustomSidebarBlocks placement="series" />
+        </>
+      }
+    >
+      <div className="space-y-5">
+        {/* Filter chips */}
+        <div className="flex flex-wrap gap-2">
+          {FILTERS.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className={cn(
+                "rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors",
+                filter === f.key
+                  ? "border-emerald-600 bg-emerald-600 text-white"
+                  : "border-border bg-background text-muted-foreground hover:bg-accent"
+              )}
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
-        <p className="text-sm text-muted-foreground">
-          Browse all cricket series — Tests, ODIs, T20Is and T10s.
-        </p>
-      </header>
 
-      {/* Filter chips */}
-      <div className="flex flex-wrap gap-2">
-        {FILTERS.map((f) => (
-          <button
-            key={f.key}
-            onClick={() => setFilter(f.key)}
-            className={cn(
-              "rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors",
-              filter === f.key
-                ? "border-emerald-600 bg-emerald-600 text-white"
-                : "border-border bg-background text-muted-foreground hover:bg-accent"
-            )}
-          >
-            {f.label}
-          </button>
-        ))}
+        {/* Grid */}
+        {loading ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-56 w-full rounded-xl" />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center text-sm text-muted-foreground">
+              No series found for this filter.
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((s) => (
+              <SeriesCard key={s.id} series={s} onClick={() => navigate("series-detail", s.id)} />
+            ))}
+          </div>
+        )}
       </div>
-
-      {/* Grid */}
-      {loading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-56 w-full rounded-xl" />
-          ))}
-        </div>
-      ) : filtered.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            No series found for this filter.
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((s) => (
-            <SeriesCard key={s.id} series={s} onClick={() => navigate("series-detail", s.id)} />
-          ))}
-        </div>
-      )}
-    </section>
+    </InnerPageLayout>
   )
 }
 

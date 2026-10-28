@@ -3,7 +3,7 @@
 import ReactMarkdown from "react-markdown"
 import rehypeRaw from "rehype-raw"
 import { useAppStore } from "@/lib/store"
-import { useVideo, useVideos } from "@/lib/use-data"
+import { useMatches, useVideo, useVideos } from "@/lib/use-data"
 import type { Video } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { Card } from "@/components/ui/card"
@@ -12,6 +12,9 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { VideoCard } from "@/components/site/views/videos-view"
+import { InnerPageLayout } from "@/components/site/inner-layout"
+import { CustomSidebarBlocks } from "@/components/site/custom-sidebar-blocks"
+import { RecentResultsWidget } from "@/components/site/sidebar-widgets"
 import {
   ArrowLeft,
   Clock,
@@ -256,36 +259,53 @@ export function VideoDetailView() {
   const navigate = useAppStore((s) => s.navigate)
   const { data, loading, error } = useVideo(id)
   const { data: related } = useVideos({ limit: 5 })
+  // Standard sidebar needs recent match results — fetch them at the view level.
+  const { data: matchesData } = useMatches()
 
-  if (loading) return <VideoDetailSkeleton />
+  const sidebar = (
+    <>
+      <RecentResultsWidget matches={matchesData ?? []} />
+      <CustomSidebarBlocks placement="video" />
+    </>
+  )
+
+  if (loading) {
+    return (
+      <InnerPageLayout sidebar={sidebar}>
+        <VideoDetailSkeleton />
+      </InnerPageLayout>
+    )
+  }
 
   if (error || !data) {
     return (
-      <div className="mx-auto w-full max-w-4xl space-y-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate("videos")}
-          className="-ml-2 gap-1"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back to videos
-        </Button>
-        <Alert variant="destructive">
-          <Info className="h-4 w-4" />
-          <AlertTitle>Video not found</AlertTitle>
-          <AlertDescription>
-            {error || "This video may have been removed or is no longer available."}
-          </AlertDescription>
-        </Alert>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => navigate("videos")}
-          className="gap-1"
-        >
-          <ArrowLeft className="h-4 w-4" /> All videos
-        </Button>
-      </div>
+      <InnerPageLayout sidebar={sidebar}>
+        <div className="mx-auto w-full max-w-4xl space-y-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("videos")}
+            className="-ml-2 gap-1"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back to videos
+          </Button>
+          <Alert variant="destructive">
+            <Info className="h-4 w-4" />
+            <AlertTitle>Video not found</AlertTitle>
+            <AlertDescription>
+              {error || "This video may have been removed or is no longer available."}
+            </AlertDescription>
+          </Alert>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("videos")}
+            className="gap-1"
+          >
+            <ArrowLeft className="h-4 w-4" /> All videos
+          </Button>
+        </div>
+      </InnerPageLayout>
     )
   }
 
@@ -298,88 +318,93 @@ export function VideoDetailView() {
     : []
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6">
-      {/* Back button */}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => navigate("videos")}
-        className="-ml-2 gap-1"
-      >
-        <ArrowLeft className="h-4 w-4" /> Videos
-      </Button>
+    <InnerPageLayout
+      header={
+        /* Hero section — back button + player + title + meta (full-width top) */
+        <div className="mx-auto w-full max-w-4xl space-y-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("videos")}
+            className="-ml-2 gap-1"
+          >
+            <ArrowLeft className="h-4 w-4" /> Videos
+          </Button>
 
-      {/* Player */}
-      <VideoPlayer video={video} />
+          <VideoPlayer video={video} />
 
-      {/* Title + meta */}
-      <header className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge className="bg-primary text-primary-foreground">
-            {video.category}
-          </Badge>
-          {video.source === "youtube" ? (
-            <a
-              href={`https://www.youtube.com/watch?v=${video.youtubeId}`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-700"
-            >
-              <ExternalLink className="h-3.5 w-3.5" /> View on YouTube
-            </a>
-          ) : null}
+          <header className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className="bg-primary text-primary-foreground">
+                {video.category}
+              </Badge>
+              {video.source === "youtube" ? (
+                <a
+                  href={`https://www.youtube.com/watch?v=${video.youtubeId}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-700"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" /> View on YouTube
+                </a>
+              ) : null}
+            </div>
+            <h1 className="text-2xl font-extrabold leading-tight sm:text-3xl">
+              {video.title}
+            </h1>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              {video.author && (
+                <span className="inline-flex items-center gap-1">
+                  <User className="h-3.5 w-3.5" />
+                  {video.author}
+                </span>
+              )}
+              <span className="inline-flex items-center gap-1">
+                <Clock className="h-3.5 w-3.5" />
+                {formatDate(video.publishedAt)}
+              </span>
+              {video.duration && (
+                <span className="inline-flex items-center gap-1">
+                  <Play className="h-3 w-3 fill-current" />
+                  {video.duration}
+                </span>
+              )}
+            </div>
+          </header>
         </div>
-        <h1 className="text-2xl font-extrabold leading-tight sm:text-3xl">
-          {video.title}
-        </h1>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          {video.author && (
-            <span className="inline-flex items-center gap-1">
-              <User className="h-3.5 w-3.5" />
-              {video.author}
-            </span>
-          )}
-          <span className="inline-flex items-center gap-1">
-            <Clock className="h-3.5 w-3.5" />
-            {formatDate(video.publishedAt)}
-          </span>
-          {video.duration && (
-            <span className="inline-flex items-center gap-1">
-              <Play className="h-3 w-3 fill-current" />
-              {video.duration}
-            </span>
-          )}
-        </div>
-      </header>
+      }
+      sidebar={sidebar}
+    >
+      <div className="mx-auto w-full max-w-4xl space-y-6">
+        {/* Description */}
+        {video.description && video.description.trim() ? (
+          <div className="border-t pt-4">
+            <VideoMarkdown content={video.description} />
+          </div>
+        ) : null}
 
-      {/* Description */}
-      {video.description && video.description.trim() ? (
+        {/* Tags */}
+        {tags.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 border-t pt-4">
+            <span className="text-xs font-semibold text-muted-foreground">
+              Tags:
+            </span>
+            {tags.map((t) => (
+              <Badge key={t} variant="secondary">
+                {t}
+              </Badge>
+            ))}
+          </div>
+        )}
+
+        {/* Related videos */}
         <div className="border-t pt-4">
-          <VideoMarkdown content={video.description} />
+          <RelatedVideos
+            current={video.id}
+            videos={related ?? []}
+          />
         </div>
-      ) : null}
-
-      {/* Tags */}
-      {tags.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 border-t pt-4">
-          <span className="text-xs font-semibold text-muted-foreground">
-            Tags:
-          </span>
-          {tags.map((t) => (
-            <Badge key={t} variant="secondary">
-              {t}
-            </Badge>
-          ))}
-        </div>
-      )}
-
-      {/* Related videos */}
-      <div className="border-t pt-4">
-        <RelatedVideos
-          current={video.id}
-          videos={related ?? []}
-        />
       </div>
-    </div>
+    </InnerPageLayout>
   )
 }

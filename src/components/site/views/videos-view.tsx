@@ -8,6 +8,9 @@ import type { Video } from "@/lib/types"
 import { Card } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Play } from "lucide-react"
+import { InnerPageLayout } from "@/components/site/inner-layout"
+import { CustomSidebarBlocks } from "@/components/site/custom-sidebar-blocks"
+import { NewsletterWidget } from "@/components/site/sidebar-widgets"
 
 const CATEGORIES = [
   { key: "all", label: "All" },
@@ -129,59 +132,69 @@ export function VideosView() {
   const videos = data ?? []
 
   return (
-    <div className="space-y-6">
-      {/* Navy header band — matches the Interviews section heading */}
-      <div className="rounded-lg bg-[#1e2a5e] px-5 py-6 text-white sm:px-8 sm:py-8">
-        <h1 className="text-2xl font-extrabold uppercase tracking-tight sm:text-3xl">
-          Videos
-        </h1>
-        <p className="mt-1 text-sm text-white/70">
-          Highlights, interviews, analysis and features from the cricket world.
-        </p>
-      </div>
-
-      {/* Category pills */}
-      <div className="flex flex-wrap items-center gap-2">
-        {CATEGORIES.map((c) => {
-          const active = category === c.key
-          return (
-            <button
-              key={c.key}
-              onClick={() => setCategory(c.key)}
-              className={cn(
-                "rounded-full border px-3.5 py-1 text-xs font-semibold transition-colors",
-                active
-                  ? "border-transparent bg-primary text-primary-foreground"
-                  : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
-              )}
-              aria-pressed={active}
-            >
-              {c.label}
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Grid */}
-      {loading ? (
-        <VideosSkeleton />
-      ) : videos.length === 0 ? (
-        <Card className="grid min-h-[200px] place-items-center p-6">
-          <p className="text-sm text-muted-foreground">
-            No videos in this category yet.
+    <InnerPageLayout
+      header={
+        /* Navy header band — matches the Interviews section heading */
+        <div className="rounded-lg bg-[#1e2a5e] px-5 py-6 text-white sm:px-8 sm:py-8">
+          <h1 className="text-2xl font-extrabold uppercase tracking-tight sm:text-3xl">
+            Videos
+          </h1>
+          <p className="mt-1 text-sm text-white/70">
+            Highlights, interviews, analysis and features from the cricket world.
           </p>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {videos.map((v) => (
-            <VideoCard
-              key={v.id}
-              video={v}
-              onOpen={() => navigate("video-detail", v.id)}
-            />
-          ))}
         </div>
-      )}
-    </div>
+      }
+      sidebar={
+        <>
+          <NewsletterWidget />
+          <CustomSidebarBlocks placement="video" />
+        </>
+      }
+    >
+      <div className="space-y-6">
+        {/* Category pills */}
+        <div className="flex flex-wrap items-center gap-2">
+          {CATEGORIES.map((c) => {
+            const active = category === c.key
+            return (
+              <button
+                key={c.key}
+                onClick={() => setCategory(c.key)}
+                className={cn(
+                  "rounded-full border px-3.5 py-1 text-xs font-semibold transition-colors",
+                  active
+                    ? "border-transparent bg-primary text-primary-foreground"
+                    : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
+                )}
+                aria-pressed={active}
+              >
+                {c.label}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Grid */}
+        {loading ? (
+          <VideosSkeleton />
+        ) : videos.length === 0 ? (
+          <Card className="grid min-h-[200px] place-items-center p-6">
+            <p className="text-sm text-muted-foreground">
+              No videos in this category yet.
+            </p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {videos.map((v) => (
+              <VideoCard
+                key={v.id}
+                video={v}
+                onOpen={() => navigate("video-detail", v.id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </InnerPageLayout>
   )
 }

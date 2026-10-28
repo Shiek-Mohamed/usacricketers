@@ -8,6 +8,9 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Card } from "@/components/ui/card"
 import { ChevronLeft, ChevronRight, X, ArrowLeft } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { InnerPageLayout } from "@/components/site/inner-layout"
+import { CustomSidebarBlocks } from "@/components/site/custom-sidebar-blocks"
+import { NewsletterWidget } from "@/components/site/sidebar-widgets"
 
 export function GalleryDetailView() {
   const id = useAppStore((s) => s.id)
@@ -29,48 +32,82 @@ export function GalleryDetailView() {
     return () => window.removeEventListener("keydown", handler)
   }, [lightboxIdx, next, prev])
 
-  if (loading) return <Skeleton className="h-96 w-full rounded-lg" />
+  if (loading) {
+    return (
+      <InnerPageLayout
+        sidebar={
+          <>
+            <NewsletterWidget />
+            <CustomSidebarBlocks placement="gallery" />
+          </>
+        }
+      >
+        <Skeleton className="h-96 w-full rounded-lg" />
+      </InnerPageLayout>
+    )
+  }
 
   if (!data) {
     return (
-      <Card className="grid min-h-[200px] place-items-center p-6">
-        <p className="text-sm text-muted-foreground">Gallery not found.</p>
-      </Card>
+      <InnerPageLayout
+        sidebar={
+          <>
+            <NewsletterWidget />
+            <CustomSidebarBlocks placement="gallery" />
+          </>
+        }
+      >
+        <Card className="grid min-h-[200px] place-items-center p-6">
+          <p className="text-sm text-muted-foreground">Gallery not found.</p>
+        </Card>
+      </InnerPageLayout>
     )
   }
 
   const photos = data.photos
 
   return (
-    <div className="space-y-5">
-      <Button variant="ghost" size="sm" onClick={() => navigate("photos")} className="-ml-2 gap-1">
-        <ArrowLeft className="h-4 w-4" /> All galleries
-      </Button>
-
-      <div>
-        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{data.title}</h1>
-        {data.description && <p className="mt-1 text-sm text-muted-foreground">{data.description}</p>}
-        <p className="mt-1 text-xs text-muted-foreground">{photos.length} photo{photos.length !== 1 ? "s" : ""}</p>
+    <InnerPageLayout
+      header={
+        /* Page header — back button + title + description + photo count */
+        <div className="space-y-3">
+          <Button variant="ghost" size="sm" onClick={() => navigate("photos")} className="-ml-2 gap-1">
+            <ArrowLeft className="h-4 w-4" /> All galleries
+          </Button>
+          <div>
+            <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{data.title}</h1>
+            {data.description && <p className="mt-1 text-sm text-muted-foreground">{data.description}</p>}
+            <p className="mt-1 text-xs text-muted-foreground">{photos.length} photo{photos.length !== 1 ? "s" : ""}</p>
+          </div>
+        </div>
+      }
+      sidebar={
+        <>
+          <NewsletterWidget />
+          <CustomSidebarBlocks placement="gallery" />
+        </>
+      }
+    >
+      <div className="space-y-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {photos.map((p, i) => (
+            <button
+              key={i}
+              onClick={() => setLightboxIdx(i)}
+              className="group relative aspect-square overflow-hidden rounded-lg bg-muted"
+            >
+              <img src={p.src} alt={p.caption} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110" />
+              {p.caption && (
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                  <p className="line-clamp-2 text-[0.7rem] text-white">{p.caption}</p>
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        {photos.map((p, i) => (
-          <button
-            key={i}
-            onClick={() => setLightboxIdx(i)}
-            className="group relative aspect-square overflow-hidden rounded-lg bg-muted"
-          >
-            <img src={p.src} alt={p.caption} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110" />
-            {p.caption && (
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                <p className="line-clamp-2 text-[0.7rem] text-white">{p.caption}</p>
-              </div>
-            )}
-          </button>
-        ))}
-      </div>
-
-      {/* Lightbox */}
+      {/* Lightbox — fixed-position overlay, rendered outside the grid flow */}
       {lightboxIdx !== null && photos[lightboxIdx] && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95"
@@ -114,6 +151,6 @@ export function GalleryDetailView() {
           </button>
         </div>
       )}
-    </div>
+    </InnerPageLayout>
   )
 }

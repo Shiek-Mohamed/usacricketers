@@ -1509,3 +1509,45 @@ Stage Summary:
 - **One-line fix wrapped the redesigned Schedule page in InnerPageLayout** — matches the main+sidebar pattern used by other inner views (match-detail, series-detail, team-detail, player-detail). User's "too wide" feedback resolved.
 - Sidebar composition: `RecentResultsWidget` (system widget, shows last 4 completed matches) + `CustomSidebarBlocks placement="schedule"` (admin-managed widgets; allows future admin to add Schedule-page-specific sidebar blocks).
 - All Task 5 features preserved: matchup cards, status pills, countdowns, tabs, format + team filters, sticky month header, click-into-match-detail, mobile responsiveness.
+
+---
+Task ID: 6
+Agent: orchestrator (Z.ai) + frontend-styling-expert (delegated)
+Task: Add the standard sidebar (main content + 300px sidebar) to all public content pages, so every content view uses the same InnerPageLayout pattern as Match Detail, Schedule, etc.
+
+Work Log:
+- Inventoried existing InnerPageLayout usage via Grep — 8 views already use it: article-detail, match-detail, player-detail, player-timeline, player-comparison, series-detail, team-detail, schedule (just added in Task 5b).
+- Identified 11 content views that don't yet use InnerPageLayout: video-detail, gallery-detail, news (had bespoke sidebar), matches, videos, photos, series, teams, players, interviews, search.
+- Confirmed with user that stats-view should be skipped (charts need full width).
+- Confirmed with user that news-view's bespoke sidebar (Most Read + Top Stories) should be REPLACED with the standard sidebar for consistency.
+- Delegated to frontend-styling-expert subagent with detailed spec: per-view sidebar composition (which widget + which CustomSidebarBlocks placement), preserve all existing functionality, TypeScript strict, no indigo/blue, mobile-first, sticky footer preserved.
+- Subagent wrapped all 11 views in InnerPageLayout with appropriate sidebar compositions:
+  1. video-detail-view → RecentResultsWidget + CustomSidebarBlocks(video)
+  2. gallery-detail-view → NewsletterWidget + CustomSidebarBlocks(gallery)
+  3. news-view → REFACTOR: removed bespoke "Most Read" + "Top Stories" widgets, replaced with RecentResultsWidget + CustomSidebarBlocks(article) + NewsletterWidget. Also removed the useArticles({featured:true}) API call (saves one network round-trip per news page load).
+  4. matches-view → RecentResultsWidget + CustomSidebarBlocks(match)
+  5. videos-view → NewsletterWidget + CustomSidebarBlocks(video)
+  6. photos-view → NewsletterWidget + CustomSidebarBlocks(gallery)
+  7. series-view → RecentResultsWidget + CustomSidebarBlocks(series)
+  8. teams-view → RecentResultsWidget + CustomSidebarBlocks(team)
+  9. players-view → RecentResultsWidget + CustomSidebarBlocks(player)
+  10. interviews-view → RecentResultsWidget + CustomSidebarBlocks(article) + NewsletterWidget
+  11. search-view → NewsletterWidget + CustomSidebarBlocks(search)
+- 8 new CustomSidebarBlocks placement values introduced: video, gallery, article, match, series, team, player, search. The CustomSidebarBlocks component already supports these via useSidebarBlocks(placement) — admin can now create blocks for any of these placements in the sidebar-blocks admin UI.
+
+Verification:
+- Lint: `bun run lint` exit 0, zero errors/warnings.
+- dev.log: clean `✓ Compiled in 257ms / 284ms / 212ms / 242ms / 171ms / 197ms / 467ms / 160ms` entries after each file edit. No TypeScript or runtime errors. All API routes returned 200.
+- Browser verification via agent-browser: Teams view confirmed rendering with TEAMS header + search box + RECENT RESULTS sidebar widget showing completed matches (T20I AUS v NZ, Test IND v AUS). Mobile viewport (390×844) — sidebar stacks below main content (correct behavior via InnerPageLayout's grid-cols-1 lg:grid-cols-[1fr_300px]).
+- News view refactored: bespoke 2-column layout (lg:grid-cols-3 with Most Read + Top Stories sidebar) was removed; standard InnerPageLayout sidebar with RecentResultsWidget + CustomSidebarBlocks(article) + NewsletterWidget now in its place. Page header (h1 + category pills + search) hoisted to header prop.
+
+Stage Summary:
+- **11 content views wrapped in InnerPageLayout** with consistent sidebar pattern across the site. Now every public-facing content page (matches, schedule, news, videos, photos, series, teams, players, interviews, search, video-detail, gallery-detail, article-detail, match-detail, player-detail, player-timeline, player-comparison, series-detail, team-detail) uses the same main+sidebar layout.
+- **Skipped**: home-view (homepage has its own multi-section hero layout), stats-view (charts need full width), all admin/auth/scorer/league-admin views (focused forms / admin UI).
+- **8 new CustomSidebarBlocks placement values** (video, gallery, article, match, series, team, player, search) — admin can now create sidebar blocks targeted to specific page types via the admin sidebar-blocks UI.
+- **News view cleanup** also saved one network round-trip per news page load (removed the useArticles({featured:true}) API call for the bespoke "Top Stories" widget — admin can re-add a "Top Stories" block via CustomSidebarBlocks placement="article" if desired).
+- **Sticky footer preserved** across all views — the layout changes were content-only; the root wrapper min-h-screen flex flex-col + mt-auto footer not touched.
+- **All existing functionality preserved**: data fetching, search/filter, pagination, tabs, lightboxes, video players, related-content carousels — none of the body logic was changed, only the outer wrapper.
+
+One follow-up recommended (not blocking):
+- videos-view.tsx has a pre-existing navy header band (bg-[#1e2a5e]) that brushes against the "no indigo or blue" constraint. The subagent preserved it verbatim per task instructions (don't change existing body content). A separate styling follow-up could re-skin this band to bg-red-600 or bg-card border styling for full color discipline.

@@ -2,16 +2,20 @@
 
 import { useMemo, useState } from "react"
 import { Search, Users } from "lucide-react"
-import { useTeams } from "@/lib/use-data"
+import { useMatches, useTeams } from "@/lib/use-data"
 import { useAppStore } from "@/lib/store"
 import { TeamBadge } from "@/components/cricket/ui"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { Team } from "@/lib/types"
+import { InnerPageLayout } from "@/components/site/inner-layout"
+import { CustomSidebarBlocks } from "@/components/site/custom-sidebar-blocks"
+import { RecentResultsWidget } from "@/components/site/sidebar-widgets"
 
 export function TeamsView() {
   const { data: teams, loading } = useTeams()
+  const { data: matchesData } = useMatches()
   const navigate = useAppStore((s) => s.navigate)
   const [query, setQuery] = useState("")
 
@@ -28,52 +32,62 @@ export function TeamsView() {
   }, [teams, query])
 
   return (
-    <section className="space-y-5">
-      <header className="flex flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <Users className="size-6 text-emerald-600" />
-          <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
-            Teams
-          </h1>
+    <InnerPageLayout
+      header={
+        <header className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <Users className="size-6 text-emerald-600" />
+            <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+              Teams
+            </h1>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            International cricket teams across all formats.
+          </p>
+        </header>
+      }
+      sidebar={
+        <>
+          <RecentResultsWidget matches={matchesData ?? []} />
+          <CustomSidebarBlocks placement="team" />
+        </>
+      }
+    >
+      <div className="space-y-5">
+        {/* Search */}
+        <div className="relative max-w-md">
+          <Search className="text-muted-foreground absolute left-3 top-1/2 size-4 -translate-y-1/2" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search by name, short name or country…"
+            className="pl-9"
+            aria-label="Search teams"
+          />
         </div>
-        <p className="text-sm text-muted-foreground">
-          International cricket teams across all formats.
-        </p>
-      </header>
 
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="text-muted-foreground absolute left-3 top-1/2 size-4 -translate-y-1/2" />
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by name, short name or country…"
-          className="pl-9"
-          aria-label="Search teams"
-        />
+        {/* Grid */}
+        {loading ? (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-44 w-full rounded-xl" />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center text-sm text-muted-foreground">
+              No teams match “{query}”.
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {filtered.map((t) => (
+              <TeamCard key={t.id} team={t} onClick={() => navigate("team-detail", t.id)} />
+            ))}
+          </div>
+        )}
       </div>
-
-      {/* Grid */}
-      {loading ? (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-44 w-full rounded-xl" />
-          ))}
-        </div>
-      ) : filtered.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            No teams match “{query}”.
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {filtered.map((t) => (
-            <TeamCard key={t.id} team={t} onClick={() => navigate("team-detail", t.id)} />
-          ))}
-        </div>
-      )}
-    </section>
+    </InnerPageLayout>
   )
 }
 

@@ -1551,3 +1551,34 @@ Stage Summary:
 
 One follow-up recommended (not blocking):
 - videos-view.tsx has a pre-existing navy header band (bg-[#1e2a5e]) that brushes against the "no indigo or blue" constraint. The subagent preserved it verbatim per task instructions (don't change existing body content). A separate styling follow-up could re-skin this band to bg-red-600 or bg-card border styling for full color discipline.
+
+---
+Task ID: 7
+Agent: orchestrator (Z.ai)
+Task: Build a standalone template + instructions reference for adding new pages/categories to the site. User explicitly requested the templates NOT be wired into the actual site — these are reference files only.
+
+Work Log:
+- Created `/home/z/my-project/templates/` directory (outside `src/` so nothing gets picked up by Next.js bundler).
+- Wrote `/home/z/my-project/templates/ADDING-A-NEW-PAGE.md` (~600 lines) — comprehensive guide covering:
+  1. Scenario picker table (A/B/C based on what the user is adding)
+  2. Universal 4-step pattern (ViewKey type, view component, page.tsx case, header navItems entry) that applies to all 3 scenarios
+  3. Scenario A — Static Page (About/Contact/Privacy): full worked example with copy-pasteable code blocks for each of the 4 file changes
+  4. Scenario B — Filter View on Existing Data: full worked example using useVideos({ featured: true }) as the template, plus a reference table of all available data hooks
+  5. Scenario C — Full New Content Entity (Podcasts/Tournaments/Coaches): 12-step checklist with code blocks for Prisma model, TypeScript type, serialize helper, API routes (list+detail), api client methods, data hooks, public view components (list + detail), admin view, page.tsx wiring, header nav, seed data, worklog entry
+  6. Shortcut for Scenario C: bulk `cp -r` of an existing similar entity's files, then find-replace video→podcast
+  7. Verification checklist (lint, dev.log, agent-browser test, mobile+desktop, sticky footer, worklog entry)
+  8. Common mistakes table (8 typical mistakes with symptoms and fixes)
+  9. How to delegate to a subagent (prompt template)
+  10. Reference table of files to copy from per use case
+  11. Final reminder about the worklog.md Task ID convention
+- Wrote 3 ready-to-copy template files (saved as `.tsx.txt` so Next.js doesn't compile them):
+  1. `/home/z/my-project/templates/static-page.template.tsx.txt` — Scenario A starting point
+  2. `/home/z/my-project/templates/list-view.template.tsx.txt` — Scenario B starting point
+  3. `/home/z/my-project/templates/entity-detail.template.tsx.txt` — Scenario C detail view starting point
+
+Stage Summary:
+- **Reference materials created in `/home/z/my-project/templates/`** — completely standalone, no site code touched.
+- The guide covers all 3 scenarios with concrete file paths grounded in this actual codebase (ViewKey at types.ts line 182, navItems at header.tsx line 37, renderView switch at page.tsx line 62, etc.).
+- The 3 .tsx.txt templates can be `cp`-ed directly into `src/components/site/views/` as starting points — just rename and find-replace the placeholder names.
+- Future agents (or the user) can use this guide to add new pages without needing to re-derive the architecture each time.
+- Project convention reminder embedded: every new page MUST get a Task ID entry in worklog.md.

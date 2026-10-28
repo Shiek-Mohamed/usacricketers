@@ -1,0 +1,78 @@
+/**
+ * TEMPLATE — Scenario A: Static Page
+ *
+ * Copy this file to src/components/site/views/<your-view-name>-view.tsx
+ * Then find-replace:
+ *   AboutView       → <YourPascalCaseName>View
+ *   "about"         → "<your-view-name>" (in navigate() calls elsewhere)
+ *   About           → <Your Page Title>
+ *
+ * After copying, also:
+ *   1. Add "<your-view-name>" to the ViewKey union in src/lib/types.ts
+ *   2. Add a case to renderView() in src/app/page.tsx
+ *   3. Add a nav entry to navItems in src/components/site/header.tsx
+ *
+ * See templates/ADDING-A-NEW-PAGE.md for full instructions.
+ */
+"use client"
+
+import { InnerPageLayout } from "@/components/site/inner-layout"
+import { CustomSidebarBlocks } from "@/components/site/custom-sidebar-blocks"
+import { NewsletterWidget } from "@/components/site/sidebar-widgets"
+
+export function AboutView() {
+  return (
+    <InnerPageLayout
+      header={
+        <div>
+          <h1 className="text-2xl font-extrabold tracking-tight">
+            About Us
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            The official home of American cricket.
+          </p>
+        </div>
+      }
+      sidebar={
+        <>
+          {/* Static pages typically don't need RecentResultsWidget
+              (cricket match results don't belong on About/Contact/Privacy).
+              For a cricket-content page, swap NewsletterWidget out for:
+              <RecentResultsWidget matches={matchesData ?? []} />
+              ...and add `const { data: matchesData } = useMatches()` at top. */}
+          <NewsletterWidget />
+          <CustomSidebarBlocks placement="about" />
+        </>
+      }
+    >
+      <div className="prose prose-slate max-w-none space-y-4 dark:prose-invert">
+        <p>
+          Welcome to USACricketers — your source for American cricket coverage.
+        </p>
+
+        <h2>Our Mission</h2>
+        <p>
+          We cover cricket across the United States — from grassroots
+          recreational leagues to the national team and Major League Cricket.
+        </p>
+
+        <h2>Contact</h2>
+        <p>
+          Email:{" "}
+          <a
+            href="mailto:info@usacricketers.com"
+            className="text-red-600 underline underline-offset-2 hover:text-red-700"
+          >
+            info@usacricketers.com
+          </a>
+        </p>
+
+        {/* Add more content sections here. Use Tailwind typography classes:
+            - Headings: h2 (text-xl font-bold mt-6 mb-2)
+            - Body: <p> (text-sm leading-relaxed)
+            - Lists: <ul className="list-disc pl-5 space-y-1">
+            - Links: text-red-600 underline hover:text-red-700 */}
+      </div>
+    </InnerPageLayout>
+  )
+}

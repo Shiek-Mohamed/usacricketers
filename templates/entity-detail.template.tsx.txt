@@ -1,0 +1,200 @@
+/**
+ * TEMPLATE — Scenario C: Full New Entity (Prisma model + API + views + admin)
+ *
+ * This is the DETAIL VIEW component for a new content entity.
+ * (For the LIST VIEW, use list-view.template.tsx.txt as your starting point
+ *  and adapt the data hook + card component.)
+ *
+ * Copy this file to src/components/site/views/<entity>-detail-view.tsx
+ * Then find-replace:
+ *   PodcastDetailView  → <YourEntity>DetailView
+ *   usePodcast         → use<YourEntity>
+ *   usePodcasts        → use<YourEntity>s (plural)
+ *   podcast             → <your-entity-lowercase>
+ *   Podcast             → <YourEntity>
+ *   audioUrl            → the field on your model that holds the playback URL
+ *   <audio>             → <iframe> for video, <img> for image, <div> for text
+ *
+ * See templates/ADDING-A-NEW-PAGE.md for the full Scenario C checklist
+ * (Prisma model, serialize helper, API routes, admin views, etc.).
+ */
+"use client"
+
+import { usePodcast, usePodcasts } from "@/lib/use-data"
+// ^^^ import your entity's hooks (see templates/ADDING-A-NEW-PAGE.md Step 7
+//     for how to create them in src/lib/use-data.ts)
+import { useMatches } from "@/lib/use-data"
+// ^^^ for the sidebar's RecentResultsWidget
+import { useAppStore } from "@/lib/store"
+import { InnerPageLayout } from "@/components/site/inner-layout"
+import { RecentResultsWidget } from "@/components/site/sidebar-widgets"
+import { CustomSidebarBlocks } from "@/components/site/custom-sidebar-blocks"
+import { Card } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { ArrowLeft, Clock, User } from "lucide-react"
+
+export function PodcastDetailView() {
+  // The detail view reads the entity ID from the Zustand store (NOT the URL)
+  const id = useAppStore((s) => s.id)
+  const navigate = useAppStore((s) => s.navigate)
+
+  // Fetch the single entity + a few related items for "More from this series" sidebar
+  const { data: podcast, loading } = usePodcast(id)
+  const { data: allPodcasts } = usePodcasts({ limit: 5 })
+  const matches = useMatches()  // for the sidebar's RecentResultsWidget
+
+  // Loading state — wrap in InnerPageLayout so the sidebar renders during loading
+  if (loading) {
+    return (
+      <InnerPageLayout
+        header={
+          <Button variant="ghost" size="sm" onClick={() => navigate("podcasts")}>
+            <ArrowLeft className="h-4 w-4 mr-1" /> Back
+          </Button>
+        }
+        sidebar={
+          <>
+            <RecentResultsWidget matches={matches.data ?? []} />
+            <CustomSidebarBlocks placement="podcast" />
+          </>
+        }
+      >
+        <Skeleton className="h-64 w-full rounded-lg" />
+      </InnerPageLayout>
+    )
+  }
+
+  // Not-found state
+  if (!podcast) {
+    return (
+      <InnerPageLayout
+        header={
+          <Button variant="ghost" size="sm" onClick={() => navigate("podcasts")}>
+            <ArrowLeft className="h-4 w-4 mr-1" /> Back
+          </Button>
+        }
+        sidebar={
+          <>
+            <RecentResultsWidget matches={matches.data ?? []} />
+            <CustomSidebarBlocks placement="podcast" />
+          </>
+        }
+      >
+        <Card className="grid min-h-[200px] place-items-center p-6">
+          <p className="text-sm text-muted-foreground">
+            This podcast could not be found.
+          </p>
+        </Card>
+      </InnerPageLayout>
+    )
+  }
+
+  // Main render
+  return (
+    <InnerPageLayout
+      header={
+        <Button variant="ghost" size="sm" onClick={() => navigate("podcasts")}>
+          <ArrowLeft className="h-4 w-4 mr-1" /> Back to Podcasts
+        </Button>
+      }
+      sidebar={
+        <>
+          <RecentResultsWidget matches={matches.data ?? []} />
+          <CustomSidebarBlocks placement="podcast" />
+        </>
+      }
+    >
+      <div className="space-y-4">
+        {/* Header: category + title + author/duration meta */}
+        <div>
+          <Badge variant="secondary">{podcast.category}</Badge>
+          <h1 className="text-2xl font-extrabold tracking-tight mt-2">
+            {podcast.title}
+          </h1>
+          <div className="text-xs text-muted-foreground flex items-center gap-3 mt-1">
+            <span className="flex items-center gap-1">
+              <User className="h-3 w-3" />
+              {podcast.author}
+            </span>
+            {podcast.duration && (
+              <span className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {podcast.duration}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Player — adapt for your content type:
+            - Audio: <audio controls> with <source src={audioUrl}>
+            - Video: <iframe src={embedUrl}> or <video controls>
+            - Image gallery: render images in a grid + lightbox
+            - Article: <div className="prose"> + ReactMarkdown
+         */}
+        <audio controls className="w-full">
+          <source src={podcast.audioUrl} />
+          Your browser does not support the audio element.
+        </audio>
+
+        {/* Description */}
+        {podcast.description && (
+          <p className="text-sm text-foreground/80 leading-relaxed">
+            {podcast.description}
+          </p>
+        )}
+
+        {/* Tags (if your entity has them) */}
+        {podcast.tags && (
+          <div className="flex flex-wrap gap-2">
+            {podcast.tags
+              .split(",")
+              .map((t) => t.trim())
+              .filter(Boolean)
+              .map((tag, i) => (
+                <Badge key={i} variant="outline" className="text-xs">
+                  {tag}
+                </Badge>
+              ))}
+          </div>
+        )}
+
+        {/* Related items — adapt for your entity type */}
+        {(allPodcasts ?? []).length > 0 && (
+          <div className="pt-4 border-t">
+            <h2 className="text-sm font-bold uppercase tracking-tight mb-3">
+              More Podcasts
+            </h2>
+            <div className="space-y-2">
+              {(allPodcasts ?? [])
+                .filter((p) => p.id !== podcast.id)
+                .slice(0, 4)
+                .map((p) => (
+                  <Card
+                    key={p.id}
+                    className="cursor-pointer hover:shadow-md transition-shadow p-3"
+                    onClick={() => navigate("podcast-detail", p.id)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 shrink-0 rounded-md bg-red-100 grid place-items-center text-red-600 text-xs font-bold">
+                        {p.title.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-semibold text-sm truncate">
+                          {p.title}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {p.duration || "—"} · {p.author}
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </InnerPageLayout>
+  )
+}

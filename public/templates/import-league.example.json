@@ -1,0 +1,449 @@
+{
+  "league": {
+    "name": "Example T20 Cricket League",
+    "shortName": "ETCL",
+    "format": "T20",
+    "season": "2025",
+    "startDate": "2025-06-01",
+    "endDate": "2025-07-15",
+    "description": "A demo T20 league used to test the league importer (Task 11). Two teams play a double-header — one match completed with a full scorecard, one upcoming."
+  },
+  "teams": [
+    {
+      "name": "Empire State Titans",
+      "shortName": "EST",
+      "primaryColor": "#7c3aed",
+      "accentColor": "#f59e0b",
+      "country": "USA",
+      "description": "New York's premier T20 franchise, founded 2019.",
+      "players": [
+        {
+          "name": "Marcus Steele",
+          "role": "Batsman",
+          "isCaptain": true,
+          "battingStyle": "Right-hand bat",
+          "bowlingStyle": "",
+          "bio": "Aggressive top-order batter and captain of the Titans.",
+          "imageUrl": ""
+        },
+        {
+          "name": "David Park",
+          "role": "Bowler",
+          "battingStyle": "Right-hand bat",
+          "bowlingStyle": "Right-arm fast",
+          "bio": "Strike bowler with a lethal bouncer.",
+          "imageUrl": ""
+        },
+        {
+          "name": "Raj Patel",
+          "role": "All-rounder",
+          "battingStyle": "Right-hand bat",
+          "bowlingStyle": "Right-arm offbreak",
+          "bio": "Utility all-rounder — opens the bowling + finishes the innings.",
+          "imageUrl": ""
+        },
+        {
+          "name": "Liam O'Brien",
+          "role": "Wicket-keeper",
+          "isKeeper": true,
+          "battingStyle": "Left-hand bat",
+          "bowlingStyle": "",
+          "bio": "Wicket-keeper batter, sharp glovework up to the stumps.",
+          "imageUrl": ""
+        },
+        {
+          "name": "Andre Smith",
+          "role": "Bowler",
+          "battingStyle": "Right-hand bat",
+          "bowlingStyle": "Right-arm medium",
+          "bio": "Death-overs specialist with a crackling yorker.",
+          "imageUrl": ""
+        }
+      ]
+    },
+    {
+      "name": "New York Cyclones",
+      "shortName": "NYC",
+      "primaryColor": "#dc2626",
+      "accentColor": "#fde047",
+      "country": "USA",
+      "description": "Brooklyn-based franchise, reigning league champions.",
+      "players": [
+        {
+          "name": "James Carter",
+          "role": "Batsman",
+          "isCaptain": true,
+          "battingStyle": "Right-hand bat",
+          "bowlingStyle": "",
+          "bio": "Captain and opening batter; clean striker of the ball.",
+          "imageUrl": ""
+        },
+        {
+          "name": "Vikram Singh",
+          "role": "Bowler",
+          "battingStyle": "Right-hand bat",
+          "bowlingStyle": "Left-arm orthodox",
+          "bio": "Wily left-arm spinner, king of the middle overs.",
+          "imageUrl": ""
+        },
+        {
+          "name": "Tom Bradley",
+          "role": "All-rounder",
+          "battingStyle": "Right-hand bat",
+          "bowlingStyle": "Right-arm fast-medium",
+          "bio": "Seam-bowling all-rounder, handy lower-order hitter.",
+          "imageUrl": ""
+        },
+        {
+          "name": "Sam Chen",
+          "role": "Wicket-keeper",
+          "isKeeper": true,
+          "battingStyle": "Right-hand bat",
+          "bowlingStyle": "",
+          "bio": "Wicket-keeper batter, aggressive in the powerplay.",
+          "imageUrl": ""
+        },
+        {
+          "name": "Mike Davis",
+          "role": "Bowler",
+          "battingStyle": "Right-hand bat",
+          "bowlingStyle": "Right-arm legbreak",
+          "bio": "Leg-spinner with a deceptive googly.",
+          "imageUrl": ""
+        }
+      ]
+    }
+  ],
+  "matches": [
+    {
+      "matchNo": "1st Match",
+      "format": "T20",
+      "team1ShortName": "EST",
+      "team2ShortName": "NYC",
+      "venue": "Central Park Cricket Field",
+      "city": "New York",
+      "startDate": "2025-06-15T14:00:00Z",
+      "status": "completed",
+      "result": "Empire State Titans won by 24 runs",
+      "manOfMatch": "Marcus Steele",
+      "scorecard": {
+        "innings": [
+          {
+            "teamId": "EST",
+            "teamShortName": "EST",
+            "total": "165/6",
+            "totalRuns": 165,
+            "totalWickets": 6,
+            "totalOvers": "20",
+            "declared": false,
+            "extrasBreakdown": {
+              "byes": 2,
+              "legByes": 4,
+              "wides": 5,
+              "noBalls": 1
+            },
+            "batting": [
+              {
+                "name": "Marcus Steele",
+                "runs": 58,
+                "balls": 39,
+                "fours": 6,
+                "sixes": 2,
+                "strikeRate": 148.7,
+                "dismissal": "c Sam Chen b Vikram Singh",
+                "isBatting": false,
+                "isCaptain": true
+              },
+              {
+                "name": "Liam O'Brien",
+                "runs": 23,
+                "balls": 18,
+                "fours": 3,
+                "sixes": 0,
+                "strikeRate": 127.8,
+                "dismissal": "b Tom Bradley",
+                "isBatting": false,
+                "isKeeper": true
+              },
+              {
+                "name": "Raj Patel",
+                "runs": 31,
+                "balls": 22,
+                "fours": 2,
+                "sixes": 1,
+                "strikeRate": 140.9,
+                "dismissal": "run out (Carter)",
+                "isBatting": false
+              },
+              {
+                "name": "Andre Smith",
+                "runs": 18,
+                "balls": 11,
+                "fours": 1,
+                "sixes": 1,
+                "strikeRate": 163.6,
+                "dismissal": "not out",
+                "isBatting": true
+              },
+              {
+                "name": "David Park",
+                "runs": 12,
+                "balls": 7,
+                "fours": 1,
+                "sixes": 0,
+                "strikeRate": 171.4,
+                "dismissal": "not out",
+                "isBatting": true
+              },
+              {
+                "name": "Extras",
+                "runs": 12,
+                "balls": 0,
+                "fours": 0,
+                "sixes": 0,
+                "strikeRate": 0,
+                "dismissal": "(b 2, lb 4, w 5, nb 1)",
+                "isBatting": false
+              }
+            ],
+            "bowling": [
+              {
+                "name": "Tom Bradley",
+                "overs": "4",
+                "maidens": 0,
+                "runs": 32,
+                "wickets": 1,
+                "economy": 8.0,
+                "wides": 0,
+                "noballs": 0,
+                "dots": 8,
+                "isBowling": false
+              },
+              {
+                "name": "Vikram Singh",
+                "overs": "4",
+                "maidens": 0,
+                "runs": 28,
+                "wickets": 1,
+                "economy": 7.0,
+                "wides": 1,
+                "noballs": 0,
+                "dots": 10,
+                "isBowling": false
+              },
+              {
+                "name": "Mike Davis",
+                "overs": "4",
+                "maidens": 0,
+                "runs": 35,
+                "wickets": 2,
+                "economy": 8.75,
+                "wides": 2,
+                "noballs": 0,
+                "dots": 6,
+                "isBowling": false
+              },
+              {
+                "name": "James Carter",
+                "overs": "4",
+                "maidens": 0,
+                "runs": 41,
+                "wickets": 0,
+                "economy": 10.25,
+                "wides": 1,
+                "noballs": 1,
+                "dots": 4,
+                "isBowling": false
+              },
+              {
+                "name": "Sam Chen",
+                "overs": "4",
+                "maidens": 0,
+                "runs": 29,
+                "wickets": 2,
+                "economy": 7.25,
+                "wides": 1,
+                "noballs": 0,
+                "dots": 9,
+                "isBowling": false
+              }
+            ],
+            "fallOfWickets": [
+              "32-1 (M Steele, 4.1 ov)",
+              "67-2 (L O'Brien, 7.3 ov)",
+              "98-3 (R Patel, 11.2 ov)",
+              "112-4 (A Smith, 13.4 ov)",
+              "142-5 (D Park, 17.1 ov)",
+              "155-6 (M Steele, 18.5 ov)"
+            ]
+          },
+          {
+            "teamId": "NYC",
+            "teamShortName": "NYC",
+            "total": "141",
+            "totalRuns": 141,
+            "totalWickets": 10,
+            "totalOvers": "18.3",
+            "declared": false,
+            "extrasBreakdown": {
+              "byes": 1,
+              "legByes": 2,
+              "wides": 4,
+              "noBalls": 0
+            },
+            "batting": [
+              {
+                "name": "James Carter",
+                "runs": 42,
+                "balls": 31,
+                "fours": 4,
+                "sixes": 1,
+                "strikeRate": 135.5,
+                "dismissal": "c O'Brien b Patel",
+                "isBatting": false,
+                "isCaptain": true
+              },
+              {
+                "name": "Sam Chen",
+                "runs": 28,
+                "balls": 22,
+                "fours": 3,
+                "sixes": 0,
+                "strikeRate": 127.3,
+                "dismissal": "b Smith",
+                "isBatting": false,
+                "isKeeper": true
+              },
+              {
+                "name": "Tom Bradley",
+                "runs": 19,
+                "balls": 14,
+                "fours": 1,
+                "sixes": 1,
+                "strikeRate": 135.7,
+                "dismissal": "lbw b Patel",
+                "isBatting": false
+              },
+              {
+                "name": "Vikram Singh",
+                "runs": 11,
+                "balls": 9,
+                "fours": 1,
+                "sixes": 0,
+                "strikeRate": 122.2,
+                "dismissal": "run out (Steele)",
+                "isBatting": false
+              },
+              {
+                "name": "Mike Davis",
+                "runs": 8,
+                "balls": 6,
+                "fours": 0,
+                "sixes": 1,
+                "strikeRate": 133.3,
+                "dismissal": "b Park",
+                "isBatting": false
+              },
+              {
+                "name": "Extras",
+                "runs": 7,
+                "balls": 0,
+                "fours": 0,
+                "sixes": 0,
+                "strikeRate": 0,
+                "dismissal": "(b 1, lb 2, w 4, nb 0)",
+                "isBatting": false
+              }
+            ],
+            "bowling": [
+              {
+                "name": "David Park",
+                "overs": "3.3",
+                "maidens": 0,
+                "runs": 22,
+                "wickets": 2,
+                "economy": 6.55,
+                "wides": 1,
+                "noballs": 0,
+                "dots": 8,
+                "isBowling": false
+              },
+              {
+                "name": "Andre Smith",
+                "overs": "4",
+                "maidens": 0,
+                "runs": 31,
+                "wickets": 1,
+                "economy": 7.75,
+                "wides": 1,
+                "noballs": 0,
+                "dots": 9,
+                "isBowling": false
+              },
+              {
+                "name": "Raj Patel",
+                "overs": "4",
+                "maidens": 0,
+                "runs": 28,
+                "wickets": 2,
+                "economy": 7.0,
+                "wides": 1,
+                "noballs": 0,
+                "dots": 10,
+                "isBowling": false
+              },
+              {
+                "name": "Marcus Steele",
+                "overs": "4",
+                "maidens": 0,
+                "runs": 36,
+                "wickets": 1,
+                "economy": 9.0,
+                "wides": 0,
+                "noballs": 0,
+                "dots": 5,
+                "isBowling": false
+              },
+              {
+                "name": "Liam O'Brien",
+                "overs": "3",
+                "maidens": 0,
+                "runs": 17,
+                "wickets": 4,
+                "economy": 5.67,
+                "wides": 1,
+                "noballs": 0,
+                "dots": 7,
+                "isBowling": false
+              }
+            ],
+            "fallOfWickets": [
+              "18-1 (J Carter, 2.4 ov)",
+              "34-2 (S Chen, 5.1 ov)",
+              "61-3 (T Bradley, 8.3 ov)",
+              "78-4 (V Singh, 10.5 ov)",
+              "112-5 (M Davis, 13.2 ov)",
+              "118-6 (J Carter, 14.4 ov)",
+              "127-7 (T Bradley, 15.5 ov)",
+              "133-8 (V Singh, 17.1 ov)",
+              "138-9 (M Davis, 18.1 ov)",
+              "141-10 (M Davis, 18.3 ov)"
+            ]
+          }
+        ],
+        "note": "Empire State Titans won by 24 runs"
+      }
+    },
+    {
+      "matchNo": "2nd Match",
+      "format": "T20",
+      "team1ShortName": "NYC",
+      "team2ShortName": "EST",
+      "venue": "Brooklyn Cricket Ground",
+      "city": "Brooklyn",
+      "startDate": "2025-06-22T14:00:00Z",
+      "status": "upcoming",
+      "result": ""
+    }
+  ]
+}

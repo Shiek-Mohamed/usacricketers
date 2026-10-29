@@ -226,6 +226,7 @@ export type ViewKey =
   | "league-admin-series-edit"
   | "league-admin-matches"
   | "league-admin-scorers"
+  | "admin-import-league"
 
 export interface NavState {
   view: ViewKey
@@ -458,4 +459,59 @@ export interface Banner {
 
   createdAt: string
   updatedAt: string
+}
+
+// ─── League import (Task 11) ────────────────────────────────────────────
+// The JSON schema accepted by /api/admin/import-league. Admins upload
+// a JSON file matching this shape; the importer parses + loads the data.
+
+export interface ImportedLeague {
+  name: string
+  shortName?: string
+  format?: string // "T20" | "ODI" | "Test" | "T10" — defaults to "T20"
+  season?: string // defaults to current year
+  startDate?: string // ISO date — defaults to today
+  endDate?: string // ISO date — optional
+  description?: string // optional
+}
+
+export interface ImportedPlayer {
+  name: string
+  role?: string // defaults to "Batsman"
+  isCaptain?: boolean // defaults to false
+  isKeeper?: boolean // defaults to false
+  battingStyle?: string // defaults to "Right-hand bat"
+  bowlingStyle?: string // defaults to ""
+  imageUrl?: string // defaults to ""
+  bio?: string // defaults to ""
+}
+
+export interface ImportedTeam {
+  name: string
+  shortName: string // 3-6 chars, used as the unique identity within the league
+  primaryColor?: string // hex; defaults to "#1e3a8a" (will be overridden to non-blue if possible)
+  accentColor?: string // hex; defaults to "#f59e0b"
+  country?: string // defaults to ""
+  description?: string // defaults to ""
+  players?: ImportedPlayer[] // optional — can be empty if only fixtures are being imported
+}
+
+export interface ImportedMatch {
+  matchNo?: string // defaults to "1st Match"
+  format?: string // defaults to the league format
+  team1ShortName: string // references ImportedTeam.shortName
+  team2ShortName: string
+  venue?: string // defaults to ""
+  city?: string // defaults to ""
+  startDate: string // ISO datetime — required
+  status?: string // "upcoming" | "live" | "completed" | "abandoned" — defaults to "upcoming"
+  result?: string // free-text result string for completed matches — defaults to ""
+  manOfMatch?: string // optional player name
+  scorecard?: Scorecard // our native Scorecard JSON for completed matches — optional
+}
+
+export interface ImportedLeagueData {
+  league: ImportedLeague
+  teams: ImportedTeam[]
+  matches?: ImportedMatch[] // optional — can import teams-only
 }

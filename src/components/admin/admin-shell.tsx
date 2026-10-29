@@ -21,6 +21,7 @@ import {
   UserCog,
   Play,
   Megaphone,
+  Upload,
 } from "lucide-react"
 import type { ViewKey } from "@/lib/types"
 
@@ -44,6 +45,7 @@ const navItems: { label: string; view: ViewKey; icon: React.ElementType }[] = [
   { label: "League Admins", view: "admin-league-admins", icon: Trophy },
   { label: "Sidebar", view: "admin-sidebar", icon: PanelRight },
   { label: "Import", view: "admin-import", icon: DownloadCloud },
+  { label: "Import League", view: "admin-import-league", icon: Upload },
   { label: "Galleries", view: "admin-galleries", icon: Images },
   { label: "Videos", view: "admin-videos", icon: Play },
   { label: "Banners", view: "admin-banners", icon: Megaphone },
@@ -52,7 +54,7 @@ const navItems: { label: string; view: ViewKey; icon: React.ElementType }[] = [
 /** Grouped sidebar layout — 3 sections for less visual noise on long lists. */
 const navGroups: { title: string; views: Set<ViewKey> }[] = [
   { title: "Cricket", views: new Set<ViewKey>(["admin-matches", "live-scorer", "admin-players", "admin-teams", "admin-series"]) },
-  { title: "Content", views: new Set<ViewKey>(["admin-articles", "admin-galleries", "admin-videos", "admin-banners", "admin-sidebar", "admin-import"]) },
+  { title: "Content", views: new Set<ViewKey>(["admin-articles", "admin-galleries", "admin-videos", "admin-banners", "admin-sidebar", "admin-import", "admin-import-league"]) },
   { title: "System", views: new Set<ViewKey>(["admin-scorers", "admin-league-admins"]) },
 ]
 

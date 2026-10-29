@@ -1752,3 +1752,49 @@ Stage Summary:
 - **Schema migration applied**: LeagueAdmin.emailVerifiedAt DateTime? field added; existing accounts have null (not yet verified) — site admin can manually set emailVerifiedAt for legacy accounts via SQL if needed: `UPDATE LeagueAdmin SET emailVerifiedAt = CURRENT_TIMESTAMP WHERE emailVerifiedAt IS NULL`.
 - **Dev-mode email flow**: when RESEND_API_KEY is empty (default in dev), emails are logged to the server console as a "would-send" preview — the verification URL can be picked up from dev.log and clicked to test the verify-email endpoint without a real Resend account. This makes the verification flow fully testable in dev before signing up for Resend.
 - **Frontend UI updates pending**: the league-admin-signup-view.tsx and league-admin-login-view.tsx still need UI updates to (a) show the "Check your email" success state after signup instead of auto-logging in, and (b) show a "Resend verification email" link when login fails with EMAIL_NOT_VERIFIED. These are the next obvious follow-ups but were left out of Phase 1B scope to keep the diff focused on the backend security fix.
+
+---
+Task ID: 11
+Agent: orchestrator (Z.ai) + full-stack-developer (delegated)
+Task: Build a generic CSV/JSON league importer (Approach A) — allows a league admin or site admin to upload a JSON file containing a full league (teams, players, matches, scorecards) from any source platform and load it into our database. Per-platform scrapers (e.g. CricClubs) come as a follow-up task.
+
+Work Log:
+- Delegated to the full-stack-developer subagent with detailed spec: 5 new files + 3 modified files + JSON schema + verification via curl with idempotency re-run.
+- Subagent built all 5 new files:
+  1. /home/z/my-project/src/lib/import-league.ts — pure helpers (parseImportedLeagueData, findOrCreateSeries/Team/Player/Match, joinTeamToSeries, recomputeStandingsForSeries). Uses Prisma TransactionClient for atomicity. Idempotent on composite keys (Series name+season, Team shortName, Player name+teamId, Match seriesId+team1Id+team2Id+startDate+matchNo).
+  2. /home/z/my-project/src/app/api/admin/import-league/route.ts — POST endpoint. requireSiteAdmin auth (matches Task 9 /api/upload pattern). Multipart/form-data parsing. Atomic db.$transaction wraps the entire import — if any step fails, the whole import rolls back. 50MB max file size. 2-minute maxDuration for large imports.
+  3. /home/z/my-project/src/components/admin/views/admin-import-league-view.tsx — admin UI. Dropzone file picker + JSON preview (league name, format, season; team count, players per team, total players; match count with status breakdown) + destination Series selector + Import button with loading spinner + summary Card showing created/updated counts per entity + "View league →" button (navigates to series-detail on success).
+  4. /home/z/my-project/templates/import-league.example.json — worked example with 1 league (Example T20 Cricket League), 2 teams (Empire State Titans [EST], New York Cyclones [NYC]), 5 players per team (10 total, mixed roles: batsman/bowler/all-rounder/keeper), 2 matches (1 completed with full scorecard, 1 upcoming).
+  5. /home/z/my-project/public/templates/import-league.example.json — duplicate copy in public/ so the admin UI can serve it at /templates/import-league.example.json for download.
+- Subagent modified 3 existing files:
+  - src/lib/types.ts — appended ImportedLeague, ImportedPlayer, ImportedTeam, ImportedMatch, ImportedLeagueData interfaces + added "admin-import-league" to ViewKey union.
+  - src/app/page.tsx — added AdminImportLeagueView import + case "admin-import-league" in renderView() switch.
+  - src/components/admin/admin-shell.tsx — added Upload icon import + nav entry { label: "Import League", view: "admin-import-league", icon: Upload } in the Content nav group.
+
+Verification (done by subagent + verified by orchestrator):
+- Lint: `bun run lint` exit 0, zero errors/warnings.
+- dev.log: clean `POST /api/admin/import-league 200 in 46ms` entries after the curl tests. No runtime errors.
+- Curl test 1 (first import): POST /api/admin/import-league with the example JSON → 200 response with `{ series: { created: true }, teams: { created: 2 }, players: { created: 10 }, matches: { created: 2 }, standings: { teams: 2, matches: 1 } }`. Confirms end-to-end import works.
+- Curl test 2 (idempotency re-run): POST the same JSON again → 200 response with `{ series: { created: false }, teams: { created: 0, updated: 2 }, players: { created: 0, updated: 10 }, matches: { created: 0, updated: 2 } }`. Same series.id on both runs — no duplicates created. ✓
+- DB query confirms imported entities: 1 series (Example T20 Cricket League, ETCL, T20, 2025), 2 teams (Empire State Titans with 5 players, New York Cyclones with 5 players), 2 matches (1 completed with scorecard + result text, 1 upcoming), 2 standings rows (auto-recomputed: EST 1W 0L 2pts NRR +0.545, NYC 0W 1L 0pts NRR -0.545). ✓
+- Test data cleaned up after verification (deleted series + 2 teams + 10 players + 2 matches + 2 standings + 2 tournamentTeam joins). DB is clean again.
+
+Stage Summary:
+- **Generic league importer shipped end-to-end** — admin uploads a JSON file matching the ImportedLeagueData schema, the system loads leagues + teams + players + matches + scorecards into our schema with idempotent composite-key matching + atomic transaction + automatic standing recalculation.
+- **Idempotent** — re-running the same import doesn't create duplicates. The composite keys (Series name+season, Team shortName, Player name+teamId, Match seriesId+team1Id+team2Id+startDate+matchNo) guarantee find-or-create semantics.
+- **Atomic** — the entire import runs in a single Prisma transaction; if any step fails, the whole import rolls back. No partial state in the DB.
+- **Scorecard format** — the imported `scorecard` field uses our NATIVE `Scorecard` JSON shape (the same one stored in Match.scorecard). Approach A explicitly does NOT translate foreign scorecard formats — that comes with the per-platform scrapers (Approach B: CricClubs scraper, queued as the next task).
+- **Standing recalculation** — after matches are imported, `recomputeStandingsForSeries()` clears the Standing rows for the series + recomputes from all completed matches using the existing NRR formula (runs/overs - opponent_runs/opponent_overs). Auto-runs as part of every import.
+- **Player matching is exact-by-name + teamId** (no fuzzy matching) per Approach A spec. Two players with the same name on the same team will collide on re-import; admin can dedupe via SQL after. This is documented in code comments + the worklog. Fuzzy matching UI is a future enhancement.
+- **Admin UI ships** — new nav entry "Import League" under the admin Content group. Admin uploads JSON, sees a preview, clicks Import, gets a summary card. Then can click "View league →" to jump straight to the imported series detail page.
+- **Example JSON template** at /templates/import-league.example.json (downloadable from the admin UI's help text). Admins can use this as a starting point + replace with their real league data.
+
+Known limitations (documented honestly):
+1. SQLite + Prisma 6.19.2 doesn't support `mode: "insensitive"` for case-insensitive lookups. Worked around by upper-casing shortName on both lookup AND create — the teamMap in the route uses uppercased keys.
+2. NRR uses literal overs notation (e.g. "18.3" overs is treated as 18.3, not the actual 18.5 in decimal). Pre-existing codebase limitation in /api/standings/route.ts — out of scope for this task.
+3. Destination Series selector is informational only — the API matches by name+season (not by ID), so the selector shows an info note explaining when "append" vs "create new" will actually happen.
+4. Match idempotency key uses millisecond precision — two matches between same teams with same matchNo but slightly different timestamps will be treated as distinct. Admin should use consistent timestamps when re-importing.
+5. Player matching is exact-by-name + teamId — no fuzzy matching. Two players with the same name on the same team will collide. Admin can dedupe via SQL.
+6. Scorecard must be in our native Scorecard JSON format — foreign formats (CricClubs' schema, Play Cricket's schema, etc.) need translation. This is the CricClubs scraper's job in Approach B (next task).
+
+Next task (queued): CricClubs scraper (Approach B) — uses the same import-league.ts helpers underneath, but adds a per-platform scraper that fetches match data from cricclubs.com public pages + translates it to our native Scorecard JSON before passing to the existing importer. ~6 hours.

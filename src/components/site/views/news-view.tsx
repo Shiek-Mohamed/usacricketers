@@ -21,7 +21,7 @@ const CATEGORIES = [
   { key: "interview", label: "Interviews" },
   { key: "opinion", label: "Opinion" },
 ]
-const PAGE_SIZE = 9
+const PAGE_SIZE = 10
 
 function NewsSkeleton() {
   return (

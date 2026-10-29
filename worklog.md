@@ -1798,3 +1798,43 @@ Known limitations (documented honestly):
 6. Scorecard must be in our native Scorecard JSON format — foreign formats (CricClubs' schema, Play Cricket's schema, etc.) need translation. This is the CricClubs scraper's job in Approach B (next task).
 
 Next task (queued): CricClubs scraper (Approach B) — uses the same import-league.ts helpers underneath, but adds a per-platform scraper that fetches match data from cricclubs.com public pages + translates it to our native Scorecard JSON before passing to the existing importer. ~6 hours.
+
+---
+Task ID: 12
+Agent: orchestrator (Z.ai)
+Task: Make site-admin god-mode across all three auth tiers (site-admin → league-admin → scorer). User (project owner, solo founder) wanted their site-admin credentials to override any authentication threshold so they can drive any flow (live scoring, league-admin dashboard, etc.) without having to create separate scorer/league-admin accounts.
+
+Work Log:
+- **Tier 1 (site-admin → CMS routes)**: already god-mode via `requireSiteAdmin(req)` on every /api/* admin route. No changes needed.
+- **Tier 3 (scorer — live scoring)**: discovered the architecture was already 90% wired up:
+  - `/api/admin/scorer-token` endpoint already existed (POST, requires site-admin cookie, mints a god-mode scorer token with `tournamentIds: ["*"]`)
+  - `mini-services/score-service/index.ts` already recognized `tournamentIds: ["*"]` as god-mode (line 183-184: skips the match->series lookup + tournament membership check)
+  - `live-scorer-view.tsx` already auto-fetches the god-mode scorer token when no scorer session exists (lines 81-92, useEffect calls POST /api/admin/scorer-token with credentials: "include")
+  - `useLiveScore(id, token)` already falls back to the admin-fetched god-mode token when no scorerToken (line 103: `const token = scorerToken ?? adminToken`)
+  - **Root cause of the previous bug**: the score-service wasn't running. Started it via `cd mini-services/score-service && bun index.ts` → confirmed listening on port 3003.
+  - **Secondary fix**: replaced the silent error swallowing in `persist()` (live-scorer-view.tsx line 211) with `toast.error("Persist failed — match state not saved", { description: msg })` so the operator sees when the DB write fails (was previously `// silent — live broadcast is the priority; persistence is best-effort`).
+- **Tier 2 (league-admin)**: built the god-mode pattern from scratch (no existing infrastructure):
+  - Created `/home/z/my-project/src/app/api/admin/league-admin-token/route.ts` — mirrors `/api/admin/scorer-token`. POST, requires site-admin cookie (via `requireSiteAdmin(req)`), mints a league-admin-shaped token with `managedSeriesIds: ["*"]` + `adminId: "site-admin:<adminId>"`. 12-hour TTL.
+  - Appended three god-mode helpers to `/home/z/my-project/src/lib/scorer-auth.ts`:
+    - `isGodModeLeagueAdmin(managedSeriesIds)` — returns true if the list is `["*"]`
+    - `canManageSeries(managedSeriesIds, seriesId)` — returns true if god-mode OR explicitly assigned
+    - `seriesFilter(managedSeriesIds)` — returns `{}` for god-mode OR `{ seriesId: { in: [...] } }` for regular tokens (utility for Prisma where clauses)
+  - Modified `/home/z/my-project/src/lib/league-admin-guard.ts` `authenticateLeagueAdmin()` function: detects god-mode tokens (via `isGodModeLeagueAdmin(payload.managedSeriesIds)`), skips the LeagueAdmin DB lookup (no real row exists for `adminId: "site-admin:<id>"`), instead fetches ALL series IDs from the DB so the existing endpoint checks (`managedSeriesIds.includes(seriesId)`, `in: managedSeriesIds`) work without modification. This is the SINGLE-FILE approach — no changes needed to the 7 league-admin endpoint files (scorers/route.ts, scorers/[id]/route.ts, series/route.ts, series/[id]/route.ts, series/[id]/teams/route.ts, matches/route.ts, matches/[id]/route.ts).
+  - This approach has a small DB cost (one extra `db.series.findMany({ select: { id: true } })` query per god-mode request) but is far cleaner than updating 7 endpoint files. For the user's current scale (solo founder, dev sandbox, dozens of series), the cost is negligible. If scale becomes a concern later, the endpoints can be migrated to use the `canManageSeries()` + `seriesFilter()` helpers directly (zero DB cost) — but that's a Stage 2 optimization.
+
+Verification:
+- Lint: `bun run lint` exit 0, zero errors/warnings.
+- Score-service: started via `setsid nohup bun index.ts` from `/home/z/my-project/mini-services/score-service/`. Confirmed listening on port 3003 via `ss -tlnp | grep :3003`. Log shows: `✅ Score service (socket.io) running on port 3003 / caps: total=5000 per-match=2000 gap=80ms / auth: signed scorer tokens (HMAC-SHA256) + match->series guard via http://localhost:3000`.
+- End-to-end curl test 1 (login as site admin): POST /api/admin/login with email=admin@usacricketers.test + password=admin123 → 200 with admin info. Cookies set: `sa-session` (httpOnly, signed site-admin token) + `csrf-token` (for double-submit CSRF protection).
+- End-to-end curl test 2 (mint god-mode scorer token): POST /api/admin/scorer-token with the sa-session cookie + X-CSRF-Token header → 200 with `{ token, exp }`. Decoded token payload: `{ scorerId: "site-admin:cmvhhz40k0000nw93pa4e70jl", name: "Site Admin", username: "admin@usacricketers.test", tournamentIds: ["*"], exp: <12h-from-now> }` ✓
+- End-to-end curl test 3 (mint god-mode league-admin token): POST /api/admin/league-admin-token with the same cookie + CSRF → 200 with `{ token, exp }`. Decoded token payload: `{ role: "leagueAdmin", adminId: "site-admin:cmvhhz40k0000nw93pa4e70jl", name: "Site Admin", username: "admin@usacricketers.test", managedSeriesIds: ["*"], exp: <12h-from-now> }` ✓
+- End-to-end curl test 4 (god-mode league-admin works against real endpoint): GET /api/league-admin/series with `Authorization: Bearer <god-mode-league-admin-token>` → 200 returning ALL 7 series in the DB (Abu Dhabi T10 2026, Arizona Premier Cricket League, RSA v WI 2025, IND v ENG 2025, AUS v NZ 2025, + 2 more). This proves `authenticateLeagueAdmin()` correctly detects god-mode + returns all series IDs so the existing endpoint checks work transparently. ✓
+- Cleaned up test artifacts (/tmp/admin-cookies.txt) after verification.
+
+Stage Summary:
+- **Site-admin is now god-mode across all three tiers**: the user's site-admin cookie works at every auth threshold (CMS, league-admin, scorer). They can drive any flow (live scoring, league-admin dashboard, etc.) directly from their site-admin session without creating separate scorer/league-admin accounts.
+- **Tier 1 (CMS routes)**: already worked — `requireSiteAdmin(req)` was already the universal key.
+- **Tier 2 (league-admin)**: NEW — god-mode via POST /api/admin/league-admin-token → mint a league-admin-shaped token with `managedSeriesIds: ["*"]`. The `authenticateLeagueAdmin()` helper detects god-mode + returns all series IDs so existing endpoint checks work transparently.
+- **Tier 3 (scorer — live scoring)**: already 90% wired up via /api/admin/scorer-token + the frontend `live-scorer-view.tsx` already auto-fetches the god-mode token. The actual blocker was the score-service not running — fixed by starting it. Also fixed the silent error swallowing in persist() so the operator sees when DB writes fail.
+- **Security trade-off (documented honestly)**: god-mode bypasses scope checks, which is fine for a solo founder (the user's current state) but riskier for teams. When the user eventually hires staff admins or onboards real league admins, scope separation should be added back — but that's a Stage 2 concern. For now, the god-mode pattern removes friction from the dev/test workflow.
+- **Architectural decision (god-mode via DB fetch vs. helper migration)**: chose the SINGLE-FILE approach — modified `authenticateLeagueAdmin()` to fetch all series IDs for god-mode tokens, rather than updating 7 endpoint files to use `canManageSeries()` + `seriesFilter()` helpers. Trade-off: one extra DB query per god-mode request vs. zero risk of breaking existing endpoint logic. The helpers (`canManageSeries`, `isGodModeLeagueAdmin`, `seriesFilter`) are still exported from scorer-auth.ts for future use — if the DB-query overhead ever matters, the endpoints can be migrated to use them directly (zero DB cost).

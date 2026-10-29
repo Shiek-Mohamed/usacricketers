@@ -219,7 +219,15 @@ export function LiveScorerView() {
         })
         refetch()
       } catch (e) {
-        // silent — live broadcast is the priority; persistence is best-effort
+        // Surface persistence errors so the operator knows the DB write failed
+        // (was previously silent — caused confusion when "Innings started"
+        // toast showed but the match status didn't actually update).
+        // The live socket broadcast is still the priority — this toast
+        // doesn't block scoring, just informs the operator something's wrong.
+        const msg = e instanceof Error ? e.message : String(e).slice(0, 200)
+        toast.error("Persist failed — match state not saved", {
+          description: msg,
+        })
       }
     }, 800)
   }

@@ -415,3 +415,50 @@ export function verifyEmailVerificationToken(
   if (typeof body.exp !== "number" || body.exp < Date.now()) return null
   return { adminId: body.adminId, email: body.email }
 }
+
+/* --------------------- league-admin god-mode helpers --------------------- */
+
+/**
+ * Returns true if the managed-series list represents god-mode (manages ALL
+ * series). Site-admins minted via POST /api/admin/league-admin-token get
+ * `managedSeriesIds: ["*"]` — recognised by every league-admin endpoint as
+ * "skip the membership check + return all series".
+ */
+export function isGodModeLeagueAdmin(
+  managedSeriesIds: string[] | undefined | null,
+): boolean {
+  return (
+    !!managedSeriesIds &&
+    managedSeriesIds.length === 1 &&
+    managedSeriesIds[0] === "*"
+  )
+}
+
+/**
+ * Returns true if the league-admin can manage a specific series.
+ * - God-mode tokens (managedSeriesIds = ["*"]) → always true
+ * - Regular tokens → true only if seriesId is in the list
+ * - null/empty seriesId → always false
+ */
+export function canManageSeries(
+  managedSeriesIds: string[] | undefined | null,
+  seriesId: string | null | undefined,
+): boolean {
+  if (!seriesId) return false
+  if (isGodModeLeagueAdmin(managedSeriesIds)) return true
+  return !!managedSeriesIds && managedSeriesIds.includes(seriesId)
+}
+
+/**
+ * Build a Prisma `where` clause for filtering by seriesId.
+ * - God-mode → returns `{}` (no filter, matches all series)
+ * - Regular → returns `{ seriesId: { in: managedSeriesIds } }`
+ *
+ * Usage: `where: { ...seriesFilter(managedSeriesIds), ...otherFilters }`
+ */
+export function seriesFilter(
+  managedSeriesIds: string[] | undefined | null,
+): { seriesId?: { in: string[] } } {
+  if (isGodModeLeagueAdmin(managedSeriesIds)) return {}
+  return { seriesId: { in: managedSeriesIds ?? [] } }
+}

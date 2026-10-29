@@ -34,6 +34,19 @@ export async function POST(req: NextRequest) {
     ) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
     }
+    // Email verification check — block login until the admin clicks the
+    // verification link sent at signup. Return a distinct error code so
+    // the frontend can show a "Resend verification email" link.
+    if (admin.emailVerifiedAt === null) {
+      return NextResponse.json(
+        {
+          error: "Please verify your email before logging in.",
+          code: "EMAIL_NOT_VERIFIED",
+          email: admin.email,
+        },
+        { status: 403 }
+      )
+    }
     const managedSeriesIds = admin.assignments.map((a) => a.seriesId)
     const token = issueLeagueAdminToken({
       adminId: admin.id,

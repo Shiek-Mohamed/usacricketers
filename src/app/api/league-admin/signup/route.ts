@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { db } from "@/lib/db"
-import { hashPassword, issueLeagueAdminToken, isValidEmail } from "@/lib/scorer-auth"
+import {
+  hashPassword,
+  issueEmailVerificationToken,
+  isValidEmail,
+} from "@/lib/scorer-auth"
 import { rateLimit } from "@/lib/rate-limit"
+import { sendVerificationEmail, getBaseUrl } from "@/lib/email"
 
 export const dynamic = "force-dynamic"
 
@@ -18,6 +23,12 @@ function badField(error: string) {
  * league without the site admin's involvement. Rate-limited per IP to slow
  * abuse; the site admin retains the `active` lever to deactivate bad actors
  * after the fact.
+ *
+ * After signup, a verification email is sent to the provided email. The
+ * account is created with emailVerifiedAt=null — login is blocked until
+ * the user clicks the verification link. The old behavior (auto-login on
+ * signup) was a security gap because it let anyone sign up with a fake
+ * email and immediately access the league-admin dashboard.
  */
 export async function POST(req: NextRequest) {
   // Rate-limit: 5 sign-ups per IP per hour.
@@ -73,7 +84,8 @@ export async function POST(req: NextRequest) {
       })
       if (existingByEmail) throw new Error("EMAIL_TAKEN")
 
-      // Create the league-admin account (email is mandatory).
+      // Create the league-admin account (emailVerifiedAt defaults to null —
+      // the user must click the verification link before they can log in).
       const admin = await tx.leagueAdmin.create({
         data: {
           username,
@@ -116,23 +128,62 @@ export async function POST(req: NextRequest) {
       return { admin, series }
     })
 
-    // Issue a signed session token (same shape as login).
-    const token = issueLeagueAdminToken({
-      adminId: result.admin.id,
+    // Issue an email-verification token (24-hour TTL) and send the email.
+    // The user can't log in until they click the link.
+    const verifyToken = issueEmailVerificationToken(
+      result.admin.id,
+      result.admin.email!,
+    )
+    const verifyUrl = `${getBaseUrl()}/api/league-admin/verify-email?token=${encodeURIComponent(verifyToken)}`
+    const emailResult = await sendVerificationEmail({
+      to: result.admin.email!,
       name: result.admin.name,
-      username: result.admin.username,
-      managedSeriesIds: [result.series.id],
+      verifyUrl,
     })
 
+    if (!emailResult.ok) {
+      // The account was created but the verification email failed to send.
+      // Log it but don't roll back — the user can request a resend via
+      // /api/league-admin/resend-verification. Return a 201 with a hint.
+      console.error(
+        `[signup] email send failed for ${result.admin.email}: ${emailResult.error}`
+      )
+      return NextResponse.json(
+        {
+          admin: {
+            id: result.admin.id,
+            name: result.admin.name,
+            username: result.admin.username,
+            email: result.admin.email,
+          },
+          managedSeriesIds: [result.series.id],
+          needsEmailVerification: true,
+          emailSent: false,
+          message:
+            "Account created but the verification email failed to send. Use the 'Resend verification email' link on the login page.",
+        },
+        { status: 201 }
+      )
+    }
+
+    // Success — return account info + hint that the user must verify their
+    // email before they can log in. The frontend should show a "Check your
+    // email" success state instead of auto-logging in.
     return NextResponse.json(
       {
         admin: {
           id: result.admin.id,
           name: result.admin.name,
           username: result.admin.username,
+          email: result.admin.email,
         },
-        token,
         managedSeriesIds: [result.series.id],
+        needsEmailVerification: true,
+        emailSent: true,
+        emailDevMode: emailResult.devMode === true,
+        message: emailResult.devMode
+          ? "Account created. (Dev mode: check the server log for the verification link.)"
+          : "Account created. Check your email for a verification link before logging in.",
       },
       { status: 201 }
     )

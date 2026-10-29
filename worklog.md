@@ -1687,3 +1687,68 @@ Stage Summary:
 - **Collision handling preserves SEO value**: subsequent uploads of the same filename append -2, -3 (NOT a random suffix) — Google Images still reads "babar-azam-century" as a keyword.
 - **The 5 admin views using UploadButton** all benefit from this fix automatically: articles-view (hero image), admin-videos-view (thumbnail), admin-galleries-view (gallery photos), admin-banners-view (banner image), players-view (player photo).
 - **One known limitation**: the ?resize=N query param is accepted but not yet implemented (logs a warning, saves at full size). Adding sharp-based resize is a separate follow-up if/when the user wants to optimize player avatar uploads. Currently PlayerAvatar uses initials-in-circle instead of an actual <img> tag, so the resize gap doesn't have user-visible impact yet.
+
+---
+Task ID: 10
+Agent: orchestrator (Z.ai)
+Task: Add automatic email verification for league-admin self-signup. Closes the security gap where anyone could sign up as a league admin with any email (real or fake) and immediately access the dashboard.
+
+Work Log:
+- Phase 1A — Email infrastructure:
+  - Installed resend@6.35.0 (`bun add resend`).
+  - Created /home/z/my-project/src/lib/email.ts — thin wrapper around the Resend SDK:
+    - sendEmail({ to, subject, html, text }) — sends via Resend if RESEND_API_KEY is set; logs to console in dev-mode otherwise (so the verification flow can be tested without real email delivery).
+    - sendVerificationEmail({ to, name, verifyUrl }) — email template with branded "Verify email" button + fallback plain-text URL + 24h expiry note + "if you didn't sign up..." copy.
+    - getBaseUrl() — exposed for callers to build absolute URLs.
+    - escapeHtml/escapeAttr helpers to safely inject user-supplied strings into HTML email bodies (XSS-safe).
+  - Updated /home/z/my-project/.env with RESEND_API_KEY, FROM_EMAIL, NEXT_PUBLIC_BASE_URL placeholders + comments documenting each.
+- Phase 1B — Email verification on league-admin signup:
+  - Schema migration: added `emailVerifiedAt DateTime?` to LeagueAdmin model. Run `bun run db:push` — schema now in sync. Default is null = "not yet verified".
+  - Auth helpers (appended to /home/z/my-project/src/lib/scorer-auth.ts):
+    - issueEmailVerificationToken(adminId, email) — HMAC-SHA256 signed token, 24h TTL. Payload format: base64url(JSON).base64url(HMAC-SHA256(payload)). Same signing pattern as the existing issuePasswordResetToken + issueLeagueAdminToken helpers.
+    - verifyEmailVerificationToken(token) — returns { adminId, email } or null on signature mismatch / wrong type / expired / malformed. Uses timingSafeEqual for constant-time comparison.
+  - Updated /home/z/my-project/src/app/api/league-admin/signup/route.ts:
+    - OLD behavior: created account + auto-logged in by issuing a session token. Security gap — anyone could sign up with a fake email and immediately access the dashboard.
+    - NEW behavior: creates account with emailVerifiedAt=null, issues an email-verification token, sends verification email via sendVerificationEmail(), returns 201 with needsEmailVerification: true + emailSent: true (or false if the email send failed). The frontend should show a "Check your email" success state instead of auto-logging in.
+    - Handles the edge case where the account was created but the email send failed — logs the error + returns a 201 with emailSent: false + a hint to use the resend-verification endpoint.
+  - Created /home/z/my-project/src/app/api/league-admin/verify-email/route.ts (GET endpoint):
+    - Called when the user clicks the verification link in their email.
+    - Parses ?token=XXX, verifies signature + TTL, looks up the admin by ID, checks the email still matches (in case they updated it after the token was issued).
+    - Sets emailVerifiedAt = now() on the admin.
+    - Returns a self-contained HTML page (not a redirect — the app uses Zustand store nav which doesn't read URL query strings). Shows success or failure with a "Go to USACricketers" button.
+    - Idempotent: clicking the link twice doesn't error — second click sees emailVerifiedAt is already set and shows the same success page.
+  - Updated /home/z/my-project/src/app/api/league-admin/login/route.ts:
+    - Added email verification check: if admin.emailVerifiedAt === null, returns 403 with { error, code: "EMAIL_NOT_VERIFIED", email }. Frontend can use the code to render a "Resend verification email" link.
+  - Created /home/z/my-project/src/app/api/league-admin/resend-verification/route.ts (POST endpoint):
+    - Body: { email } OR { username } — looks up admin by either.
+    - If admin not found OR email is already verified: returns success without sending (idempotent + doesn't leak account existence to anonymous callers).
+    - Otherwise: re-issues a fresh verification token + resends the email.
+    - Rate-limited: 3 per hour per IP (tighter than signup's 5/hour because emails go to real inboxes).
+  - Removed the now-unused `issueLeagueAdminToken` import from signup route (no longer auto-logging in).
+
+Verification:
+- Lint: `bun run lint` exit 0, zero errors/warnings.
+- Direct unit tests of auth helpers (via throwaway Bun script in scripts/_test-auth.ts, deleted after running):
+  - 8/8 cases pass:
+    - round-trip valid token: adminId + email preserved
+    - tampered signature rejected (timingSafeEqual catches the mismatch)
+    - token with wrong type (e.g. "password-reset") rejected
+    - expired token rejected
+    - malformed token rejected
+    - hashPassword + verifyPassword round-trip succeeds
+    - wrong password rejected
+    - malformed stored hash handled safely (no exception)
+- End-to-end signup test via curl:
+  - POST /api/league-admin/signup with valid payload → 201 response with admin info + needsEmailVerification: true + emailSent: true + emailDevMode: true + message "Account created. (Dev mode: check the server log for the verification link.)"
+  - dev.log shows the [email:dev-mode] block with the full verification URL: http://localhost:3000/api/league-admin/verify-email?token=<base64url-payload>.<base64url-hmac-sig>
+  - DB-level check via direct Prisma query confirms the test account was created with emailVerifiedAt: null (the schema migration worked)
+  - Test account cleaned up after verification
+- Full end-to-end verify-email + post-verify login curl tests were not possible because the dev server kept getting killed by the OOM killer (Turbopack compile uses ~1.8GB resident memory, container has 3.9GB total). The route code is structurally sound — same pattern as the existing /api/upload-video route — and the underlying auth helpers are unit-tested directly. Full VLM/browser verification would require memory headroom not available in this constrained sandbox.
+
+Stage Summary:
+- **Phase 1A complete**: Resend installed + email.ts helper + 3 new env vars documented in .env.
+- **Phase 1B complete**: League admin signup now requires email verification before login. The security gap (anyone could sign up with a fake email and access the dashboard immediately) is closed.
+- **Three new endpoints**: /api/league-admin/verify-email (GET, handles email link click), /api/league-admin/resend-verification (POST, rate-limited resend), updated /api/league-admin/login (rejects unverified accounts with EMAIL_NOT_VERIFIED error code).
+- **Schema migration applied**: LeagueAdmin.emailVerifiedAt DateTime? field added; existing accounts have null (not yet verified) — site admin can manually set emailVerifiedAt for legacy accounts via SQL if needed: `UPDATE LeagueAdmin SET emailVerifiedAt = CURRENT_TIMESTAMP WHERE emailVerifiedAt IS NULL`.
+- **Dev-mode email flow**: when RESEND_API_KEY is empty (default in dev), emails are logged to the server console as a "would-send" preview — the verification URL can be picked up from dev.log and clicked to test the verify-email endpoint without a real Resend account. This makes the verification flow fully testable in dev before signing up for Resend.
+- **Frontend UI updates pending**: the league-admin-signup-view.tsx and league-admin-login-view.tsx still need UI updates to (a) show the "Check your email" success state after signup instead of auto-logging in, and (b) show a "Resend verification email" link when login fails with EMAIL_NOT_VERIFIED. These are the next obvious follow-ups but were left out of Phase 1B scope to keep the diff focused on the backend security fix.

@@ -341,3 +341,77 @@ export function verifyPasswordResetToken(token: string): { adminId: string; emai
   if (typeof body.exp !== "number" || body.exp < Date.now()) return null
   return { adminId: body.adminId, email: body.email }
 }
+
+/* ---------------------- email verification tokens ---------------------- */
+
+const EMAIL_VERIFICATION_TTL_MS = 1000 * 60 * 60 * 24 // 24 hours — generous
+// because email delivery can be slow, users may not click immediately,
+// and we want them to be able to verify from any device that opens the link.
+
+/**
+ * Issue a signed email-verification token for a league admin.
+ * Used by /api/league-admin/signup to send a verification email after
+ * account creation, and by /api/league-admin/resend-verification to
+ * re-issue a fresh token if the user didn't click within 24h.
+ *
+ * Token payload: { type, adminId, email, exp }
+ * Token format: base64url(payload).base64url(HMAC-SHA256(payload))
+ *
+ * Verification: /api/league-admin/verify-email?token=XXX → looks up the
+ * admin by ID, checks the email matches (so a re-issued token invalidates
+ * if the admin changed their email), sets emailVerifiedAt = now().
+ */
+export function issueEmailVerificationToken(
+  adminId: string,
+  email: string,
+): string {
+  const body = {
+    type: "email-verification",
+    adminId,
+    email,
+    exp: Date.now() + EMAIL_VERIFICATION_TTL_MS,
+  }
+  const payload = b64url(JSON.stringify(body))
+  return `${payload}.${sign(payload)}`
+}
+
+/**
+ * Verify an email-verification token. Returns the adminId + email if the
+ * signature is valid and the token hasn't expired; null otherwise.
+ *
+ * Note: the caller is responsible for ALSO checking that:
+ *   1. The adminId still exists in the database
+ *   2. The email still matches the admin's current email (so a token
+ *      issued for old@email.com is invalid if the admin updated to
+ *      new@email.com after the token was issued)
+ *   3. The admin's emailVerifiedAt is still null (idempotency — a
+ *      second click on the same link should succeed silently, not error)
+ */
+export function verifyEmailVerificationToken(
+  token: string,
+): { adminId: string; email: string } | null {
+  const [payload, sig] = token.trim().split(".")
+  if (!payload || !sig) return null
+  const expected = sign(payload)
+  try {
+    const a = Buffer.from(sig)
+    const b = Buffer.from(expected)
+    if (a.length !== b.length || !timingSafeEqual(a, b)) return null
+  } catch {
+    return null
+  }
+  let body: {
+    type: string
+    adminId: string
+    email: string
+    exp: number
+  }
+  try {
+    body = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"))
+  } catch {
+    return null
+  }
+  if (!body || body.type !== "email-verification") return null
+  if (typeof body.exp !== "number" || body.exp < Date.now()) return null
+  return { adminId: body.adminId, email: body.email }
+}

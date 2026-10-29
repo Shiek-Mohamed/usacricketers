@@ -255,6 +255,10 @@ model LeagueAdmin {
   passwordHash String   // scrypt hash (salt embedded as "salt:hash" hex)
   name         String
   active       Boolean  @default(true)
+  // Email verification: null until the league admin clicks the verification
+  // link sent to their email at signup. Login is blocked while null — the
+  // /api/league-admin/login route returns 403 with code "EMAIL_NOT_VERIFIED".
+  emailVerifiedAt DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   assignments  LeagueAdminAssignment[]

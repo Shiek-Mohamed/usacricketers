@@ -46,6 +46,7 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { TeamBadge } from "@/components/cricket/ui"
 import type { Series, Team } from "@/lib/types"
+import { LeagueSwitcher } from "@/components/site/league-switcher"
 
 const FORMATS = ["T20", "ODI", "Test", "T10"] as const
 const STATUSES = ["upcoming", "ongoing", "completed"] as const
@@ -436,6 +437,7 @@ export function LeagueAdminSeriesEditView() {
       actionLabel={isNew ? "Create League" : "Save Changes"}
       onAction={handleSave}
     >
+      {!isNew && <LeagueSwitcher />}
       {/* League details */}
       <Card>
         <CardHeader className="gap-1.5">

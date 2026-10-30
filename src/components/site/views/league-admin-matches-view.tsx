@@ -60,6 +60,7 @@ import {
   formatMatchDate,
 } from "@/components/cricket/ui"
 import type { Match, Series, Team } from "@/lib/types"
+import { LeagueSwitcher } from "@/components/site/league-switcher"
 
 const FORMATS = ["T20", "ODI", "Test", "T10"] as const
 const MATCH_STATUSES = [
@@ -341,6 +342,7 @@ export function LeagueAdminMatchesView() {
       actionLabel="+ New Match"
       onAction={openCreate}
     >
+      <LeagueSwitcher />
       {/* Header strip */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-3">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">

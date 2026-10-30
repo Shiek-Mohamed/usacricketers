@@ -56,6 +56,7 @@ import {
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import type { Scorer, Series } from "@/lib/types"
+import { LeagueSwitcher } from "@/components/site/league-switcher"
 
 const SCROLLBAR =
   "[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border"
@@ -343,6 +344,7 @@ export function LeagueAdminScorersView() {
       actionLabel="+ New Scorer"
       onAction={openCreate}
     >
+      <LeagueSwitcher />
       {/* Header strip */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-3 text-xs text-muted-foreground">
         <div>

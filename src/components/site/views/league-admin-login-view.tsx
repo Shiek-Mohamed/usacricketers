@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Shield, ArrowLeft, Loader2, AlertCircle } from "lucide-react"
+import { Shield, ArrowLeft, Loader2, AlertCircle, RefreshCw, MailWarning } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { LeagueAdminSession } from "@/lib/types"
 
@@ -26,6 +26,61 @@ export function LeagueAdminLoginView() {
   const [password, setPassword] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Email verification state: when login returns 403 with code=EMAIL_NOT_VERIFIED,
+  // show a "Resend verification email" button inline. Backend returns the
+  // admin's email so we don't have to ask the user for it again.
+  const [needsVerification, setNeedsVerification] = useState<
+    | { kind: "idle" }
+    | { kind: "pending"; email: string }
+    | { kind: "sending"; email: string }
+    | { kind: "sent"; email: string }
+    | { kind: "error"; email: string; message: string }
+  >({ kind: "idle" })
+
+  async function handleResendVerification() {
+    if (needsVerification.kind !== "pending" && needsVerification.kind !== "error") return
+    const email = needsVerification.email
+    setNeedsVerification({ kind: "sending", email })
+    try {
+      const res = await fetch("/api/league-admin/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.status === 429) {
+        setNeedsVerification({
+          kind: "error",
+          email,
+          message: "Too many resend attempts — please wait an hour and try again.",
+        })
+        return
+      }
+      if (!res.ok) {
+        setNeedsVerification({
+          kind: "error",
+          email,
+          message: data?.error || "Failed to resend — please try again later.",
+        })
+        return
+      }
+      if (data?.alreadyVerified) {
+        setNeedsVerification({
+          kind: "error",
+          email,
+          message: "Your email is already verified — try signing in again.",
+        })
+        return
+      }
+      setNeedsVerification({ kind: "sent", email })
+    } catch {
+      setNeedsVerification({
+        kind: "error",
+        email,
+        message: "Network error — please try again.",
+      })
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -44,6 +99,18 @@ export function LeagueAdminLoginView() {
       })
       if (res.status === 401) {
         setError("Invalid username or password")
+        return
+      }
+      if (res.status === 403) {
+        // Email not verified — backend returns { code: "EMAIL_NOT_VERIFIED", email }.
+        // Show the resend verification UI inline instead of the generic error.
+        const data = await res.json().catch(() => ({}))
+        if (data?.code === "EMAIL_NOT_VERIFIED" && data?.email) {
+          setError(null)
+          setNeedsVerification({ kind: "pending", email: data.email })
+          return
+        }
+        setError(data?.error || "Sign-in failed — account not active.")
         return
       }
       if (!res.ok) {
@@ -117,6 +184,67 @@ export function LeagueAdminLoginView() {
               >
                 <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <span>{error}</span>
+              </div>
+            )}
+
+            {needsVerification.kind !== "idle" && (
+              <div
+                role="alert"
+                className="space-y-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-3 text-xs dark:border-amber-900 dark:bg-amber-950/40"
+              >
+                <div className="flex items-start gap-2 text-amber-800 dark:text-amber-200">
+                  <MailWarning className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div className="space-y-1">
+                    <p className="font-semibold">
+                      Verify your email before signing in
+                    </p>
+                    <p className="font-normal">
+                      We sent a verification link to{" "}
+                      <span className="font-semibold">
+                        {needsVerification.email}
+                      </span>
+                      . Click the link to activate your account, then try
+                      signing in again.
+                    </p>
+                  </div>
+                </div>
+
+                {needsVerification.kind === "sent" && (
+                  <div className="flex items-start gap-2 rounded border border-emerald-300 bg-emerald-50 px-2 py-1.5 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
+                    <RefreshCw className="mt-0.5 h-3 w-3 shrink-0" />
+                    <span>
+                      Verification email resent to {needsVerification.email}.
+                      Check your inbox + spam folder.
+                    </span>
+                  </div>
+                )}
+                {needsVerification.kind === "error" && (
+                  <div className="flex items-start gap-2 rounded border border-red-300 bg-red-50 px-2 py-1.5 text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+                    <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" />
+                    <span>{needsVerification.message}</span>
+                  </div>
+                )}
+
+                <Button
+                  type="button"
+                  onClick={handleResendVerification}
+                  disabled={needsVerification.kind === "sending"}
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-1.5"
+                >
+                  {needsVerification.kind === "sending" ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Sending…
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      Resend verification email
+                    </>
+                  )}
+                </Button>
               </div>
             )}
 

@@ -1881,3 +1881,59 @@ Stage Summary:
 - **Standard SaaS pattern** — same UX as Slack workspace switcher, GitHub org switcher, Stripe account switcher, Vercel project switcher. Familiar to anyone who's used modern admin dashboards.
 - **Useful when first multi-league admin signs up** — the switcher renders automatically the moment a league admin creates their 2nd league. No config needed.
 
+
+---
+Task ID: 14
+Agent: orchestrator (Z.ai)
+Task: Polish the public league-admin signup/login UI for email verification (Task 10 added the backend, this finishes the frontend). The signup form's "Check your email" success state + login's "Resend verification" link weren't wired into the UI yet.
+
+Work Log:
+- Updated /home/z/my-project/src/components/site/views/league-admin-signup-view.tsx:
+  - OLD behavior: after successful signup, called `setSession(data as LeagueAdminSession)` + `navigate("league-admin-home")` — auto-logged in. (Task 10 changed the backend to no longer return a usable session token + instead return `needsEmailVerification: true`, but the frontend was still trying to auto-login.)
+  - NEW behavior: after successful signup, sets `submittedEmail` state + conditionally renders a "Check your email" success card instead of the form. The card shows:
+    - MailCheck icon (emerald circle)
+    - "Check your email" title
+    - The email address the verification was sent to
+    - "Next steps" callout (3-step list: open email → click link → sign in)
+    - "Resend verification email" button (calls POST /api/league-admin/resend-verification with the email)
+    - "I've verified — sign in" button (navigates to league-admin-login)
+    - "Use a different email" button (resets the form)
+  - Added `resendStatus` state machine: idle | sending | sent | error. Shows appropriate inline feedback (emerald for sent, red for error, spinner for sending).
+  - Handles the edge case where the backend returns `emailSent: false` (email send failed but account was created) — shows the error state immediately + suggests using the resend button.
+  - Handles the edge case where `needsEmailVerification` is NOT set in the response (legacy / fallback) — falls back to the old auto-login behavior, gracefully.
+- Updated /home/z/my-project/src/components/site/views/league-admin-login-view.tsx:
+  - OLD behavior: only handled 401 (invalid credentials) + generic non-OK statuses.
+  - NEW behavior: detects `res.status === 403` with `data.code === "EMAIL_NOT_VERIFIED"` — sets `needsVerification` state with the email from the response (no need to ask the user for it again) + shows an inline amber callout card with:
+    - MailWarning icon (amber)
+    - "Verify your email before signing in" title
+    - The email address + instructions
+    - "Resend verification email" button (calls POST /api/league-admin/resend-verification)
+    - Inline status feedback for the resend (sent → emerald, error → red, sending → spinner)
+  - Added `needsVerification` state machine: idle | pending | sending | sent | error.
+  - Handles rate limit (429) — shows "Too many resend attempts — please wait an hour."
+  - Handles `alreadyVerified` response — shows "Your email is already verified — try signing in again."
+
+Verification:
+- Lint: `bun run lint` exit 0, zero errors/warnings.
+- dev.log: clean compiles after each edit. No TypeScript or runtime errors.
+- End-to-end curl test (all 3 flows verified):
+  - Step 1 — POST /api/league-admin/signup with valid payload → 201 response with `{ needsEmailVerification: true, emailSent: true, emailDevMode: true, admin: { email: "uitest@example.com" }, message: "Account created. (Dev mode: check the server log for the verification link.)" }`. The frontend will now show the "Check your email" card instead of auto-logging in. ✓
+  - Step 2 — POST /api/league-admin/login with the unverified credentials → 403 response with `{ error: "Please verify your email before logging in.", code: "EMAIL_NOT_VERIFIED", email: "uitest@example.com" }`. The frontend will now show the amber "Verify your email" callout + "Resend verification email" button. ✓
+  - Step 3 — POST /api/league-admin/resend-verification with the email → 200 response with `{ ok: true, emailSent: true, emailDevMode: true, message: "Verification email (re)generated. (Dev mode: check the server log for the verification link.)" }`. The frontend will show the emerald "Verification email resent" inline confirmation. ✓
+- Test data cleaned up after verification (deleted the uitest2025 league admin + their series).
+
+Stage Summary:
+- **Signup form no longer auto-logs in** — shows a polished "Check your email" success card with the verification email address, next steps callout, resend button, and "I've verified — sign in" button.
+- **Login form surfaces email verification errors** — when login returns 403 with code=EMAIL_NOT_VERIFIED, shows an amber callout with the email + a "Resend verification email" button (no need for the user to re-type their email).
+- **Resend flow handles all edge cases** — rate limit (429), already-verified (alreadyVerified=true), network errors, send failures. Each gets a distinct inline message.
+- **State machines for resend status** — idle/sending/sent/error — provides clear visual feedback at every step.
+- **No backend changes needed** — Task 10 already shipped the backend (issueEmailVerificationToken, verifyEmailVerificationToken, /api/league-admin/verify-email, /api/league-admin/resend-verification, login's EMAIL_NOT_VERIFIED response). This task was purely frontend wiring.
+- **Legacy fallback** — if the backend ever returns a response without `needsEmailVerification`, the signup form falls back to the old auto-login behavior. Graceful degradation.
+
+The full email verification flow is now polished end-to-end:
+1. League admin signs up → sees "Check your email" card
+2. Opens email → clicks verification link → /api/league-admin/verify-email marks emailVerifiedAt=now() → sees success page
+3. Returns to site → logs in → succeeds (emailVerifiedAt is set)
+4. If they forget to verify + try to log in → sees amber "Verify your email" callout + resend button
+5. If they lost the email → clicks resend → gets a new verification email
+6. After verifying → logs in successfully → lands on league-admin dashboard

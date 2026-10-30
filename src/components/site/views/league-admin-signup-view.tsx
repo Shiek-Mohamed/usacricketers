@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Shield, ArrowLeft, Loader2, AlertCircle, Trophy } from "lucide-react"
+import { Shield, ArrowLeft, Loader2, AlertCircle, Trophy, MailCheck, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { LeagueAdminSession } from "@/lib/types"
 
@@ -42,6 +42,62 @@ export function LeagueAdminSignupView() {
   )
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Success state: shown after signup returns needsEmailVerification=true.
+  // Replaces the old behavior of auto-logging in (which was a security gap —
+  // see Task 10 worklog entry).
+  const [submittedEmail, setSubmittedEmail] = useState<string | null>(null)
+  const [resendStatus, setResendStatus] = useState<
+    | { kind: "idle" }
+    | { kind: "sending" }
+    | { kind: "sent" }
+    | { kind: "error"; message: string }
+  >({ kind: "idle" })
+
+  async function handleResendEmail() {
+    if (!submittedEmail || resendStatus.kind === "sending") return
+    setResendStatus({ kind: "sending" })
+    try {
+      const res = await fetch("/api/league-admin/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: submittedEmail }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.status === 429) {
+        setResendStatus({
+          kind: "error",
+          message: "Too many resend attempts — please wait an hour and try again.",
+        })
+        return
+      }
+      if (!res.ok) {
+        setResendStatus({
+          kind: "error",
+          message: data?.error || "Failed to resend — please try again later.",
+        })
+        return
+      }
+      if (data?.alreadyVerified) {
+        setResendStatus({
+          kind: "error",
+          message: "Your email is already verified — you can sign in.",
+        })
+        return
+      }
+      setResendStatus({ kind: "sent" })
+    } catch {
+      setResendStatus({
+        kind: "error",
+        message: "Network error — please try again.",
+      })
+    }
+  }
+
+  function handleResetSignup() {
+    setSubmittedEmail(null)
+    setResendStatus({ kind: "idle" })
+    setError(null)
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -81,9 +137,30 @@ export function LeagueAdminSignupView() {
         setError(data?.error || `Sign-up failed (${res.status})`)
         return
       }
-      // Success — store the session + go to the portal.
-      setSession(data as LeagueAdminSession)
-      navigate("league-admin-home")
+      // Success — backend returns { needsEmailVerification: true, emailSent: bool,
+      // admin: { email }, message }. Don't auto-login (Task 10 changed this —
+      // login is blocked until the email is verified). Show the "Check your
+      // email" success state instead.
+      const adminEmail = data?.admin?.email || email.trim()
+      if (data?.needsEmailVerification) {
+        setSubmittedEmail(adminEmail)
+        if (!data?.emailSent) {
+          // Email send failed — surface that so the user knows to use resend.
+          setResendStatus({
+            kind: "error",
+            message:
+              data?.message ||
+              "Account created but the verification email failed to send. Use the resend button below.",
+          })
+        } else {
+          setResendStatus({ kind: "idle" })
+        }
+      } else {
+        // Legacy path: no email verification required (shouldn't happen after
+        // Task 10, but handle gracefully — auto-login as before).
+        setSession(data as LeagueAdminSession)
+        navigate("league-admin-home")
+      }
     } catch {
       setError("Network error — please try again")
     } finally {
@@ -103,6 +180,90 @@ export function LeagueAdminSignupView() {
         </span>
       </div>
 
+      {submittedEmail ? (
+        <Card className="w-full max-w-md">
+          <CardHeader className="gap-1.5 space-y-0 text-center">
+            <div className="mx-auto mb-2 grid h-12 w-12 place-items-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+              <MailCheck className="h-6 w-6" />
+            </div>
+            <CardTitle className="text-xl tracking-tight">
+              Check your email
+            </CardTitle>
+            <CardDescription className="text-xs">
+              We sent a verification link to{" "}
+              <span className="font-semibold text-foreground">
+                {submittedEmail}
+              </span>
+              . Click the link to activate your league-admin account.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+              <p className="font-semibold">Next steps:</p>
+              <ol className="mt-1 list-decimal space-y-0.5 pl-4">
+                <li>Open the email + click the verification link.</li>
+                <li>The link expires in 24 hours.</li>
+                <li>After verifying, come back here + sign in.</li>
+              </ol>
+            </div>
+
+            {resendStatus.kind === "sent" && (
+              <div className="flex items-start gap-2 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">
+                <MailCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>
+                  Verification email resent to {submittedEmail}. Check your
+                  inbox + spam folder.
+                </span>
+              </div>
+            )}
+            {resendStatus.kind === "error" && (
+              <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>{resendStatus.message}</span>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2">
+              <Button
+                type="button"
+                onClick={handleResendEmail}
+                disabled={resendStatus.kind === "sending"}
+                variant="outline"
+                className="w-full gap-2"
+              >
+                {resendStatus.kind === "sending" ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Sending…
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4" />
+                    Resend verification email
+                  </>
+                )}
+              </Button>
+              <Button
+                type="button"
+                onClick={() => navigate("league-admin-login")}
+                variant="default"
+                className="w-full bg-emerald-600 text-white hover:bg-emerald-700"
+              >
+                I&apos;ve verified — sign in
+              </Button>
+              <Button
+                type="button"
+                onClick={handleResetSignup}
+                variant="ghost"
+                size="sm"
+                className="w-full text-xs text-muted-foreground hover:text-foreground"
+              >
+                Use a different email
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
       <Card className="w-full max-w-md">
         <CardHeader className="gap-1.5 space-y-0 text-center">
           <CardTitle className="flex items-center justify-center gap-2 text-xl tracking-tight">
@@ -271,6 +432,7 @@ export function LeagueAdminSignupView() {
           </div>
         </CardContent>
       </Card>
+      )}
 
       <p className="mt-6 max-w-md text-center text-[11px] leading-relaxed text-muted-foreground">
         By signing up you agree to run leagues honestly. Accounts can be

@@ -99,7 +99,7 @@ export function GalleryDetailView() {
               <img src={p.src} alt={p.caption} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110" />
               {p.caption && (
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                  <p className="line-clamp-2 text-[0.7rem] text-white">{p.caption}</p>
+                  <p className="line-clamp-2 text-xs font-semibold text-white">{p.caption}</p>
                 </div>
               )}
             </button>
@@ -134,7 +134,7 @@ export function GalleryDetailView() {
               className="max-h-[80vh] max-w-full rounded-lg object-contain"
             />
             {photos[lightboxIdx].caption && (
-              <figcaption className="mt-0.5 text-[0.8rem] leading-[1.525] text-white text-center">
+              <figcaption className="mt-1 text-sm font-semibold leading-[1.525] text-white text-center">
                 {photos[lightboxIdx].caption}
               </figcaption>
             )}

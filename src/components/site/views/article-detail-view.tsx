@@ -51,7 +51,7 @@ function ArticleHeroImage({
           <img src={url} alt={caption ?? ""} className="block h-full w-full object-cover" />
         </div>
         {hasCaption && (
-          <figcaption className="mt-0.5 text-[0.8rem] leading-[1.525] text-black">
+          <figcaption className="mt-1 text-sm font-semibold leading-[1.525] text-black">
             <span>{caption}</span>
           </figcaption>
         )}
@@ -165,7 +165,7 @@ function ArticleMarkdown({ content }: { content: string }) {
                   className="block w-full rounded-lg"
                 />
                 {caption ? (
-                  <figcaption className="mt-0.5 text-[0.8rem] leading-[1.525] text-black">
+                  <figcaption className="mt-1 text-sm font-semibold leading-[1.525] text-black">
                     <span>{caption}</span>
                   </figcaption>
                 ) : null}

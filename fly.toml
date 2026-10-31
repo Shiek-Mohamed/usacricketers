@@ -38,10 +38,10 @@ primary_region = "iad"  # US East (Washington D.C.) — closest to most US crick
     timeout = "5s"
     grace_period = "90s"
 
-# 1GB RAM — Next.js standalone (~200MB) + score-service (~100MB) + Caddy (~30MB) + Prisma (~50MB) + overhead
-# 512MB was too tight (machine crashed on startup). 1GB gives comfortable headroom.
+# 2GB RAM — Next.js standalone + score-service + Prisma + Caddy overhead.
+# 1GB was too tight (OOM kernel reboots every ~9 min). 2GB gives headroom.
 [[vm]]
-  memory = "1gb"
+  memory = "2gb"
   cpu_kind = "shared"
   cpus = 1
 

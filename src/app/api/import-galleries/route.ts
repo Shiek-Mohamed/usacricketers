@@ -64,7 +64,7 @@ async function downloadImage(url: string): Promise<string | null> {
     const name = randomName(ext)
     const buf = Buffer.from(await res.arrayBuffer())
     await writeFile(path.join(UPLOAD_DIR, name), buf)
-    return `/uploads/${name}`
+    return `/api/uploads/${name}`
   } catch {
     return null
   }

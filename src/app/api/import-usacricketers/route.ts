@@ -66,7 +66,9 @@ async function downloadImage(url: string): Promise<string | null> {
     const name = `${slugToId(url)}.${ext}`
     const buf = Buffer.from(await res.arrayBuffer())
     await writeFile(path.join(UPLOAD_DIR, name), buf)
-    return `/uploads/${name}`
+    // Serve via /api/uploads/[name] — Next.js standalone doesn't reliably
+    // serve runtime-added files from public/ (same fix as the banner upload).
+    return `/api/uploads/${name}`
   } catch {
     return null
   }

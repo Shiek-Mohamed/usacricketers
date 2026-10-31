@@ -90,7 +90,10 @@ export function AdminImportView() {
     try {
       const res = await fetch("/api/import-usacricketers", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": typeof document !== "undefined" ? document.cookie.match(/csrf-token=([^;]+)/)?.[1] || "" : "",
+        },
         body: JSON.stringify({ mode: "discover" }),
       })
       const data: ScanResult = await res.json()
@@ -160,7 +163,10 @@ export function AdminImportView() {
       try {
         const res = await fetch("/api/import-usacricketers", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": typeof document !== "undefined" ? document.cookie.match(/csrf-token=([^;]+)/)?.[1] || "" : "",
+          },
           body: JSON.stringify({
             mode: "import",
             pageStart: cs,
@@ -210,7 +216,10 @@ export function AdminImportView() {
     try {
       const res = await fetch("/api/import-galleries", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": typeof document !== "undefined" ? document.cookie.match(/csrf-token=([^;]+)/)?.[1] || "" : "",
+        },
         body: JSON.stringify({ pageStart: 1, pageEnd: galPageEnd, limit: 50 }),
       })
       const data = await res.json()

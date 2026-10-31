@@ -1,0 +1,50 @@
+# Fly.io config for usacricketers CMS
+# Deploy: flyctl deploy
+# App URL: https://usacricketers.fly.dev (or custom domain later)
+
+app = "usacricketers"
+primary_region = "iad"  # US East (Washington D.C.) — closest to most US cricket leagues
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "3000"
+  NODE_ENV = "production"
+  CADDY_PORT = "8080"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+# Caddy (port 8080) is the front-facing proxy.
+# Routes ?XTransformPort=3003 → score-service (socket.io for live scoring)
+# Routes everything else → Next.js (port 3000)
+[[services]]
+  internal_port = "8080"
+  protocol = "tcp"
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true  # auto-redirect HTTP → HTTPS
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "90s"
+
+# 1GB RAM — Next.js standalone (~200MB) + score-service (~100MB) + Caddy (~30MB) + Prisma (~50MB) + overhead
+# 512MB was too tight (machine crashed on startup). 1GB gives comfortable headroom.
+[[vm]]
+  memory = "1gb"
+  cpu_kind = "shared"
+  cpus = 1
+
+# Persistent volume for SQLite database
+# Survives restarts + deploys. Mounted at /app/db (where DATABASE_URL points).
+[[mounts]]
+  source = "usacricketers_data"
+  destination = "/app/db"
+  initial_size = "1gb"

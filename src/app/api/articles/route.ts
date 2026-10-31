@@ -57,7 +57,10 @@ export async function GET(req: NextRequest) {
     publishedAt: { lte: new Date() },
   }
   if (category) {
-    where.category = { contains: `"${category}"` }
+    // Match both storage formats: plain string ("interview" from seed) and
+    // JSON array ("[\"interview\"]" from the importer). A simple substring
+    // match on the category name covers both.
+    where.category = { contains: category }
   }
   if (featured) where.featured = true
   if (q) {

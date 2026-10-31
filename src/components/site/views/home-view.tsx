@@ -276,7 +276,7 @@ export function HomeView() {
   const { data: matchesData, loading: matchesLoading } = useMatches()
   const { data: featuredArticles, loading: articlesLoadingFeatured } =
     useArticles({ featured: true, pageSize: 12 })
-  const { data: allArticles, loading: articlesLoadingAll } = useArticles({ pageSize: 12 })
+  const { data: allArticles, loading: articlesLoadingAll } = useArticles({ pageSize: 16 })
   const { data: interviewData } = useArticles({ category: "interview", pageSize: 6 })
 
   const matches = matchesData ?? []
@@ -301,7 +301,22 @@ export function HomeView() {
   )
   const heroStory = withImages[0] ?? featuredItems[0] ?? latestItems[0] ?? null
   const secondaryStories = withImages.slice(1, 4)
-  const latestNews = latestItems.slice(0, 8)
+
+  // Exclude the hero + secondary stories from Latest News so they don't
+  // appear twice on the homepage.
+  const featuredIds = useMemo(
+    () =>
+      new Set(
+        [heroStory?.id, ...secondaryStories.map((a) => a.id)].filter(
+          Boolean,
+        ) as string[],
+      ),
+    [heroStory, secondaryStories],
+  )
+  const latestNews = useMemo(
+    () => latestItems.filter((a) => !featuredIds.has(a.id)).slice(0, 8),
+    [latestItems, featuredIds],
+  )
 
   const heroLoading = articlesLoadingFeatured && articlesLoadingAll
 

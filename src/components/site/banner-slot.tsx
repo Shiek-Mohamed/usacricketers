@@ -35,15 +35,7 @@ export function BannerSlot({
 }) {
   return (
     <BannerErrorBoundary placement={placement}>
-      <div
-        className={cn(
-          "mx-auto w-full max-w-[970px] min-h-[90px] overflow-hidden",
-          className
-        )}
-        data-banner-placement={placement}
-      >
-        <BannerSlotInner placement={placement} />
-      </div>
+      <BannerSlotInner placement={placement} className={className} />
     </BannerErrorBoundary>
   )
 }
@@ -71,7 +63,13 @@ class BannerErrorBoundary extends Component<
 
 /* ------------------------------- Inner slot ------------------------------ */
 
-function BannerSlotInner({ placement }: { placement: string }) {
+function BannerSlotInner({
+  placement,
+  className,
+}: {
+  placement: string
+  className?: string
+}) {
   const [banners, setBanners] = useState<Banner[] | null>(null)
 
   // Fetch the (CDN-cached) active banners for this placement.
@@ -91,19 +89,25 @@ function BannerSlotInner({ placement }: { placement: string }) {
     }
   }, [placement])
 
-  // Loading state (SSR + before fetch resolves) — render nothing so the
-  // hydration markup matches the post-mount markup. The outer container's
-  // min-h-[90px] keeps a placeholder so the layout doesn't jump.
+  // Loading state (SSR + before fetch resolves) or no banners configured —
+  // render NOTHING (not even an empty placeholder div). This prevents the
+  // min-h-[90px] empty box that created a large gap between sections when
+  // no banner was configured for the placement.
   if (!banners) return null
   if (banners.length === 0) return null
 
   const isAdSenseSlot = placement === ADSENSE_SLOT_PLACEMENT
 
   return (
-    <BannerRotator
-      banners={banners}
-      rotate={isAdSenseSlot ? false : true}
-    />
+    <div
+      className={cn("mx-auto w-full max-w-[970px] overflow-hidden", className)}
+      data-banner-placement={placement}
+    >
+      <BannerRotator
+        banners={banners}
+        rotate={isAdSenseSlot ? false : true}
+      />
+    </div>
   )
 }
 

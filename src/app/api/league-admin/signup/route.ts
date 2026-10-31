@@ -216,7 +216,7 @@ export async function POST(req: NextRequest) {
       )
     }
     return NextResponse.json(
-      { error: String(e).slice(0, 200) },
+      { error: String(e).slice(0, 1000) },
       { status: 500 }
     )
   }

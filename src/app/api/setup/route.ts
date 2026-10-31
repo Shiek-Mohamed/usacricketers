@@ -39,32 +39,6 @@ export async function GET(req: NextRequest) {
     // Step 1b: Create admin account if it doesn't exist (always runs)
     const adminExists = await db.siteAdmin.count()
 
-    // DIAGNOSTIC: show what the APP's Prisma client sees for Series + the
-    // DATABASE_URL it's using. Also try a raw INSERT to surface the exact
-    // DB rejection (avoids BigInt serialization by selecting only text cols).
-    try {
-      const cols = await db.$queryRawUnsafe(
-        `SELECT name, type FROM pragma_table_info('Series')`
-      )
-      steps.push(
-        "DIAG: DATABASE_URL=" +
-          String(process.env.DATABASE_URL || "(unset)").slice(0, 80)
-      )
-      steps.push(
-        "DIAG: Series columns=" +
-          cols.map((c: { name: string; type: string }) => c.name).join(", ")
-      )
-      // Try a raw INSERT with exactly the fields the signup sends
-      const now = new Date().toISOString()
-      await db.$executeRawUnsafe(
-        `INSERT INTO "Series" (id, name, shortName, format, season, startDate, endDate, status, description, createdAt, updatedAt) VALUES ('diag-test','Diag','DIAG','T20','2026','${now}','${now}','upcoming','','${now}','${now}')`
-      )
-      steps.push("DIAG: raw INSERT succeeded — cleaning up")
-      await db.$executeRawUnsafe(`DELETE FROM "Series" WHERE id='diag-test'`)
-    } catch (e) {
-      steps.push("DIAG err: " + String(e).slice(0, 400))
-    }
-
     if (adminExists === 0 || force) {
       if (adminExists > 0) {
         await db.siteAdmin.deleteMany({})

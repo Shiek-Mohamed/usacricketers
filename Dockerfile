@@ -26,7 +26,10 @@ FROM node:22-slim AS runner
 
 WORKDIR /app
 
-# Install bun for the score-service mini-service
+# Install bun for the score-service mini-service + OpenSSL for Prisma.
+# Without OpenSSL, Prisma falls back to a wrong query-engine binary and
+# mishandles DateTime serialization (Inconsistent column data errors).
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN npm install -g bun
 
 # Copy standalone Next.js build + static assets + public

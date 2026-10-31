@@ -53,12 +53,41 @@ import { LeagueAdminSeriesEditView } from "@/components/site/views/league-admin-
 import { LeagueAdminMatchesView } from "@/components/site/views/league-admin-matches-view"
 import { LeagueAdminScorersView } from "@/components/site/views/league-admin-scorers-view"
 import { useLeagueAdminSession } from "@/lib/league-admin-session"
+import { useEffect } from "react"
 
 export default function Home() {
   const view = useAppStore((s) => s.view)
+  const id = useAppStore((s) => s.id)
   const mode = useAppStore((s) => s.mode)
   const session = useScorerSession((s) => s.session)
   const leagueAdminSession = useLeagueAdminSession((s) => s.session)
+
+  // On mount: sync the store with the URL (deep links / refreshes) and
+  // seed the browser history so the back button works from the first
+  // navigation. Runs once after hydration to avoid SSR mismatch.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const urlView = params.get("view")
+    const urlId = params.get("id")
+    if (urlView) {
+      // Deep link — set the view without pushing a new history entry.
+      useAppStore.getState().setView(urlView as typeof view, urlId)
+      window.history.replaceState(
+        { view: urlView, id: urlId },
+        "",
+        window.location.href,
+      )
+    } else {
+      // No view in URL — seed the history state with the current view so
+      // popstate has something to restore when the user presses back.
+      window.history.replaceState(
+        { view, id },
+        "",
+        window.location.href,
+      )
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const renderView = () => {
     switch (view) {

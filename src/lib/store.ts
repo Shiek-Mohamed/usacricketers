@@ -30,6 +30,19 @@ export const useAppStore = create<AppState>((set) => ({
     set({ view, id })
     if (typeof window !== "undefined") {
       window.scrollTo({ top: 0, behavior: "smooth" })
+      // Push the view to the browser URL + history so the back/forward
+      // buttons work. Uses ?view=X&id=Y query params (the app already
+      // supports this format for deep links like reset-password).
+      const url = new URL(window.location.href)
+      if (view === "home" && !id) {
+        url.searchParams.delete("view")
+        url.searchParams.delete("id")
+      } else {
+        url.searchParams.set("view", view)
+        if (id) url.searchParams.set("id", id)
+        else url.searchParams.delete("id")
+      }
+      window.history.pushState({ view, id }, "", url)
     }
   },
   toggleMode: () =>
@@ -48,3 +61,23 @@ export const useAppStore = create<AppState>((set) => ({
   enterLeagueAdminMode: () => set({ mode: "leagueAdmin", view: "league-admin-home", id: null }),
   exitLeagueAdminMode: () => set({ mode: "public", view: "home", id: null }),
 }))
+
+/* ----------------------- Browser history sync ----------------------- *
+ * navigate() pushes a history entry with the view+id. When the user
+ * presses back/forward, popstate fires and we restore the view from the
+ * history state (falling back to the URL query params). Uses setState
+ * directly (not navigate) so we don't push a new entry on every back press.
+ * --------------------------------------------------------------------- */
+if (typeof window !== "undefined") {
+  window.addEventListener("popstate", (e) => {
+    const state = e.state as { view?: ViewKey; id?: string | null } | null
+    if (state?.view) {
+      useAppStore.setState({ view: state.view, id: state.id ?? null })
+    } else {
+      const p = new URLSearchParams(window.location.search)
+      const v = (p.get("view") || "home") as ViewKey
+      const i = p.get("id")
+      useAppStore.setState({ view: v, id: i })
+    }
+  })
+}

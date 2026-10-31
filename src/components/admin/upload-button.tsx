@@ -33,7 +33,18 @@ export function UploadButton({
       const fd = new FormData()
       fd.append("file", file)
       const endpoint = resize ? `/api/upload?resize=${resize}` : "/api/upload"
-      const res = await fetch(endpoint, { method: "POST", body: fd })
+      // CSRF double-submit: read the non-httpOnly csrf-token cookie and
+      // send it as the X-CSRF-Token header (required by requireSiteAdmin
+      // for POST requests).
+      const csrfToken =
+        typeof document !== "undefined"
+          ? document.cookie.match(/csrf-token=([^;]+)/)?.[1] || ""
+          : ""
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "X-CSRF-Token": csrfToken },
+        body: fd,
+      })
       const data = await res.json()
       if (!res.ok || !data.url) {
         toast.error(data.error || "Upload failed")

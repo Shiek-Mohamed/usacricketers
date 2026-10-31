@@ -5,10 +5,14 @@
 
 set -e
 
-# Push the Prisma schema to the DB on every container start (idempotent —
-# only applies changes, doesn't drop data).
-echo "📦 Pushing Prisma schema to DB..."
-bunx prisma db push --skip-generate || true
+# Sync the DB schema on every container start — drops legacy columns that
+# exist in old DB snapshots but not the current Prisma schema (e.g. the
+# old Series.slug column). Uses the Prisma client directly (sync-db.js),
+# not the prisma CLI (which has missing transitive deps in the runtime
+# image). Idempotent + non-fatal.
+echo "📦 Syncing DB schema..."
+cd /app
+node sync-db.js || true
 
 # Start the score-service in the background (port 3003)
 echo "🏏 Starting score-service on port 3003..."

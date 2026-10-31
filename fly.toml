@@ -14,11 +14,14 @@ primary_region = "iad"  # US East (Washington D.C.) — closest to most US crick
   CADDY_PORT = "8080"
   NEXT_TELEMETRY_DISABLED = "1"
 
-# Caddy (port 8080) is the front-facing proxy.
-# Routes ?XTransformPort=3003 → score-service (socket.io for live scoring)
-# Routes everything else → Next.js (port 3000)
+# Next.js (port 3000) is the front-facing server. The Dockerfile's
+# start-all.sh starts Next.js on 3000 + score-service on 3003.
+# NOTE: score-service (socket.io, port 3003) is reachable inside the
+# container but not via the public URL without a Caddy gateway. If live
+# scoring via the public URL is needed later, add Caddy on 8080 that
+# routes ?XTransformPort=3003 → localhost:3003 and everything else → 3000.
 [[services]]
-  internal_port = "8080"
+  internal_port = "3000"
   protocol = "tcp"
 
   [[services.ports]]

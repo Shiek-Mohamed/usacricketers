@@ -37,10 +37,15 @@ COPY --from=builder /app/public ./public
 # Copy the DB file (if it exists; the volume mount will override this)
 COPY --from=builder /app/db ./db
 
-# Copy prisma for migrations
+# Copy prisma schema + generated client (the runtime Prisma CLIENT — used by
+# the app's queries and by sync-db.js). The prisma CLI is NOT needed at
+# runtime; sync-db.js uses the client's $executeRawUnsafe for schema fixups.
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+
+# DB schema fixup script — drops legacy columns on boot (idempotent).
+COPY --from=builder /app/sync-db.js ./sync-db.js
 
 # Copy the score-service mini-service
 COPY --from=builder /app/mini-services ./mini-services

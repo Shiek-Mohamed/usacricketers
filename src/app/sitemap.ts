@@ -35,68 +35,75 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/?view=stats`, lastModified: now, changeFrequency: "weekly", priority: 0.5 },
   ]
 
-  // Articles
-  const articles = await db.article.findMany({
-    where: { published: true },
-    select: { id: true, updatedAt: true },
-    orderBy: { publishedAt: "desc" },
-    take: 500,
-  })
-  const articlePages: MetadataRoute.Sitemap = articles.map((a) => ({
-    url: `${baseUrl}/?view=article-detail&id=${a.id}`,
-    lastModified: a.updatedAt,
-    changeFrequency: "monthly",
-    priority: 0.8,
-  }))
-
-  // Matches
-  const matches = await db.match.findMany({
-    select: { id: true, updatedAt: true },
-    orderBy: { startDate: "desc" },
-    take: 200,
-  })
-  const matchPages: MetadataRoute.Sitemap = matches.map((m) => ({
-    url: `${baseUrl}/?view=match-detail&id=${m.id}`,
-    lastModified: m.updatedAt,
-    changeFrequency: "daily",
-    priority: 0.9,
-  }))
-
-  // Players
-  const players = await db.player.findMany({
-    select: { id: true, updatedAt: true },
-    take: 500,
-  })
-  const playerPages: MetadataRoute.Sitemap = players.map((p) => ({
-    url: `${baseUrl}/?view=player-detail&id=${p.id}`,
-    lastModified: p.updatedAt,
-    changeFrequency: "monthly",
-    priority: 0.6,
-  }))
-
-  // Teams
-  const teams = await db.team.findMany({
-    select: { id: true, updatedAt: true },
-    take: 100,
-  })
-  const teamPages: MetadataRoute.Sitemap = teams.map((t) => ({
-    url: `${baseUrl}/?view=team-detail&id=${t.id}`,
-    lastModified: t.updatedAt,
-    changeFrequency: "weekly",
-    priority: 0.7,
-  }))
-
-  // Series
-  const series = await db.series.findMany({
-    select: { id: true, updatedAt: true },
-    take: 100,
-  })
-  const seriesPages: MetadataRoute.Sitemap = series.map((s) => ({
-    url: `${baseUrl}/?view=series-detail&id=${s.id}`,
-    lastModified: s.updatedAt,
-    changeFrequency: "weekly",
-    priority: 0.7,
-  }))
+  // Dynamic pages from the DB. Wrapped in try/catch because the sitemap is
+  // evaluated at BUILD time (ISR initial generation) where the database may
+  // not be reachable (e.g. the Docker build container has no SQLite file at
+  // the configured path). At runtime the queries succeed and the sitemap is
+  // revalidated hourly.
+  let articlePages: MetadataRoute.Sitemap = []
+  let matchPages: MetadataRoute.Sitemap = []
+  let playerPages: MetadataRoute.Sitemap = []
+  let teamPages: MetadataRoute.Sitemap = []
+  let seriesPages: MetadataRoute.Sitemap = []
+  try {
+    const [articles, matches, players, teams, series] = await Promise.all([
+      db.article.findMany({
+        where: { published: true },
+        select: { id: true, updatedAt: true },
+        orderBy: { publishedAt: "desc" },
+        take: 500,
+      }),
+      db.match.findMany({
+        select: { id: true, updatedAt: true },
+        orderBy: { startDate: "desc" },
+        take: 200,
+      }),
+      db.player.findMany({
+        select: { id: true, updatedAt: true },
+        take: 500,
+      }),
+      db.team.findMany({
+        select: { id: true, updatedAt: true },
+        take: 100,
+      }),
+      db.series.findMany({
+        select: { id: true, updatedAt: true },
+        take: 100,
+      }),
+    ])
+    articlePages = articles.map((a) => ({
+      url: `${baseUrl}/?view=article-detail&id=${a.id}`,
+      lastModified: a.updatedAt,
+      changeFrequency: "monthly",
+      priority: 0.8,
+    }))
+    matchPages = matches.map((m) => ({
+      url: `${baseUrl}/?view=match-detail&id=${m.id}`,
+      lastModified: m.updatedAt,
+      changeFrequency: "daily",
+      priority: 0.9,
+    }))
+    playerPages = players.map((p) => ({
+      url: `${baseUrl}/?view=player-detail&id=${p.id}`,
+      lastModified: p.updatedAt,
+      changeFrequency: "monthly",
+      priority: 0.6,
+    }))
+    teamPages = teams.map((t) => ({
+      url: `${baseUrl}/?view=team-detail&id=${t.id}`,
+      lastModified: t.updatedAt,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    }))
+    seriesPages = series.map((s) => ({
+      url: `${baseUrl}/?view=series-detail&id=${s.id}`,
+      lastModified: s.updatedAt,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    }))
+  } catch {
+    // DB unavailable (build-time / no volume) — return static pages only.
+  }
 
   return [
     ...staticPages,

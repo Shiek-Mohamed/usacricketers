@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
           .jpeg({ quality: 85 })
           .toFile(outPath)
         return NextResponse.json({
-          url: `/uploads/${outName}`,
+          url: `/api/uploads/${outName}`,
           size: file.size,
           resized: `${resizeN}x${resizeN}`,
         })
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
     await writeFile(outPath, buf)
 
     return NextResponse.json({
-      url: `/uploads/${outName}`,
+      url: `/api/uploads/${outName}`,
       size: file.size,
       contentType: ct,
     })

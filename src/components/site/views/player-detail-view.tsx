@@ -134,6 +134,7 @@ export function PlayerDetailView() {
               <PlayerAvatar
                 name={player.name}
                 team={player.team}
+                imageUrl={player.imageUrl}
                 size="xl"
               />
               <div className="min-w-0 flex-1 space-y-1.5">

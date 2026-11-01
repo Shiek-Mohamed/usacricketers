@@ -61,11 +61,13 @@ export function TeamBadgeByName({
 export function PlayerAvatar({
   name,
   team,
+  imageUrl,
   size = "md",
   className,
 }: {
   name: string
   team?: Pick<Team, "shortName" | "primaryColor" | "accentColor">
+  imageUrl?: string | null
   size?: "sm" | "md" | "lg" | "xl"
   className?: string
 }) {
@@ -84,7 +86,7 @@ export function PlayerAvatar({
   return (
     <span
       className={cn(
-        "inline-flex items-center justify-center rounded-full font-bold text-white shrink-0",
+        "inline-flex items-center justify-center rounded-full font-bold text-white shrink-0 overflow-hidden",
         sizes[size],
         className
       )}
@@ -94,7 +96,16 @@ export function PlayerAvatar({
           : "linear-gradient(135deg, #475569, #94a3b8)",
       }}
     >
-      {initials}
+      {imageUrl ? (
+        <img
+          src={imageUrl}
+          alt={name}
+          className="h-full w-full object-cover"
+          loading="lazy"
+        />
+      ) : (
+        initials
+      )}
     </span>
   )
 }

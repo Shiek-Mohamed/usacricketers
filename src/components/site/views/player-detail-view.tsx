@@ -163,22 +163,52 @@ export function PlayerDetailView() {
                   </p>
                 )}
               </div>
+              {/* Player Info grid — right side, fills the white space */}
+              <div className="w-full shrink-0 sm:w-64">
+                <div className="overflow-hidden rounded-lg border border-border">
+                  <div className="bg-gradient-to-r from-[#1e2a5e] to-[#2d3b7a] px-3 py-1.5">
+                    <h3 className="flex items-center gap-1.5 text-xs font-bold text-white">
+                      <Activity className="size-3.5 text-amber-400" />
+                      Player Info
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-2 gap-px bg-border">
+                    <div className="flex items-center gap-1.5 bg-card px-3 py-2">
+                      <Target className="size-3.5 shrink-0 text-emerald-600" />
+                      <div className="min-w-0">
+                        <div className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Batting</div>
+                        <div className="truncate text-xs font-bold text-foreground">{player.battingStyle}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-card px-3 py-2">
+                      <Disc className="size-3.5 shrink-0 text-amber-600" />
+                      <div className="min-w-0">
+                        <div className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Bowling</div>
+                        <div className="truncate text-xs font-bold text-foreground">{player.bowlingStyle || "—"}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-card px-3 py-2">
+                      <Trophy className="size-3.5 shrink-0 text-purple-600" />
+                      <div className="min-w-0">
+                        <div className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Role</div>
+                        <div className="truncate text-xs font-bold text-foreground">{player.role}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-card px-3 py-2">
+                      <Users className="size-3.5 shrink-0 text-blue-600" />
+                      <div className="min-w-0">
+                        <div className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Team</div>
+                        <div className="truncate text-xs font-bold text-foreground">
+                          {player.team ? player.team.name : "—"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
-          {/* Style chips */}
-          <div className="flex flex-wrap gap-2 text-xs">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 font-medium">
-              <Target className="size-3.5 text-emerald-600" />
-              {player.battingStyle}
-            </span>
-            {player.bowlingStyle && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 font-medium">
-                <Disc className="size-3.5 text-amber-600" />
-                {player.bowlingStyle}
-              </span>
-            )}
-          </div>
         </>
       }
       sidebar={
@@ -191,50 +221,6 @@ export function PlayerDetailView() {
       }
     >
       <div className="space-y-5">
-        {/* Player Info — prominent, constrained width */}
-        <div className="mx-auto max-w-md">
-          <div className="overflow-hidden rounded-xl border border-border shadow-sm">
-            <div className="bg-gradient-to-r from-[#1e2a5e] to-[#2d3b7a] px-4 py-2.5">
-              <h3 className="flex items-center gap-2 text-sm font-bold text-white">
-                <Activity className="size-4 text-amber-400" />
-                Player Info
-              </h3>
-            </div>
-            <div className="grid grid-cols-2 gap-px bg-border">
-              <div className="flex items-center gap-2 bg-card px-4 py-2.5">
-                <Target className="size-4 shrink-0 text-emerald-600" />
-                <div className="min-w-0">
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Batting</div>
-                  <div className="truncate text-sm font-bold text-foreground">{player.battingStyle}</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 bg-card px-4 py-2.5">
-                <Disc className="size-4 shrink-0 text-amber-600" />
-                <div className="min-w-0">
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Bowling</div>
-                  <div className="truncate text-sm font-bold text-foreground">{player.bowlingStyle || "—"}</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 bg-card px-4 py-2.5">
-                <Trophy className="size-4 shrink-0 text-purple-600" />
-                <div className="min-w-0">
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Role</div>
-                  <div className="truncate text-sm font-bold text-foreground">{player.role}</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 bg-card px-4 py-2.5">
-                <Users className="size-4 shrink-0 text-blue-600" />
-                <div className="min-w-0">
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Team</div>
-                  <div className="truncate text-sm font-bold text-foreground">
-                    {player.team ? player.team.name : "—"}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Batting Statistics */}
         <Card className="gap-0 py-0">
           <CardHeader className="border-b px-5 sm:px-6">

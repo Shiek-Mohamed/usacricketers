@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Search, Users } from "lucide-react"
+import { Search, Trophy, Users } from "lucide-react"
 import { useMatches, useTeams } from "@/lib/use-data"
 import { useAppStore } from "@/lib/store"
 import { TeamBadge } from "@/components/cricket/ui"
@@ -74,11 +74,17 @@ export function TeamsView() {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center text-sm text-muted-foreground">
-              No teams match “{query}”.
-            </CardContent>
-          </Card>
+          <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+            <Trophy className="h-12 w-12 text-muted-foreground/40" />
+            <p className="text-sm font-medium text-muted-foreground">
+              {query ? `No teams match “${query}”.` : "No teams found."}
+            </p>
+            <p className="text-xs text-muted-foreground/70">
+              {query
+                ? "Try a different name, short name or country."
+                : "Check back soon for international cricket teams."}
+            </p>
+          </div>
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {filtered.map((t) => (

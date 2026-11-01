@@ -103,11 +103,11 @@ export function SeriesView() {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center text-sm text-muted-foreground">
-              No series found for this filter.
-            </CardContent>
-          </Card>
+          <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+            <Trophy className="h-12 w-12 text-muted-foreground/40" />
+            <p className="text-sm font-medium text-muted-foreground">No series found for this filter.</p>
+            <p className="text-xs text-muted-foreground/70">Try another filter or check back soon.</p>
+          </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((s) => (

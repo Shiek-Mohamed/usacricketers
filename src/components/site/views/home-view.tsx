@@ -673,10 +673,10 @@ function GalleryCard({
       </div>
       {/* Text content (transparent body, sits on white) */}
       <div className="mt-3">
-        <span className="text-[11px] font-extrabold uppercase tracking-wide text-black">
+        <span className="text-[11px] font-extrabold uppercase tracking-wide text-foreground">
           {photoCount > 0 ? `Photos · ${photoCount}` : "Photos"}
         </span>
-        <h3 className="mt-1 line-clamp-2 text-base font-bold leading-snug text-black transition-colors group-hover:text-red-600">
+        <h3 className="mt-1 line-clamp-2 text-base font-bold leading-snug text-foreground transition-colors group-hover:text-red-600">
           {gallery.title}
         </h3>
         <time className="mt-1.5 block text-[13px] font-normal text-gray-500">

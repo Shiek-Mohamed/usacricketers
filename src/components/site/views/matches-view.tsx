@@ -5,9 +5,8 @@ import { useMatches } from "@/lib/use-data"
 import type { Match } from "@/lib/types"
 import { MiniScorecard } from "@/components/cricket/mini-scorecard"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Card } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { CalendarClock, Trophy, Radio } from "lucide-react"
+import { CalendarDays, CalendarClock, Trophy, Radio } from "lucide-react"
 import { InnerPageLayout } from "@/components/site/inner-layout"
 import { CustomSidebarBlocks } from "@/components/site/custom-sidebar-blocks"
 import { RecentResultsWidget } from "@/components/site/sidebar-widgets"
@@ -17,12 +16,11 @@ type TabKey = "live" | "upcoming" | "recent"
 function MatchGrid({ matches }: { matches: Match[] }) {
   if (matches.length === 0) {
     return (
-      <Card className="grid min-h-[200px] place-items-center p-6">
-        <div className="text-center">
-          <div className="mb-2 text-3xl">🏏</div>
-          <p className="text-sm text-muted-foreground">No matches in this category.</p>
-        </div>
-      </Card>
+      <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+        <CalendarDays className="h-12 w-12 text-muted-foreground/40" />
+        <p className="text-sm font-medium text-muted-foreground">No matches in this category.</p>
+        <p className="text-xs text-muted-foreground/70">Check back soon for upcoming fixtures and live scores.</p>
+      </div>
     )
   }
   return (

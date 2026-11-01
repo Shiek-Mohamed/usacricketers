@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import { useArticles, useMatches } from "@/lib/use-data"
 import { ArticleCard } from "@/components/cricket/article-card"
-import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -165,13 +164,19 @@ export function NewsView() {
         {loading ? (
           <NewsSkeleton />
         ) : articles.length === 0 ? (
-          <Card className="grid min-h-[200px] place-items-center p-6">
-            <p className="text-sm text-muted-foreground">
+          <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+            <Newspaper className="h-12 w-12 text-muted-foreground/40" />
+            <p className="text-sm font-medium text-muted-foreground">
               {debouncedQ
                 ? `No articles matching “${debouncedQ}”.`
                 : "No articles in this category yet."}
             </p>
-          </Card>
+            <p className="text-xs text-muted-foreground/70">
+              {debouncedQ
+                ? "Try a different search term or browse another category."
+                : "Check back soon for the latest cricket stories."}
+            </p>
+          </div>
         ) : (
           <>
             {/* Article list — main column. Uses the rich default ArticleCard

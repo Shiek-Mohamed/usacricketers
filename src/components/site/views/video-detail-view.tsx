@@ -178,7 +178,7 @@ function VideoMarkdown({ content }: { content: string }) {
                   className="block w-full rounded-lg"
                 />
                 {caption ? (
-                  <figcaption className="mt-0.5 text-[0.8rem] leading-[1.525] text-black">
+                  <figcaption className="mt-0.5 text-[0.8rem] leading-[1.525] text-foreground">
                     <span>{caption}</span>
                   </figcaption>
                 ) : null}

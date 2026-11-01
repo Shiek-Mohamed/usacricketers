@@ -153,7 +153,13 @@ export function MarkdownEditor({
     try {
       const fd = new FormData()
       fd.append("file", file)
-      const res = await fetch("/api/upload", { method: "POST", body: fd })
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: fd,
+        headers: {
+          "X-CSRF-Token": typeof document !== "undefined" ? document.cookie.match(/csrf-token=([^;]+)/)?.[1] || "" : ""
+        }
+      })
       const data = await res.json()
       if (!res.ok || !data.url) {
         toast.error(data.error || "Upload failed")

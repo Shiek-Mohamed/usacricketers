@@ -164,7 +164,13 @@ function GalleryEditor({ gallery, onSave, onCancel }: { gallery: Gallery | null;
     for (const f of Array.from(files)) {
       try {
         const fd = new FormData(); fd.append("file", f)
-        const res = await fetch("/api/upload", { method: "POST", body: fd })
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: fd,
+          headers: {
+            "X-CSRF-Token": typeof document !== "undefined" ? document.cookie.match(/csrf-token=([^;]+)/)?.[1] || "" : ""
+          }
+        })
         const data = await res.json()
         if (data.url) newPhotos.push({ src: data.url, caption: "" })
       } catch { /* skip failed */ }

@@ -72,7 +72,10 @@ async function createScorer(payload: {
   return jsonOrThrow<Scorer>(
     await fetch("/api/scorers", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": typeof document !== "undefined" ? document.cookie.match(/csrf-token=([^;]+)/)?.[1] || "" : ""
+      },
       body: JSON.stringify(payload),
     })
   )
@@ -91,14 +94,22 @@ async function updateScorer(
   return jsonOrThrow<Scorer>(
     await fetch(`/api/scorers/${id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": typeof document !== "undefined" ? document.cookie.match(/csrf-token=([^;]+)/)?.[1] || "" : ""
+      },
       body: JSON.stringify(payload),
     })
   )
 }
 
 async function deleteScorer(id: string): Promise<void> {
-  await jsonOrThrow(await fetch(`/api/scorers/${id}`, { method: "DELETE" }))
+  await jsonOrThrow(await fetch(`/api/scorers/${id}`, {
+    method: "DELETE",
+    headers: {
+      "X-CSRF-Token": typeof document !== "undefined" ? document.cookie.match(/csrf-token=([^;]+)/)?.[1] || "" : ""
+    }
+  }))
 }
 
 /* ------------------------------- view ------------------------------- */

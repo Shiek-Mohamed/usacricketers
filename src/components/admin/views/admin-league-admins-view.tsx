@@ -72,7 +72,10 @@ async function createAdmin(payload: {
   return jsonOrThrow<LeagueAdmin>(
     await fetch("/api/league-admins", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": typeof document !== "undefined" ? document.cookie.match(/csrf-token=([^;]+)/)?.[1] || "" : ""
+      },
       body: JSON.stringify(payload),
     })
   )
@@ -91,14 +94,22 @@ async function updateAdmin(
   return jsonOrThrow<LeagueAdmin>(
     await fetch(`/api/league-admins/${id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": typeof document !== "undefined" ? document.cookie.match(/csrf-token=([^;]+)/)?.[1] || "" : ""
+      },
       body: JSON.stringify(payload),
     })
   )
 }
 
 async function deleteAdmin(id: string): Promise<void> {
-  await jsonOrThrow(await fetch(`/api/league-admins/${id}`, { method: "DELETE" }))
+  await jsonOrThrow(await fetch(`/api/league-admins/${id}`, {
+    method: "DELETE",
+    headers: {
+      "X-CSRF-Token": typeof document !== "undefined" ? document.cookie.match(/csrf-token=([^;]+)/)?.[1] || "" : ""
+    }
+  }))
 }
 
 /* ------------------------------- view ------------------------------- */

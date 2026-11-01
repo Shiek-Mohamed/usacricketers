@@ -85,7 +85,13 @@ export function LiveScorerView() {
     if (mode !== "admin") return
     if (scorerToken) return // already have a real scorer session — prefer it
     let cancelled = false
-    fetch("/api/admin/scorer-token", { method: "POST", credentials: "include" })
+    fetch("/api/admin/scorer-token", {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "X-CSRF-Token": typeof document !== "undefined" ? document.cookie.match(/csrf-token=([^;]+)/)?.[1] || "" : ""
+      }
+    })
       .then((r) => (r.ok ? r.json() : null))
       .then((body) => {
         if (cancelled) return

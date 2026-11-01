@@ -31,8 +31,8 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "USACricketers" }],
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
-    apple: "/logo.svg",
+    icon: "/icon.svg",
+    apple: "/apple-touch-icon.png",
   },
   manifest: "/manifest.json",
   openGraph: {

@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic"
 export const maxDuration = 300
 
 const SITE = "https://usacricketers.com"
-const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads")
+const UPLOAD_DIR = path.join(process.cwd(), "db", "uploads")
 const UA =
   "Mozilla/5.0 (compatible; USACricketers-GalleryImporter/1.0; +https://usacricketers.local)"
 

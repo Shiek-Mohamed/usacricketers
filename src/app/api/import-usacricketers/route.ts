@@ -10,7 +10,7 @@ import { requireSiteAdmin } from "@/lib/scorer-auth"
 export const maxDuration = 300 // one chunk must finish in 5 min
 
 const SITE = "https://usacricketers.com"
-const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads")
+const UPLOAD_DIR = path.join(process.cwd(), "db", "uploads")
 const UA =
   "Mozilla/5.0 (compatible; USACricketers-Importer/1.0; +https://usacricketers.local)"
 

@@ -84,13 +84,13 @@ export function SidebarWidget({
   return (
     <section
       className={cn(
-        "overflow-hidden rounded-lg border bg-card shadow-sm",
+        "overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm transition-shadow duration-200 hover:shadow-md",
         className
       )}
     >
-      <header className="flex items-center justify-between border-b bg-muted/50 px-3 py-2">
+      <header className="flex items-center justify-between border-b border-border/60 bg-muted/40 px-3 py-2.5">
         <div className="flex items-center gap-2">
-          <span className="h-4 w-1 rounded-full bg-red-600" />
+          <span className="h-4 w-1 rounded-full bg-gradient-to-b from-amber-400 to-amber-600" />
           <h3 className="text-[11px] font-extrabold uppercase tracking-wide">
             {title}
           </h3>

@@ -93,6 +93,14 @@ export function Header() {
   const [mounted, setMounted] = useState(false)
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), [])
+  // Subtle shadow elevation once the page is scrolled past the top
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8)
+    onScroll()
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => window.removeEventListener("scroll", onScroll)
+  }, [])
 
   // "Live Scoring" button → goes to the scoring landing page (which handles
   // both scorer + league-admin sign-in).
@@ -112,7 +120,12 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#1e2a5e] text-white shadow-md">
+    <header
+      className={cn(
+        "sticky top-0 z-50 w-full border-b border-white/10 bg-[#1e2a5e] text-white transition-shadow duration-300",
+        scrolled ? "shadow-lg shadow-black/25" : "shadow-md"
+      )}
+    >
       <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-3 sm:px-4">
         {/* Mobile menu */}
         <Sheet open={open} onOpenChange={setOpen}>
@@ -158,7 +171,7 @@ export function Header() {
                   onScore()
                   setOpen(false)
                 }}
-                className="flex items-center gap-2 px-3 py-2 text-left text-sm rounded-md hover:bg-muted text-red-600 font-semibold"
+                className="flex items-center gap-2 px-3 py-2 text-left text-sm rounded-md transition-colors hover:bg-muted text-emerald-600 dark:text-emerald-400 font-semibold"
               >
                 <Radio className="h-4 w-4" />
                 Live Scoring
@@ -180,10 +193,10 @@ export function Header() {
         {/* Logo */}
         <button
           onClick={() => navigate(mode === "public" ? "home" : "admin-dashboard")}
-          className="flex items-center shrink-0"
+          className="flex items-center shrink-0 rounded-md transition-opacity hover:opacity-90"
         >
-          <span className="font-extrabold text-lg tracking-tight">
-            usacricketers
+          <span className="font-extrabold text-xl tracking-tight">
+            usacricketers<span className="text-amber-400">.</span>
           </span>
         </button>
 
@@ -197,7 +210,7 @@ export function Header() {
                   key={group.label}
                   onClick={() => group.view && navigate(group.view)}
                   className={cn(
-                    "px-3 py-1.5 text-sm font-medium rounded-md transition-colors hover:bg-white/10",
+                    "px-3 py-1.5 text-sm font-medium rounded-md transition-colors duration-150 hover:bg-white/10",
                     group.view === view && "bg-white/15 font-semibold"
                   )}
                 >
@@ -211,7 +224,7 @@ export function Header() {
               <div key={group.label} className="group relative">
                 <button
                   className={cn(
-                    "flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md transition-colors hover:bg-white/10",
+                    "flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md transition-colors duration-150 hover:bg-white/10",
                     isActive && "bg-white/15 font-semibold"
                   )}
                 >
@@ -220,7 +233,7 @@ export function Header() {
                 </button>
                 {/* Dropdown panel — visible on hover */}
                 <div className="invisible absolute left-0 top-full z-50 pt-1 opacity-0 transition-all duration-150 group-hover:visible group-hover:opacity-100">
-                  <div className="w-48 rounded-lg border border-white/10 bg-[#1e2a5e] py-1 shadow-xl">
+                  <div className="w-48 rounded-lg border border-white/10 bg-[#1e2a5e] py-1 shadow-xl shadow-black/30">
                     {group.children.map((child) => {
                       const Icon = child.icon
                       return (
@@ -275,10 +288,10 @@ export function Header() {
             )}
           </Button>
           <Button
-            variant="secondary"
+            variant="ghost"
             size="sm"
             onClick={onAdmin}
-            className="gap-1.5 text-xs font-semibold"
+            className="gap-1.5 border border-white/15 bg-white/5 text-xs font-semibold text-white/90 transition-colors hover:bg-white/15 hover:text-white"
           >
             <Shield className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">
@@ -289,7 +302,7 @@ export function Header() {
             <Button
               size="sm"
               onClick={onScore}
-              className="gap-1.5 text-xs font-bold bg-gradient-to-r from-red-600 to-red-500 text-white hover:from-red-700 hover:to-red-600 shadow-md"
+              className="gap-1.5 text-xs font-bold bg-gradient-to-r from-emerald-600 to-emerald-500 text-white hover:from-emerald-700 hover:to-emerald-600 shadow-md shadow-emerald-900/20"
             >
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />

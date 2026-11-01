@@ -45,6 +45,13 @@
 
 :root {
   --radius: 0.625rem;
+  /* Brand palette — consistent across themes */
+  --brand-navy: #1e2a5e;
+  --brand-navy-light: #2a3870;
+  --brand-navy-deep: #171f48;
+  --brand-amber: #f59e0b;
+  --brand-amber-light: #fbbf24;
+  --brand-emerald: #10b981;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -116,7 +123,52 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
   body {
     @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    /* Subtle radial tint at the top of the page — works in both themes */
+    background-image: radial-gradient(
+      ellipse 100% 55% at 50% 0%,
+      color-mix(in oklch, var(--foreground) 4%, transparent),
+      transparent 70%
+    );
+    background-repeat: no-repeat;
+    background-attachment: fixed;
   }
+
+  /* Accessible focus ring for keyboard users — amber accent works on light & dark */
+  :where(a, button, [role="button"], summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--brand-amber);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+}
+
+/* Thin, rounded, muted custom scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--foreground) 22%, transparent) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: color-mix(in oklch, var(--foreground) 20%, transparent);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in oklch, var(--foreground) 38%, transparent);
+  background-clip: content-box;
 }

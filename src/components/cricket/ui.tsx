@@ -86,7 +86,7 @@ export function PlayerAvatar({
   return (
     <span
       className={cn(
-        "inline-flex items-center justify-center rounded-full font-bold text-white shrink-0 overflow-hidden",
+        "inline-flex items-center justify-center rounded-lg font-bold text-white shrink-0 overflow-hidden",
         sizes[size],
         className
       )}

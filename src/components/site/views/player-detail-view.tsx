@@ -193,8 +193,6 @@ export function PlayerDetailView() {
       }
       sidebar={
         <>
-          <PlayerSummaryWidget player={player} />
-          <PlayerInfoWidget player={player} />
           {teammates && teammates.length > 1 && (
             <TeammatesWidget players={teammates} excludeId={id ?? undefined} />
           )}
@@ -203,6 +201,10 @@ export function PlayerDetailView() {
       }
     >
       <div className="space-y-5">
+        {/* Player info — moved from sidebar to above the stats */}
+        <PlayerSummaryWidget player={player} />
+        <PlayerInfoWidget player={player} />
+
         {/* Batting Statistics */}
         <Card className="gap-0 py-0">
           <CardHeader className="border-b px-5 sm:px-6">

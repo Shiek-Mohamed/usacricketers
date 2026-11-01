@@ -101,6 +101,7 @@ export function PlayerAvatar({
           src={imageUrl}
           alt={name}
           className="h-full w-full object-cover"
+          style={{ objectPosition: "center top" }}
           loading="lazy"
         />
       ) : (

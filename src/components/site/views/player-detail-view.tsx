@@ -202,7 +202,6 @@ export function PlayerDetailView() {
     >
       <div className="space-y-5">
         {/* Player info — moved from sidebar to above the stats */}
-        <PlayerSummaryWidget player={player} />
         <PlayerInfoWidget player={player} />
 
         {/* Batting Statistics */}

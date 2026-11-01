@@ -47,6 +47,7 @@ import {
   Trash2,
   Loader2,
   CalendarDays,
+  CalendarPlus,
   Trophy,
   ShieldAlert,
   RefreshCw,
@@ -153,6 +154,21 @@ export function LeagueAdminMatchesView() {
   const [saving, setSaving] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
 
+  // Generate Schedule dialog state
+  const [genOpen, setGenOpen] = useState(false)
+  const [genFormat, setGenFormat] = useState<
+    "round-robin-single" | "round-robin-double" | "group-knockout" | "knockout"
+  >("round-robin-single")
+  const [genStartDate, setGenStartDate] = useState(
+    new Date().toISOString().slice(0, 10)
+  )
+  const [genInterval, setGenInterval] = useState(1)
+  const [genVenue, setGenVenue] = useState("")
+  const [genMatchFormat, setGenMatchFormat] = useState("T20")
+  const [genGroupCount, setGenGroupCount] = useState(2)
+  const [genQualifiers, setGenQualifiers] = useState(2)
+  const [generating, setGenerating] = useState(false)
+
   // Load series + matches + teams
   useEffect(() => {
     if (!token || !id) return
@@ -247,6 +263,51 @@ export function LeagueAdminMatchesView() {
       startDate: toDatetimeLocal(m.startDate),
     })
     setOpen(true)
+  }
+
+  async function handleGenerate() {
+    if (!token || !id) return
+    if (teams.length < 2) {
+      toast.error("Need at least 2 teams to generate a schedule")
+      return
+    }
+    setGenerating(true)
+    try {
+      const res = await fetch("/api/league-admin/schedule/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          seriesId: id,
+          format: genFormat,
+          startDate: genStartDate,
+          intervalDays: genInterval,
+          venue: genVenue,
+          matchFormat: genMatchFormat,
+          groupCount: genGroupCount,
+          qualifiersPerGroup: genQualifiers,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        toast.success(`Schedule generated — ${data.created} matches created`, {
+          description:
+            data.skipped > 0
+              ? `${data.skipped} knockout placeholders skipped (TBD)`
+              : undefined,
+        })
+        setGenOpen(false)
+        reload()
+      } else {
+        toast.error(data.error || "Generation failed")
+      }
+    } catch {
+      toast.error("Network error — please try again")
+    } finally {
+      setGenerating(false)
+    }
   }
 
   async function handleSubmit() {
@@ -355,19 +416,30 @@ export function LeagueAdminMatchesView() {
             {list.length} match{list.length === 1 ? "" : "es"}
           </span>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={reload}
-          disabled={stillLoading}
-          className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-          aria-label="Refresh schedule"
-        >
-          <RefreshCw
-            className={cn("h-3.5 w-3.5", stillLoading && "animate-spin")}
-          />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            onClick={() => setGenOpen(true)}
+            disabled={teams.length < 2}
+            className="gap-1.5 bg-[#1e2a5e] text-xs font-semibold text-white hover:bg-[#1e2a5e]/90"
+          >
+            <CalendarPlus className="h-3.5 w-3.5" />
+            Generate Schedule
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={reload}
+            disabled={stillLoading}
+            className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+            aria-label="Refresh schedule"
+          >
+            <RefreshCw
+              className={cn("h-3.5 w-3.5", stillLoading && "animate-spin")}
+            />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -747,6 +819,169 @@ export function LeagueAdminMatchesView() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Generate Schedule dialog */}
+      <Dialog open={genOpen} onOpenChange={setGenOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Generate Schedule</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Format</Label>
+              <Select
+                value={genFormat}
+                onValueChange={(v) =>
+                  setGenFormat(v as typeof genFormat)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="round-robin-single">
+                    Single Round Robin (each team plays every other once)
+                  </SelectItem>
+                  <SelectItem value="round-robin-double">
+                    Double Round Robin (home &amp; away)
+                  </SelectItem>
+                  <SelectItem value="group-knockout">
+                    Group Stage + Knockout
+                  </SelectItem>
+                  <SelectItem value="knockout">
+                    Knockout (single elimination)
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="gen-start">Start date</Label>
+                <Input
+                  id="gen-start"
+                  type="date"
+                  value={genStartDate}
+                  onChange={(e) => setGenStartDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="gen-interval">Days between matches</Label>
+                <Input
+                  id="gen-interval"
+                  type="number"
+                  min={0}
+                  value={genInterval}
+                  onChange={(e) => setGenInterval(Number(e.target.value))}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="gen-venue">Default venue</Label>
+                <Input
+                  id="gen-venue"
+                  placeholder="e.g. Central Park Field 1"
+                  value={genVenue}
+                  onChange={(e) => setGenVenue(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Match format</Label>
+                <Select
+                  value={genMatchFormat}
+                  onValueChange={setGenMatchFormat}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="T20">T20</SelectItem>
+                    <SelectItem value="T20I">T20I</SelectItem>
+                    <SelectItem value="ODI">ODI</SelectItem>
+                    <SelectItem value="Test">Test</SelectItem>
+                    <SelectItem value="T10">T10</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {genFormat === "group-knockout" && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="gen-groups">Number of groups</Label>
+                  <Input
+                    id="gen-groups"
+                    type="number"
+                    min={1}
+                    max={8}
+                    value={genGroupCount}
+                    onChange={(e) =>
+                      setGenGroupCount(Number(e.target.value))
+                    }
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="gen-qual">Qualifiers per group</Label>
+                  <Input
+                    id="gen-qual"
+                    type="number"
+                    min={1}
+                    max={4}
+                    value={genQualifiers}
+                    onChange={(e) =>
+                      setGenQualifiers(Number(e.target.value))
+                    }
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
+              <p className="font-semibold text-foreground">
+                {teams.length} teams in this tournament
+              </p>
+              {genFormat === "round-robin-single" && (
+                <p>
+                  ≈ {(teams.length * (teams.length - 1)) / 2} matches will be
+                  created
+                </p>
+              )}
+              {genFormat === "round-robin-double" && (
+                <p>
+                  ≈ {teams.length * (teams.length - 1)} matches will be
+                  created
+                </p>
+              )}
+              {genFormat === "knockout" && (
+                <p>≈ {teams.length - 1} matches (single elimination)</p>
+              )}
+              {genFormat === "group-knockout" && (
+                <p>
+                  Group round-robin + knockout bracket for qualifiers
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setGenOpen(false)}
+              disabled={generating}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleGenerate}
+              disabled={generating}
+              className="bg-[#1e2a5e] text-white hover:bg-[#1e2a5e]/90 gap-1.5"
+            >
+              {generating ? "Generating…" : "Generate Schedule"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </LeagueAdminShell>
   )
 }

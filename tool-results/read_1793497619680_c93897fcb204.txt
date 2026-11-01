@@ -1,0 +1,753 @@
+     1→     1→"use client"
+     2→     2→
+     3→     3→import { useEffect, useMemo, useState } from "react"
+     4→     4→import { useAppStore } from "@/lib/store"
+     5→     5→import { useLeagueAdminSession } from "@/lib/league-admin-session"
+     6→     6→import { LeagueAdminShell } from "@/components/admin/league-admin-shell"
+     7→     7→import { Card, CardContent } from "@/components/ui/card"
+     8→     8→import { Button } from "@/components/ui/button"
+     9→     9→import { Input } from "@/components/ui/input"
+    10→    10→import { Label } from "@/components/ui/label"
+    11→    11→import { Skeleton } from "@/components/ui/skeleton"
+    12→    12→import {
+    13→    13→  Select,
+    14→    14→  SelectContent,
+    15→    15→  SelectItem,
+    16→    16→  SelectTrigger,
+    17→    17→  SelectValue,
+    18→    18→} from "@/components/ui/select"
+    19→    19→import {
+    20→    20→  Table,
+    21→    21→  TableHeader,
+    22→    22→  TableBody,
+    23→    23→  TableRow,
+    24→    24→  TableHead,
+    25→    25→  TableCell,
+    26→    26→} from "@/components/ui/table"
+    27→    27→import {
+    28→    28→  Dialog,
+    29→    29→  DialogContent,
+    30→    30→  DialogHeader,
+    31→    31→  DialogTitle,
+    32→    32→  DialogFooter,
+    33→    33→} from "@/components/ui/dialog"
+    34→    34→import {
+    35→    35→  AlertDialog,
+    36→    36→  AlertDialogAction,
+    37→    37→  AlertDialogCancel,
+    38→    38→  AlertDialogContent,
+    39→    39→  AlertDialogDescription,
+    40→    40→  AlertDialogFooter,
+    41→    41→  AlertDialogHeader,
+    42→    42→  AlertDialogTitle,
+    43→    43→} from "@/components/ui/alert-dialog"
+    44→    44→import {
+    45→    45→  Plus,
+    46→    46→  Pencil,
+    47→    47→  Trash2,
+    48→    48→  Loader2,
+    49→    49→  CalendarDays,
+    50→    50→  Trophy,
+    51→    51→  ShieldAlert,
+    52→    52→  RefreshCw,
+    53→    53→} from "lucide-react"
+    54→    54→import { toast } from "sonner"
+    55→    55→import { cn } from "@/lib/utils"
+    56→    56→import {
+    57→    57→  TeamBadge,
+    58→    58→  FormatPill,
+    59→    59→  StatusPill,
+    60→    60→  formatMatchDate,
+    61→    61→} from "@/components/cricket/ui"
+    62→    62→import type { Match, Series, Team } from "@/lib/types"
+    63→    63→import { LeagueSwitcher } from "@/components/site/league-switcher"
+    64→    64→
+    65→    65→const FORMATS = ["T20", "ODI", "Test", "T10"] as const
+    66→    66→const MATCH_STATUSES = [
+    67→    67→  "upcoming",
+    68→    68→  "live",
+    69→    69→  "completed",
+    70→    70→  "abandoned",
+    71→    71→] as const
+    72→    72→
+    73→    73→const SCROLLBAR =
+    74→    74→  "[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border"
+    75→    75→
+    76→    76→async function jsonOrThrow<T>(res: Response): Promise<T> {
+    77→    77→  if (!res.ok) {
+    78→    78→    let msg = `Request failed: ${res.status}`
+    79→    79→    try {
+    80→    80→      const body = await res.json()
+    81→    81→      if (body?.error) msg = body.error
+    82→    82→    } catch {
+    83→    83→      // ignore JSON parse errors
+    84→    84→    }
+    85→    85→    throw new Error(msg)
+    86→    86→  }
+    87→    87→  return (await res.json()) as T
+    88→    88→}
+    89→    89→
+    90→    90→interface MatchForm {
+    91→    91→  team1Id: string
+    92→    92→  team2Id: string
+    93→    93→  format: string
+    94→    94→  matchNo: string
+    95→    95→  status: string
+    96→    96→  venue: string
+    97→    97→  city: string
+    98→    98→  startDate: string // datetime-local value
+    99→    99→}
+   100→   100→
+   101→   101→function emptyMatchForm(): MatchForm {
+   102→   102→  const now = new Date()
+   103→   103→  // local datetime string YYYY-MM-DDTHH:MM
+   104→   104→  const pad = (n: number) => String(n).padStart(2, "0")
+   105→   105→  const local = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(
+   106→   106→    now.getDate()
+   107→   107→  )}T${pad(now.getHours())}:${pad(now.getMinutes())}`
+   108→   108→  return {
+   109→   109→    team1Id: "",
+   110→   110→    team2Id: "",
+   111→   111→    format: "T20",
+   112→   112→    matchNo: "",
+   113→   113→    status: "upcoming",
+   114→   114→    venue: "",
+   115→   115→    city: "",
+   116→   116→    startDate: local,
+   117→   117→  }
+   118→   118→}
+   119→   119→
+   120→   120→function toDatetimeLocal(iso: string): string {
+   121→   121→  try {
+   122→   122→    const d = new Date(iso)
+   123→   123→    const pad = (n: number) => String(n).padStart(2, "0")
+   124→   124→    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
+   125→   125→      d.getDate()
+   126→   126→    )}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+   127→   127→  } catch {
+   128→   128→    return ""
+   129→   129→  }
+   130→   130→}
+   131→   131→
+   132→   132→export function LeagueAdminMatchesView() {
+   133→   133→  const id = useAppStore((s) => s.id)
+   134→   134→  const navigate = useAppStore((s) => s.navigate)
+   135→   135→  const session = useLeagueAdminSession((s) => s.session)
+   136→   136→  const token = session?.token ?? null
+   137→   137→
+   138→   138→  const [series, setSeries] = useState<Series | null>(null)
+   139→   139→  const [teams, setTeams] = useState<Team[]>([])
+   140→   140→  const [matches, setMatches] = useState<Match[] | null>(null)
+   141→   141→  const [loading, setLoading] = useState(true)
+   142→   142→  const [error, setError] = useState<string | null>(null)
+   143→   143→
+   144→   144→  // nonce/doneNonce pattern
+   145→   145→  const [nonce, setNonce] = useState(0)
+   146→   146→  const [doneNonce, setDoneNonce] = useState(-1)
+   147→   147→  const stillLoading = token ? nonce !== doneNonce : false
+   148→   148→
+   149→   149→  // dialog state
+   150→   150→  const [open, setOpen] = useState(false)
+   151→   151→  const [editingId, setEditingId] = useState<string | null>(null)
+   152→   152→  const [form, setForm] = useState<MatchForm>(emptyMatchForm())
+   153→   153→  const [saving, setSaving] = useState(false)
+   154→   154→  const [deleteId, setDeleteId] = useState<string | null>(null)
+   155→   155→
+   156→   156→  // Load series + matches + teams
+   157→   157→  useEffect(() => {
+   158→   158→    if (!token || !id) return
+   159→   159→    let active = true
+   160→   160→    ;(async () => {
+   161→   161→      setLoading(true)
+   162→   162→      setError(null)
+   163→   163→      try {
+   164→   164→        const headers = { Authorization: `Bearer ${token}` }
+   165→   165→        const [sRes, mRes, tRes] = await Promise.all([
+   166→   166→          fetch(`/api/league-admin/series/${id}`, { headers }),
+   167→   167→          fetch(`/api/league-admin/matches?seriesId=${id}`, { headers }),
+   168→   168→          fetch(`/api/league-admin/series/${id}/teams`, { headers }),
+   169→   169→        ])
+   170→   170→        if (!active) return
+   171→   171→        if (sRes.status === 403) {
+   172→   172→          setError("You do not manage this league.")
+   173→   173→          setSeries(null)
+   174→   174→          setMatches([])
+   175→   175→          setTeams([])
+   176→   176→        } else if (sRes.status === 404) {
+   177→   177→          setError("League not found.")
+   178→   178→          setSeries(null)
+   179→   179→          setMatches([])
+   180→   180→          setTeams([])
+   181→   181→        } else if (!sRes.ok) {
+   182→   182→          setError(`Failed to load league (${sRes.status})`)
+   183→   183→          setSeries(null)
+   184→   184→          setMatches([])
+   185→   185→          setTeams([])
+   186→   186→        } else {
+   187→   187→          const s = (await sRes.json()) as Series
+   188→   188→          setSeries(s)
+   189→   189→          setTeams(s.teams ?? [])
+   190→   190→          if (mRes.ok) setMatches((await mRes.json()) as Match[])
+   191→   191→          if (tRes.ok) {
+   192→   192→            const t = (await tRes.json()) as Team[]
+   193→   193→            if (t.length > 0) setTeams(t)
+   194→   194→          }
+   195→   195→        }
+   196→   196→      } catch {
+   197→   197→        if (!active) return
+   198→   198→        setError("Network error — could not load schedule")
+   199→   199→      } finally {
+   200→   200→        if (active) {
+   201→   201→          setLoading(false)
+   202→   202→          setDoneNonce(nonce)
+   203→   203→        }
+   204→   204→      }
+   205→   205→    })()
+   206→   206→    return () => {
+   207→   207→      active = false
+   208→   208→    }
+   209→   209→  }, [token, id, nonce])
+   210→   210→
+   211→   211→  function reload() {
+   212→   212→    setNonce((n) => n + 1)
+   213→   213→  }
+   214→   214→
+   215→   215→  const list = matches ?? []
+   216→   216→  const sorted = useMemo(
+   217→   217→    () =>
+   218→   218→      [...list].sort(
+   219→   219→        (a, b) =>
+   220→   220→          new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+   221→   221→      ),
+   222→   222→    [list]
+   223→   223→  )
+   224→   224→
+   225→   225→  if (!session) return null
+   226→   226→
+   227→   227→  function set<K extends keyof MatchForm>(k: K, v: MatchForm[K]) {
+   228→   228→    setForm((f) => ({ ...f, [k]: v }))
+   229→   229→  }
+   230→   230→
+   231→   231→  function openCreate() {
+   232→   232→    setEditingId(null)
+   233→   233→    setForm(emptyMatchForm())
+   234→   234→    setOpen(true)
+   235→   235→  }
+   236→   236→
+   237→   237→  function openEdit(m: Match) {
+   238→   238→    setEditingId(m.id)
+   239→   239→    setForm({
+   240→   240→      team1Id: m.team1Id,
+   241→   241→      team2Id: m.team2Id,
+   242→   242→      format: m.format,
+   243→   243→      matchNo: m.matchNo,
+   244→   244→      status: m.status,
+   245→   245→      venue: m.venue,
+   246→   246→      city: m.city,
+   247→   247→      startDate: toDatetimeLocal(m.startDate),
+   248→   248→    })
+   249→   249→    setOpen(true)
+   250→   250→  }
+   251→   251→
+   252→   252→  async function handleSubmit() {
+   253→   253→    if (!token || !id) return
+   254→   254→    if (!form.team1Id || !form.team2Id) {
+   255→   255→      toast.error("Pick both teams")
+   256→   256→      return
+   257→   257→    }
+   258→   258→    if (form.team1Id === form.team2Id) {
+   259→   259→      toast.error("Team 1 and Team 2 must be different")
+   260→   260→      return
+   261→   261→    }
+   262→   262→    if (!form.matchNo.trim()) {
+   263→   263→      toast.error("Match number is required (e.g. 1st Match)")
+   264→   264→      return
+   265→   265→    }
+   266→   266→    setSaving(true)
+   267→   267→    try {
+   268→   268→      const payload: Record<string, unknown> = {
+   269→   269→        seriesId: id,
+   270→   270→        team1Id: form.team1Id,
+   271→   271→        team2Id: form.team2Id,
+   272→   272→        format: form.format,
+   273→   273→        matchNo: form.matchNo.trim(),
+   274→   274→        status: form.status,
+   275→   275→        venue: form.venue,
+   276→   276→        city: form.city,
+   277→   277→        startDate: form.startDate
+   278→   278→          ? new Date(form.startDate).toISOString()
+   279→   279→          : undefined,
+   280→   280→      }
+   281→   281→      if (editingId) {
+   282→   282→        // PUT ignores seriesId (immutable), so we send the same payload.
+   283→   283→        await jsonOrThrow<Match>(
+   284→   284→          await fetch(`/api/league-admin/matches/${editingId}`, {
+   285→   285→            method: "PUT",
+   286→   286→            headers: {
+   287→   287→              "Content-Type": "application/json",
+   288→   288→              Authorization: `Bearer ${token}`,
+   289→   289→            },
+   290→   290→            body: JSON.stringify(payload),
+   291→   291→          })
+   292→   292→        )
+   293→   293→        toast.success("Match saved")
+   294→   294→      } else {
+   295→   295→        await jsonOrThrow<Match>(
+   296→   296→          await fetch(`/api/league-admin/matches`, {
+   297→   297→            method: "POST",
+   298→   298→            headers: {
+   299→   299→              "Content-Type": "application/json",
+   300→   300→              Authorization: `Bearer ${token}`,
+   301→   301→            },
+   302→   302→            body: JSON.stringify(payload),
+   303→   303→          })
+   304→   304→        )
+   305→   305→        toast.success("Match created")
+   306→   306→      }
+   307→   307→      setOpen(false)
+   308→   308→      reload()
+   309→   309→    } catch (e) {
+   310→   310→      toast.error("Failed to save match", {
+   311→   311→        description: e instanceof Error ? e.message : String(e),
+   312→   312→      })
+   313→   313→    } finally {
+   314→   314→      setSaving(false)
+   315→   315→    }
+   316→   316→  }
+   317→   317→
+   318→   318→  async function handleDelete(mid: string) {
+   319→   319→    if (!token) return
+   320→   320→    try {
+   321→   321→      await jsonOrThrow(
+   322→   322→        await fetch(`/api/league-admin/matches/${mid}`, {
+   323→   323→          method: "DELETE",
+   324→   324→          headers: { Authorization: `Bearer ${token}` },
+   325→   325→        })
+   326→   326→      )
+   327→   327→      toast.success("Match deleted")
+   328→   328→      reload()
+   329→   329→    } catch (e) {
+   330→   330→      toast.error("Failed to delete match", {
+   331→   331→        description: e instanceof Error ? e.message : String(e),
+   332→   332→      })
+   333→   333→    } finally {
+   334→   334→      setDeleteId(null)
+   335→   335→    }
+   336→   336→  }
+   337→   337→
+   338→   338→  return (
+   339→   339→    <LeagueAdminShell
+   340→   340→      title={series ? `${series.name} · Schedule` : "Schedule"}
+   341→   341→      onBack={() => navigate("league-admin-series-edit", id)}
+   342→   342→      actionLabel="+ New Match"
+   343→   343→      onAction={openCreate}
+   344→   344→    >
+   345→   345→      <LeagueSwitcher />
+   346→   346→      {/* Header strip */}
+   347→   347→      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-3">
+   348→   348→        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+   349→   349→          {series && <FormatPill format={series.format} />}
+   350→   350→          <span>
+   351→   351→            {teams.length} team{teams.length === 1 ? "" : "s"}
+   352→   352→          </span>
+   353→   353→          <span>·</span>
+   354→   354→          <span>
+   355→   355→            {list.length} match{list.length === 1 ? "" : "es"}
+   356→   356→          </span>
+   357→   357→        </div>
+   358→   358→        <Button
+   359→   359→          variant="ghost"
+   360→   360→          size="sm"
+   361→   361→          onClick={reload}
+   362→   362→          disabled={stillLoading}
+   363→   363→          className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+   364→   364→          aria-label="Refresh schedule"
+   365→   365→        >
+   366→   366→          <RefreshCw
+   367→   367→            className={cn("h-3.5 w-3.5", stillLoading && "animate-spin")}
+   368→   368→          />
+   369→   369→          Refresh
+   370→   370→        </Button>
+   371→   371→      </div>
+   372→   372→
+   373→   373→      {error && (
+   374→   374→        <div
+   375→   375→          role="alert"
+   376→   376→          className="flex items-start gap-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
+   377→   377→        >
+   378→   378→          <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+   379→   379→          <span className="flex-1">{error}</span>
+   380→   380→          <button
+   381→   381→            type="button"
+   382→   382→            onClick={reload}
+   383→   383→            className="shrink-0 rounded px-2 py-0.5 font-semibold text-red-700 underline-offset-2 hover:underline dark:text-red-300"
+   384→   384→          >
+   385→   385→            Retry
+   386→   386→          </button>
+   387→   387→        </div>
+   388→   388→      )}
+   389→   389→
+   390→   390→      {loading && (
+   391→   391→        <Card>
+   392→   392→          <CardContent className="p-0">
+   393→   393→            <div className="space-y-2 p-2">
+   394→   394→              {Array.from({ length: 4 }).map((_, i) => (
+   395→   395→                <Skeleton key={i} className="h-12 w-full" />
+   396→   396→              ))}
+   397→   397→            </div>
+   398→   398→          </CardContent>
+   399→   399→        </Card>
+   400→   400→      )}
+   401→   401→
+   402→   402→      {!loading && !error && list.length === 0 && (
+   403→   403→        <Card className="grid place-items-center p-8 text-center">
+   404→   404→          <CalendarDays className="mb-3 h-10 w-10 text-muted-foreground" />
+   405→   405→          <p className="text-sm font-semibold text-foreground">
+   406→   406→            No matches scheduled yet
+   407→   407→          </p>
+   408→   408→          <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+   409→   409→            Click &ldquo;+ New Match&rdquo; to add a fixture. Both teams must
+   410→   410→            already be participants in this league.
+   411→   411→          </p>
+   412→   412→          {teams.length < 2 ? (
+   413→   413→            <p className="mt-3 text-xs text-amber-700">
+   414→   414→              You need at least 2 teams in this league before you can schedule
+   415→   415→              a match.
+   416→   416→            </p>
+   417→   417→          ) : (
+   418→   418→            <Button
+   419→   419→              size="sm"
+   420→   420→              onClick={openCreate}
+   421→   421→              className="mt-4 gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
+   422→   422→            >
+   423→   423→              <Plus className="h-4 w-4" />
+   424→   424→              New Match
+   425→   425→            </Button>
+   426→   426→          )}
+   427→   427→        </Card>
+   428→   428→      )}
+   429→   429→
+   430→   430→      {!loading && !error && sorted.length > 0 && (
+   431→   431→        <Card>
+   432→   432→          <CardContent className="p-0">
+   433→   433→            <div className={cn("max-h-[60vh] overflow-y-auto", SCROLLBAR)}>
+   434→   434→              <Table>
+   435→   435→                <TableHeader className="sticky top-0 z-10 bg-card">
+   436→   436→                  <TableRow>
+   437→   437→                    <TableHead className="w-16">#</TableHead>
+   438→   438→                    <TableHead>Match</TableHead>
+   439→   439→                    <TableHead className="hidden md:table-cell">
+   440→   440→                      Format
+   441→   441→                    </TableHead>
+   442→   442→                    <TableHead className="hidden sm:table-cell">
+   443→   443→                      Date / Time
+   444→   444→                    </TableHead>
+   445→   445→                    <TableHead className="hidden lg:table-cell">Venue</TableHead>
+   446→   446→                    <TableHead>Status</TableHead>
+   447→   447→                    <TableHead className="text-right">Actions</TableHead>
+   448→   448→                  </TableRow>
+   449→   449→                </TableHeader>
+   450→   450→                <TableBody>
+   451→   451→                  {sorted.map((m) => (
+   452→   452→                    <TableRow key={m.id}>
+   453→   453→                      <TableCell className="align-top font-mono text-xs text-muted-foreground">
+   454→   454→                        {m.matchNo}
+   455→   455→                      </TableCell>
+   456→   456→                      <TableCell className="align-top">
+   457→   457→                        <div className="flex flex-wrap items-center gap-2">
+   458→   458→                          <div className="flex items-center gap-1.5">
+   459→   459→                            {m.team1 && <TeamBadge team={m.team1} size="sm" />}
+   460→   460→                            <span className="text-sm font-semibold">
+   461→   461→                              {m.team1?.shortName ?? "TBD"}
+   462→   462→                            </span>
+   463→   463→                          </div>
+   464→   464→                          <span className="text-xs text-muted-foreground">v</span>
+   465→   465→                          <div className="flex items-center gap-1.5">
+   466→   466→                            {m.team2 && <TeamBadge team={m.team2} size="sm" />}
+   467→   467→                            <span className="text-sm font-semibold">
+   468→   468→                              {m.team2?.shortName ?? "TBD"}
+   469→   469→                            </span>
+   470→   470→                          </div>
+   471→   471→                        </div>
+   472→   472→                        <div className="mt-0.5 block text-[11px] text-muted-foreground lg:hidden">
+   473→   473→                          {m.venue || "—"}
+   474→   474→                        </div>
+   475→   475→                      </TableCell>
+   476→   476→                      <TableCell className="hidden align-top md:table-cell">
+   477→   477→                        <FormatPill format={m.format} />
+   478→   478→                      </TableCell>
+   479→   479→                      <TableCell className="hidden align-top text-xs text-muted-foreground sm:table-cell">
+   480→   480→                        {formatMatchDate(m.startDate)}
+   481→   481→                      </TableCell>
+   482→   482→                      <TableCell className="hidden align-top text-xs text-muted-foreground lg:table-cell">
+   483→   483→                        {m.venue || "—"}
+   484→   484→                        {m.city ? `, ${m.city}` : ""}
+   485→   485→                      </TableCell>
+   486→   486→                      <TableCell className="align-top">
+   487→   487→                        <StatusPill status={m.status} />
+   488→   488→                      </TableCell>
+   489→   489→                      <TableCell className="whitespace-nowrap text-right align-top">
+   490→   490→                        <Button
+   491→   491→                          size="icon"
+   492→   492→                          variant="ghost"
+   493→   493→                          onClick={() => openEdit(m)}
+   494→   494→                          aria-label="Edit match"
+   495→   495→                        >
+   496→   496→                          <Pencil className="h-3.5 w-3.5" />
+   497→   497→                        </Button>
+   498→   498→                        <Button
+   499→   499→                          size="icon"
+   500→   500→                          variant="ghost"
+   501→   501→                          onClick={() => setDeleteId(m.id)}
+   502→   502→                          className="text-destructive"
+   503→   503→                          aria-label="Delete match"
+   504→   504→                        >
+   505→   505→                          <Trash2 className="h-3.5 w-3.5" />
+   506→   506→                        </Button>
+   507→   507→                      </TableCell>
+   508→   508→                    </TableRow>
+   509→   509→                  ))}
+   510→   510→                </TableBody>
+   511→   511→              </Table>
+   512→   512→            </div>
+   513→   513→          </CardContent>
+   514→   514→        </Card>
+   515→   515→      )}
+   516→   516→
+   517→   517→      {/* Create / Edit dialog */}
+   518→   518→      <Dialog open={open} onOpenChange={setOpen}>
+   519→   519→        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+   520→   520→          <DialogHeader>
+   521→   521→            <DialogTitle className="flex items-center gap-2">
+   522→   522→              <Trophy className="h-4 w-4 text-emerald-600" />
+   523→   523→              {editingId ? "Edit Match" : "New Match"}
+   524→   524→            </DialogTitle>
+   525→   525→          </DialogHeader>
+   526→   526→          <div className="grid gap-3 py-2">
+   527→   527→            {teams.length < 2 ? (
+   528→   528→              <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+   529→   529→                This league has fewer than 2 teams. Add teams on the league edit
+   530→   530→                page before scheduling matches.
+   531→   531→              </p>
+   532→   532→            ) : null}
+   533→   533→
+   534→   534→            <div className="grid grid-cols-2 gap-3">
+   535→   535→              <div className="grid gap-1.5">
+   536→   536→                <Label htmlFor="m-team1" className="text-xs">
+   537→   537→                  Team 1
+   538→   538→                </Label>
+   539→   539→                <Select
+   540→   540→                  value={form.team1Id}
+   541→   541→                  onValueChange={(v) => set("team1Id", v)}
+   542→   542→                  disabled={saving}
+   543→   543→                >
+   544→   544→                  <SelectTrigger id="m-team1" className="w-full">
+   545→   545→                    <SelectValue placeholder="Pick team…" />
+   546→   546→                  </SelectTrigger>
+   547→   547→                  <SelectContent className={cn("max-h-72", SCROLLBAR)}>
+   548→   548→                    {teams.map((t) => (
+   549→   549→                      <SelectItem
+   550→   550→                        key={t.id}
+   551→   551→                        value={t.id}
+   552→   552→                        disabled={t.id === form.team2Id}
+   553→   553→                      >
+   554→   554→                        <span className="flex items-center gap-2">
+   555→   555→                          <TeamBadge team={t} size="sm" />
+   556→   556→                          <span>
+   557→   557→                            {t.shortName}{" "}
+   558→   558→                            <span className="text-muted-foreground">
+   559→   559→                              · {t.name}
+   560→   560→                            </span>
+   561→   561→                          </span>
+   562→   562→                        </span>
+   563→   563→                      </SelectItem>
+   564→   564→                    ))}
+   565→   565→                  </SelectContent>
+   566→   566→                </Select>
+   567→   567→              </div>
+   568→   568→              <div className="grid gap-1.5">
+   569→   569→                <Label htmlFor="m-team2" className="text-xs">
+   570→   570→                  Team 2
+   571→   571→                </Label>
+   572→   572→                <Select
+   573→   573→                  value={form.team2Id}
+   574→   574→                  onValueChange={(v) => set("team2Id", v)}
+   575→   575→                  disabled={saving}
+   576→   576→                >
+   577→   577→                  <SelectTrigger id="m-team2" className="w-full">
+   578→   578→                    <SelectValue placeholder="Pick team…" />
+   579→   579→                  </SelectTrigger>
+   580→   580→                  <SelectContent className={cn("max-h-72", SCROLLBAR)}>
+   581→   581→                    {teams.map((t) => (
+   582→   582→                      <SelectItem
+   583→   583→                        key={t.id}
+   584→   584→                        value={t.id}
+   585→   585→                        disabled={t.id === form.team1Id}
+   586→   586→                      >
+   587→   587→                        <span className="flex items-center gap-2">
+   588→   588→                          <TeamBadge team={t} size="sm" />
+   589→   589→                          <span>
+   590→   590→                            {t.shortName}{" "}
+   591→   591→                            <span className="text-muted-foreground">
+   592→   592→                              · {t.name}
+   593→   593→                            </span>
+   594→   594→                          </span>
+   595→   595→                        </span>
+   596→   596→                      </SelectItem>
+   597→   597→                    ))}
+   598→   598→                  </SelectContent>
+   599→   599→                </Select>
+   600→   600→              </div>
+   601→   601→            </div>
+   602→   602→
+   603→   603→            <div className="grid grid-cols-2 gap-3">
+   604→   604→              <div className="grid gap-1.5">
+   605→   605→                <Label htmlFor="m-format" className="text-xs">
+   606→   606→                  Format
+   607→   607→                </Label>
+   608→   608→                <Select
+   609→   609→                  value={form.format}
+   610→   610→                  onValueChange={(v) => set("format", v)}
+   611→   611→                  disabled={saving}
+   612→   612→                >
+   613→   613→                  <SelectTrigger id="m-format" className="w-full">
+   614→   614→                    <SelectValue />
+   615→   615→                  </SelectTrigger>
+   616→   616→                  <SelectContent>
+   617→   617→                    {FORMATS.map((f) => (
+   618→   618→                      <SelectItem key={f} value={f}>
+   619→   619→                        {f}
+   620→   620→                      </SelectItem>
+   621→   621→                    ))}
+   622→   622→                  </SelectContent>
+   623→   623→                </Select>
+   624→   624→              </div>
+   625→   625→              <div className="grid gap-1.5">
+   626→   626→                <Label htmlFor="m-status" className="text-xs">
+   627→   627→                  Status
+   628→   628→                </Label>
+   629→   629→                <Select
+   630→   630→                  value={form.status}
+   631→   631→                  onValueChange={(v) => set("status", v)}
+   632→   632→                  disabled={saving}
+   633→   633→                >
+   634→   634→                  <SelectTrigger id="m-status" className="w-full">
+   635→   635→                    <SelectValue />
+   636→   636→                  </SelectTrigger>
+   637→   637→                  <SelectContent>
+   638→   638→                    {MATCH_STATUSES.map((s) => (
+   639→   639→                      <SelectItem key={s} value={s}>
+   640→   640→                        {s.charAt(0).toUpperCase() + s.slice(1)}
+   641→   641→                      </SelectItem>
+   642→   642→                    ))}
+   643→   643→                  </SelectContent>
+   644→   644→                </Select>
+   645→   645→              </div>
+   646→   646→            </div>
+   647→   647→
+   648→   648→            <div className="grid grid-cols-2 gap-3">
+   649→   649→              <div className="grid gap-1.5">
+   650→   650→                <Label htmlFor="m-matchno" className="text-xs">
+   651→   651→                  Match No.
+   652→   652→                </Label>
+   653→   653→                <Input
+   654→   654→                  id="m-matchno"
+   655→   655→                  value={form.matchNo}
+   656→   656→                  onChange={(e) => set("matchNo", e.target.value)}
+   657→   657→                  placeholder="e.g. 1st Match"
+   658→   658→                  disabled={saving}
+   659→   659→                />
+   660→   660→              </div>
+   661→   661→              <div className="grid gap-1.5">
+   662→   662→                <Label htmlFor="m-start" className="text-xs">
+   663→   663→                  Start date / time
+   664→   664→                </Label>
+   665→   665→                <Input
+   666→   666→                  id="m-start"
+   667→   667→                  type="datetime-local"
+   668→   668→                  value={form.startDate}
+   669→   669→                  onChange={(e) => set("startDate", e.target.value)}
+   670→   670→                  disabled={saving}
+   671→   671→                />
+   672→   672→              </div>
+   673→   673→            </div>
+   674→   674→
+   675→   675→            <div className="grid grid-cols-2 gap-3">
+   676→   676→              <div className="grid gap-1.5">
+   677→   677→                <Label htmlFor="m-venue" className="text-xs">
+   678→   678→                  Venue
+   679→   679→                </Label>
+   680→   680→                <Input
+   681→   681→                  id="m-venue"
+   682→   682→                  value={form.venue}
+   683→   683→                  onChange={(e) => set("venue", e.target.value)}
+   684→   684→                  placeholder="e.g. Grand Prairie Stadium"
+   685→   685→                  disabled={saving}
+   686→   686→                />
+   687→   687→              </div>
+   688→   688→              <div className="grid gap-1.5">
+   689→   689→                <Label htmlFor="m-city" className="text-xs">
+   690→   690→                  City
+   691→   691→                </Label>
+   692→   692→                <Input
+   693→   693→                  id="m-city"
+   694→   694→                  value={form.city}
+   695→   695→                  onChange={(e) => set("city", e.target.value)}
+   696→   696→                  placeholder="e.g. Dallas"
+   697→   697→                  disabled={saving}
+   698→   698→                />
+   699→   699→              </div>
+   700→   700→            </div>
+   701→   701→          </div>
+   702→   702→          <DialogFooter>
+   703→   703→            <Button variant="outline" onClick={() => setOpen(false)}>
+   704→   704→              Cancel
+   705→   705→            </Button>
+   706→   706→            <Button
+   707→   707→              onClick={handleSubmit}
+   708→   708→              disabled={saving || teams.length < 2}
+   709→   709→              className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
+   710→   710→            >
+   711→   711→              {saving ? (
+   712→   712→                <>
+   713→   713→                  <Loader2 className="h-4 w-4 animate-spin" />
+   714→   714→                  Saving…
+   715→   715→                </>
+   716→   716→              ) : editingId ? (
+   717→   717→                "Save Changes"
+   718→   718→              ) : (
+   719→   719→                "Create Match"
+   720→   720→              )}
+   721→   721→            </Button>
+   722→   722→          </DialogFooter>
+   723→   723→        </DialogContent>
+   724→   724→      </Dialog>
+   725→   725→
+   726→   726→      {/* Delete confirmation */}
+   727→   727→      <AlertDialog
+   728→   728→        open={!!deleteId}
+   729→   729→        onOpenChange={(o) => !o && setDeleteId(null)}
+   730→   730→      >
+   731→   731→        <AlertDialogContent>
+   732→   732→          <AlertDialogHeader>
+   733→   733→            <AlertDialogTitle>Delete this match?</AlertDialogTitle>
+   734→   734→            <AlertDialogDescription>
+   735→   735→              The match will be permanently removed from the schedule. The
+   736→   736→              associated scorecard (if any) will be lost. This cannot be undone.
+   737→   737→            </AlertDialogDescription>
+   738→   738→          </AlertDialogHeader>
+   739→   739→          <AlertDialogFooter>
+   740→   740→            <AlertDialogCancel>Cancel</AlertDialogCancel>
+   741→   741→            <AlertDialogAction
+   742→   742→              className="bg-destructive text-white hover:bg-destructive/90"
+   743→   743→              onClick={() => deleteId && handleDelete(deleteId)}
+   744→   744→            >
+   745→   745→              Delete
+   746→   746→            </AlertDialogAction>
+   747→   747→          </AlertDialogFooter>
+   748→   748→        </AlertDialogContent>
+   749→   749→      </AlertDialog>
+   750→   750→    </LeagueAdminShell>
+   751→   751→  )
+   752→   752→}
+   753→   753→

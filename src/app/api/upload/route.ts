@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
         const outName = randomName("jpg")
         const outPath = path.join(UPLOAD_DIR, outName)
         await sharp(buf)
-          .resize(resizeN, resizeN, { fit: "cover", position: "attention" })
+          .resize(resizeN, resizeN, { fit: "cover", position: "top" })
           .jpeg({ quality: 85 })
           .toFile(outPath)
         return NextResponse.json({

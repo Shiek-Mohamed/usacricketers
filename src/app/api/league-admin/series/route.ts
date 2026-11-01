@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { randomUUID } from "node:crypto"
 import { db } from "@/lib/db"
 import { serializeSeries } from "@/lib/serialize"
 import { authenticateLeagueAdmin } from "@/lib/league-admin-guard"
@@ -34,25 +35,32 @@ export async function POST(req: NextRequest) {
     const startDate = body.startDate ? new Date(body.startDate) : new Date()
     const endDate = body.endDate ? new Date(body.endDate) : new Date(startDate.getTime() + 1000 * 60 * 60 * 24 * 60)
 
+    // Use raw SQL for the Series insert — Prisma 6.x's query engine
+    // mishandles Date objects for SQLite (serializes to integer timestamps
+    // that can't be read back via RETURNING). ISO string params bypass this.
+    const seriesId = randomUUID()
+    const startIso = startDate.toISOString()
+    const endIso = endDate.toISOString()
+    const nowIso = new Date().toISOString()
+    const status = body.status || "upcoming"
+    const description = String(body.description || "")
+
     const created = await db.$transaction(async (tx) => {
-      const s = await tx.series.create({
-        data: {
-          name,
-          shortName,
-          format,
-          season,
-          startDate,
-          endDate,
-          status: body.status || "upcoming",
-          description: String(body.description || ""),
-        },
-      })
+      await tx.$executeRawUnsafe(
+        `INSERT INTO "Series" (id, name, shortName, format, season, startDate, endDate, status, description, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        seriesId, name, shortName, format, season,
+        startIso, endIso, status, description, nowIso, nowIso,
+      )
       // Auto-assign the creating admin as the owner of this league.
       await tx.leagueAdminAssignment.create({
-        data: { adminId: payload.adminId, seriesId: s.id },
+        data: { adminId: payload.adminId, seriesId },
       })
-      return s
+      // Read back (reads work fine — only create/RETURNING was broken).
+      return await tx.series.findUnique({ where: { id: seriesId } })
     })
+    if (!created) {
+      return NextResponse.json({ error: "Failed to create league" }, { status: 500 })
+    }
     return NextResponse.json(serializeSeries(created))
   } catch (e) {
     return NextResponse.json({ error: String(e).slice(0, 200) }, { status: 500 })

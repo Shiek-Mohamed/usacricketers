@@ -25,18 +25,37 @@ export async function PUT(
   const admin = requireSiteAdmin(req)
   if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   const body = await req.json()
-  const s = await db.series.update({
+  // Raw SQL UPDATE — Prisma 6.x mishandles Date objects for SQLite
+  // (series.update → UPDATE ... RETURNING fails on DateTime). Build the
+  // SET clause dynamically with ISO string params for date fields.
+  const sets: string[] = []
+  const vals: unknown[] = []
+  for (const k of ["name", "shortName", "format", "season", "status", "description"]) {
+    if (body[k] !== undefined) {
+      sets.push(`"${k}" = ?`)
+      vals.push(String(body[k]))
+    }
+  }
+  if (body.startDate !== undefined) {
+    sets.push(`"startDate" = ?`)
+    vals.push(new Date(body.startDate).toISOString())
+  }
+  if (body.endDate !== undefined) {
+    sets.push(`"endDate" = ?`)
+    vals.push(new Date(body.endDate).toISOString())
+  }
+  if (sets.length === 0) {
+    return NextResponse.json({ error: "no fields to update" }, { status: 400 })
+  }
+  sets.push(`"updatedAt" = ?`)
+  vals.push(new Date().toISOString())
+  vals.push(id)
+  await db.$executeRawUnsafe(
+    `UPDATE "Series" SET ${sets.join(", ")} WHERE "id" = ?`,
+    ...vals,
+  )
+  const s = await db.series.findUnique({
     where: { id },
-    data: {
-      name: body.name,
-      shortName: body.shortName,
-      format: body.format,
-      season: body.season,
-      startDate: body.startDate ? new Date(body.startDate) : undefined,
-      endDate: body.endDate ? new Date(body.endDate) : undefined,
-      status: body.status,
-      description: body.description,
-    },
     include: { tournamentTeams: { include: { team: true } } },
   })
   cacheDelPrefix("series:list")

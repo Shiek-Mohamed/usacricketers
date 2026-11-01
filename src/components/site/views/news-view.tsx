@@ -71,12 +71,38 @@ export function NewsView() {
 
   function selectCategory(c: string) {
     setCategory(c)
-    setPage(1)
+    goToPage(1)
   }
   function onSearch(v: string) {
     setQ(v)
-    setPage(1)
+    goToPage(1)
   }
+
+  // Sync page with browser URL/history so the back button works across
+  // pagination. Each page change pushes a history entry; popstate restores.
+  function goToPage(p: number) {
+    const clamped = Math.max(1, Math.min(totalPages || 1, p))
+    setPage(clamped)
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href)
+      if (clamped > 1) url.searchParams.set("page", String(clamped))
+      else url.searchParams.delete("page")
+      window.history.pushState(null, "", url)
+    }
+  }
+
+  // On mount: read page from URL. Listen for back/forward to restore it.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const p = parseInt(params.get("page") || "1", 10)
+    if (p > 1) setPage(p)
+    const onPopState = () => {
+      const params = new URLSearchParams(window.location.search)
+      setPage(parseInt(params.get("page") || "1", 10))
+    }
+    window.addEventListener("popstate", onPopState)
+    return () => window.removeEventListener("popstate", onPopState)
+  }, [])
 
   return (
     <InnerPageLayout
@@ -165,7 +191,7 @@ export function NewsView() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    onClick={() => goToPage(page - 1)}
                     disabled={page <= 1 || loading}
                     className="gap-1"
                   >
@@ -174,7 +200,7 @@ export function NewsView() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    onClick={() => goToPage(page + 1)}
                     disabled={page >= totalPages || loading}
                     className="gap-1"
                   >

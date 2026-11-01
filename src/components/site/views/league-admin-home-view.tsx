@@ -12,8 +12,11 @@ import {
   RefreshCw,
   ShieldAlert,
   CalendarDays,
+  CalendarPlus,
   Users,
+  UserPlus,
   Trophy,
+  Pencil,
   ChevronRight,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -259,75 +262,84 @@ function LeagueCard({
   })}`
 
   return (
-    <Card className="flex flex-col gap-3 p-4 transition-shadow hover:shadow-md">
-      <div className="flex items-start justify-between gap-2">
-        <button
-          onClick={onOpen}
-          className="min-w-0 flex-1 text-left"
-          aria-label={`Edit ${series.name}`}
-        >
-          <h3 className="line-clamp-2 text-sm font-bold tracking-tight text-foreground hover:text-emerald-700">
-            {series.name}
-          </h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {series.shortName} · {series.season}
-          </p>
-        </button>
-        <div className="flex shrink-0 flex-col items-end gap-1">
-          <FormatPill format={series.format} />
-          <StatusPill status={series.status} />
+    <Card className="group flex flex-col overflow-hidden p-0 transition-all hover:shadow-xl hover:-translate-y-0.5">
+      {/* Navy gradient header */}
+      <div className="bg-gradient-to-r from-[#1e2a5e] to-[#2d3b7a] p-4 text-white">
+        <div className="flex items-start justify-between gap-2">
+          <button
+            onClick={onOpen}
+            className="min-w-0 flex-1 text-left"
+            aria-label={`Edit ${series.name}`}
+          >
+            <div className="mb-1 flex items-center gap-1.5">
+              <Trophy className="h-4 w-4 shrink-0 text-amber-400" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-white/70">
+                {series.shortName} · {series.season}
+              </span>
+            </div>
+            <h3 className="line-clamp-2 text-base font-extrabold leading-tight tracking-tight text-white group-hover:text-amber-300 transition-colors">
+              {series.name}
+            </h3>
+          </button>
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <FormatPill format={series.format} />
+            <StatusPill status={series.status} />
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1">
-          <Users className="h-3.5 w-3.5" />
-          {series.teams.length} teams
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <Trophy className="h-3.5 w-3.5" />
-          {matchCount} match{matchCount === 1 ? "" : "es"}
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <CalendarDays className="h-3.5 w-3.5" />
-          {datesStr}
-        </span>
-      </div>
+      {/* Body — stats + description */}
+      <div className="flex flex-1 flex-col gap-3 p-4">
+        <div className="flex flex-wrap gap-2">
+          <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+            <Users className="h-3.5 w-3.5" />
+            {series.teams.length} teams
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+            <Trophy className="h-3.5 w-3.5" />
+            {matchCount} match{matchCount === 1 ? "" : "es"}
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+            <CalendarDays className="h-3.5 w-3.5" />
+            {datesStr}
+          </span>
+        </div>
 
-      {series.description && (
-        <p className="line-clamp-2 text-xs text-muted-foreground">
-          {series.description}
-        </p>
-      )}
+        {series.description && (
+          <p className="line-clamp-2 text-xs text-muted-foreground">
+            {series.description}
+          </p>
+        )}
 
-      <div className="mt-auto flex flex-wrap items-center gap-2 border-t pt-3">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={onOpen}
-          className="gap-1.5 text-xs"
-        >
-          Edit
-          <ChevronRight className="h-3.5 w-3.5" />
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={onSchedule}
-          className="gap-1.5 text-xs"
-        >
-          <CalendarDays className="h-3.5 w-3.5" />
-          Schedule
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={onScorers}
-          className="gap-1.5 text-xs"
-        >
-          <Users className="h-3.5 w-3.5" />
-          Scorers
-        </Button>
+        {/* Action buttons — prominent, clear labels */}
+        <div className="mt-auto flex flex-col gap-2 border-t pt-3 sm:flex-row sm:flex-wrap">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onOpen}
+            className="gap-1.5 text-xs font-semibold"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            Edit Details
+          </Button>
+          <Button
+            size="sm"
+            onClick={onSchedule}
+            className="gap-1.5 bg-[#1e2a5e] text-xs font-semibold text-white hover:bg-[#1e2a5e]/90"
+          >
+            <CalendarPlus className="h-3.5 w-3.5" />
+            Create Schedule
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onScorers}
+            className="gap-1.5 text-xs font-semibold"
+          >
+            <UserPlus className="h-3.5 w-3.5" />
+            Add Scorers
+          </Button>
+        </div>
       </div>
     </Card>
   )

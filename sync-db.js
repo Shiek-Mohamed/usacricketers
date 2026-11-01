@@ -65,31 +65,73 @@ async function main() {
       return t !== "" && t !== "TEXT" && t !== "DATETIME"
     })
 
-    if (!hasSlug && badDateCols.length === 0) {
+    // Recreate table only if schema is wrong (slug or bad column types).
+    if (hasSlug || badDateCols.length > 0) {
+      if (hasSlug) console.log("sync-db: Series.slug found")
+      if (badDateCols.length)
+        console.log("sync-db: bad date column types:", badDateCols.join(", "))
+      console.log("sync-db: recreating Series table with correct schema")
+      const useIntegerConversion = badDateCols.length > 0
+      await db.$executeRawUnsafe(`PRAGMA foreign_keys=off`)
+      try {
+        await db.$executeRawUnsafe(SERIES_DDL)
+        if (useIntegerConversion) {
+          await db.$executeRawUnsafe(SERIES_COPY_INTEGER)
+        } else {
+          await db.$executeRawUnsafe(SERIES_COPY_TEXT)
+        }
+        await db.$executeRawUnsafe(`DROP TABLE "Series"`)
+        await db.$executeRawUnsafe(`ALTER TABLE Series_new RENAME TO Series`)
+        console.log("✅ sync-db: Series table recreated with correct schema")
+      } finally {
+        await db.$executeRawUnsafe(`PRAGMA foreign_keys=on`)
+      }
+    } else {
       console.log("✅ sync-db: Series schema OK (no slug, dates are TEXT)")
-      return
     }
 
-    if (hasSlug) console.log("sync-db: Series.slug found")
-    if (badDateCols.length)
-      console.log("sync-db: bad date column types:", badDateCols.join(", "))
-
-    console.log("sync-db: recreating Series table with correct schema")
-    const useIntegerConversion = badDateCols.length > 0
-
-    await db.$executeRawUnsafe(`PRAGMA foreign_keys=off`)
-    try {
-      await db.$executeRawUnsafe(SERIES_DDL)
-      if (useIntegerConversion) {
-        await db.$executeRawUnsafe(SERIES_COPY_INTEGER)
-      } else {
-        await db.$executeRawUnsafe(SERIES_COPY_TEXT)
+    // ALWAYS fix data drift: old series rows (from the seed, created via
+    // prisma.series.create() with Date objects) may have integer millisecond
+    // timestamps stored as text. Prisma's findMany can't convert these back
+    // → P2023 "Inconsistent column data" → GET /api/series returns 500.
+    // Two passes:
+    //   1. Integer timestamps (all-digits, 13+ chars) → ISO 8601 via strftime.
+    //   2. SQLite datetime format ("YYYY-MM-DD HH:MM:SS", from a prior run
+    //      that used datetime() instead of strftime) → ISO 8601 by swapping
+    //      the space for 'T' + appending '.000Z'.
+    // ISO strings already containing 'T' are left untouched by both passes.
+    for (const col of dateCols) {
+      // Pass 1: integer timestamps (pure digits, no dashes/colons) → ISO 8601
+      try {
+        const r = await db.$executeRawUnsafe(
+          `UPDATE "Series" SET "${col}" = strftime('%Y-%m-%dT%H:%M:%S.000Z', CAST("${col}" AS REAL)/1000, 'unixepoch') WHERE "${col}" GLOB '[0-9]*' AND "${col}" NOT GLOB '*-*' AND "${col}" NOT GLOB '*:*' AND length("${col}") >= 13`
+        )
+        if (r > 0) console.log(`✅ sync-db: converted ${r} integer timestamps in Series.${col}`)
+      } catch (e) {
+        console.log(`⚠️ sync-db: int fix Series.${col}: ${String(e).slice(0, 100)}`)
       }
-      await db.$executeRawUnsafe(`DROP TABLE "Series"`)
-      await db.$executeRawUnsafe(`ALTER TABLE Series_new RENAME TO Series`)
-      console.log("✅ sync-db: Series table recreated with correct schema")
-    } finally {
-      await db.$executeRawUnsafe(`PRAGMA foreign_keys=on`)
+      // Pass 2: "YYYY-MM-DD HH:MM:SS" → "YYYY-MM-DDTHH:MM:SS.000Z"
+      try {
+        const r = await db.$executeRawUnsafe(
+          `UPDATE "Series" SET "${col}" = REPLACE("${col}", ' ', 'T') || '.000Z' WHERE "${col}" LIKE '____-__-__ __:__:__'`
+        )
+        if (r > 0) console.log(`✅ sync-db: reformatted ${r} datetime values in Series.${col}`)
+      } catch (e) {
+        console.log(`⚠️ sync-db: fmt fix Series.${col}: ${String(e).slice(0, 100)}`)
+      }
+      // Pass 3: fix 1970 epoch dates (corrupted by a prior conversion run
+      // that misinterpreted datetime-formatted strings as integers). Set
+      // to the current time so the series isn't stuck at Jan 1, 1970.
+      if (col === "startDate" || col === "endDate") {
+        try {
+          const r = await db.$executeRawUnsafe(
+            `UPDATE "Series" SET "${col}" = strftime('%Y-%m-%dT%H:%M:%S.000Z', 'now') WHERE "${col}" LIKE '1970-%'`
+          )
+          if (r > 0) console.log(`✅ sync-db: reset ${r} epoch(1970) dates in Series.${col}`)
+        } catch (e) {
+          console.log(`⚠️ sync-db: epoch fix Series.${col}: ${String(e).slice(0, 100)}`)
+        }
+      }
     }
   } finally {
     await db.$disconnect()

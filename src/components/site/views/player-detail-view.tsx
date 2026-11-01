@@ -7,26 +7,15 @@ import {
   Disc,
   Target,
   Activity,
+  Users,
+  Trophy,
 } from "lucide-react"
-import {
-  Radar,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  ResponsiveContainer,
-  Tooltip,
-} from "recharts"
+import { PlayerAvatar, TeamBadge } from "@/components/cricket/ui"
 import { usePlayer, usePlayers } from "@/lib/use-data"
 import { useAppStore } from "@/lib/store"
-import { PlayerAvatar, TeamBadge } from "@/components/cricket/ui"
 import { InnerPageLayout } from "@/components/site/inner-layout"
 import { CustomSidebarBlocks } from "@/components/site/custom-sidebar-blocks"
-import {
-  PlayerSummaryWidget,
-  PlayerInfoWidget,
-  TeammatesWidget,
-} from "@/components/site/sidebar-widgets"
+import { TeammatesWidget } from "@/components/site/sidebar-widgets"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -201,8 +190,49 @@ export function PlayerDetailView() {
       }
     >
       <div className="space-y-5">
-        {/* Player info — moved from sidebar to above the stats */}
-        <PlayerInfoWidget player={player} />
+        {/* Player Info — prominent, constrained width */}
+        <div className="mx-auto max-w-md">
+          <div className="overflow-hidden rounded-xl border border-border shadow-sm">
+            <div className="bg-gradient-to-r from-[#1e2a5e] to-[#2d3b7a] px-4 py-2.5">
+              <h3 className="flex items-center gap-2 text-sm font-bold text-white">
+                <Activity className="size-4 text-amber-400" />
+                Player Info
+              </h3>
+            </div>
+            <div className="grid grid-cols-2 gap-px bg-border">
+              <div className="flex items-center gap-2 bg-card px-4 py-2.5">
+                <Target className="size-4 shrink-0 text-emerald-600" />
+                <div className="min-w-0">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Batting</div>
+                  <div className="truncate text-sm font-bold text-foreground">{player.battingStyle}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 bg-card px-4 py-2.5">
+                <Disc className="size-4 shrink-0 text-amber-600" />
+                <div className="min-w-0">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Bowling</div>
+                  <div className="truncate text-sm font-bold text-foreground">{player.bowlingStyle || "—"}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 bg-card px-4 py-2.5">
+                <Trophy className="size-4 shrink-0 text-purple-600" />
+                <div className="min-w-0">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Role</div>
+                  <div className="truncate text-sm font-bold text-foreground">{player.role}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 bg-card px-4 py-2.5">
+                <Users className="size-4 shrink-0 text-blue-600" />
+                <div className="min-w-0">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Team</div>
+                  <div className="truncate text-sm font-bold text-foreground">
+                    {player.team ? player.team.name : "—"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Batting Statistics */}
         <Card className="gap-0 py-0">

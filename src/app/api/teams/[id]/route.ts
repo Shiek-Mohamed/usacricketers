@@ -29,6 +29,7 @@ export async function PUT(
       country: body.country,
       primaryColor: body.primaryColor,
       accentColor: body.accentColor,
+      logoUrl: body.logoUrl ?? undefined,
       description: body.description,
     },
   })

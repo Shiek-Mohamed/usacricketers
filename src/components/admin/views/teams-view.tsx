@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
 import { TeamBadge } from "@/components/cricket/ui"
+import { UploadButton } from "@/components/admin/upload-button"
 import {
   Table,
   TableHeader,
@@ -47,6 +48,7 @@ interface TeamFormState {
   country: string
   primaryColor: string
   accentColor: string
+  logoUrl: string
   description: string
 }
 
@@ -56,6 +58,7 @@ const emptyForm: TeamFormState = {
   country: "",
   primaryColor: "#0e7490",
   accentColor: "#f59e0b",
+  logoUrl: "",
   description: "",
 }
 
@@ -92,6 +95,7 @@ export function AdminTeamsView() {
       country: t.country,
       primaryColor: t.primaryColor,
       accentColor: t.accentColor,
+      logoUrl: t.logoUrl ?? "",
       description: t.description,
     })
     setOpen(true)
@@ -142,6 +146,7 @@ export function AdminTeamsView() {
     shortName: form.shortName || "TM",
     primaryColor: form.primaryColor,
     accentColor: form.accentColor,
+    logoUrl: form.logoUrl || null,
   }
 
   return (
@@ -346,6 +351,43 @@ export function AdminTeamsView() {
                   />
                 </div>
               </div>
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Team Logo</Label>
+              <div className="flex items-center gap-3">
+                <UploadButton
+                  label="Upload logo"
+                  onUploaded={(url) => setForm((f) => ({ ...f, logoUrl: url }))}
+                />
+                {form.logoUrl && (
+                  <img
+                    src={form.logoUrl}
+                    alt="Team logo"
+                    className="h-12 w-12 rounded-full object-contain border"
+                  />
+                )}
+                {form.logoUrl && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive"
+                    onClick={() => setForm((f) => ({ ...f, logoUrl: "" }))}
+                  >
+                    Remove
+                  </Button>
+                )}
+              </div>
+              {form.logoUrl && (
+                <Input
+                  value={form.logoUrl}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, logoUrl: e.target.value }))
+                  }
+                  className="font-mono text-xs"
+                  placeholder="Logo URL"
+                />
+              )}
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="description">Description</Label>

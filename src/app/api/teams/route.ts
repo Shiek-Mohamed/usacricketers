@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
       country: body.country || body.name,
       primaryColor: body.primaryColor || "#1e3a8a",
       accentColor: body.accentColor || "#f59e0b",
+      logoUrl: body.logoUrl || null,
       description: body.description || "",
     },
   })

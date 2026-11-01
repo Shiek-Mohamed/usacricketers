@@ -116,6 +116,7 @@ export interface Team {
   country: string
   primaryColor: string
   accentColor: string
+  logoUrl?: string | null
   description: string
   createdAt: string
   updatedAt: string

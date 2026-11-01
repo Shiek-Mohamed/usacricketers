@@ -40,6 +40,7 @@ model Team {
   country      String
   primaryColor String   @default("#1e3a8a")
   accentColor  String   @default("#f59e0b")
+  logoUrl      String?
   description  String   @default("")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

@@ -10,6 +10,7 @@ export function serializeTeam(t: Prisma.TeamGetPayload<Record<string, never>>): 
     country: t.country,
     primaryColor: t.primaryColor,
     accentColor: t.accentColor,
+    logoUrl: t.logoUrl,
     description: t.description,
     createdAt: t.createdAt.toISOString(),
     updatedAt: t.updatedAt.toISOString(),

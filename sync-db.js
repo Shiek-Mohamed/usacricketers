@@ -133,6 +133,19 @@ async function main() {
         }
       }
     }
+
+    // Add logoUrl column to Team table if it doesn't exist (for fly.io DB
+    // which hasn't been db-pushed yet).
+    try {
+      const teamCols = await db.$queryRawUnsafe(`SELECT name FROM pragma_table_info('Team')`)
+      const hasLogoUrl = teamCols.some((c) => c.name === 'logoUrl')
+      if (!hasLogoUrl) {
+        await db.$executeRawUnsafe(`ALTER TABLE "Team" ADD COLUMN "logoUrl" TEXT`)
+        console.log("✅ sync-db: added logoUrl column to Team table")
+      }
+    } catch (e) {
+      console.log(`⚠️ sync-db: Team.logoUrl column check: ${String(e).slice(0, 100)}`)
+    }
   } finally {
     await db.$disconnect()
   }

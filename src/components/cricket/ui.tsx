@@ -8,7 +8,7 @@ export function TeamBadge({
   size = "md",
   className,
 }: {
-  team: Pick<Team, "shortName" | "primaryColor" | "accentColor">
+  team: Pick<Team, "shortName" | "primaryColor" | "accentColor" | "logoUrl">
   size?: "sm" | "md" | "lg" | "xl"
   className?: string
 }) {
@@ -21,7 +21,7 @@ export function TeamBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center justify-center rounded-full font-extrabold text-white shrink-0 shadow-sm ring-2",
+        "inline-flex items-center justify-center rounded-full font-extrabold text-white shrink-0 shadow-sm ring-2 overflow-hidden",
         sizes[size],
         className
       )}
@@ -31,7 +31,16 @@ export function TeamBadge({
         "--tw-ring-color": team.accentColor,
       }}
     >
-      {team.shortName.slice(0, 3)}
+      {team.logoUrl ? (
+        <img
+          src={team.logoUrl}
+          alt={team.shortName}
+          className="h-full w-full object-contain p-0.5"
+          loading="lazy"
+        />
+      ) : (
+        team.shortName.slice(0, 3)
+      )}
     </span>
   )
 }
@@ -40,18 +49,20 @@ export function TeamBadgeByName({
   shortName,
   primaryColor = "#1e3a8a",
   accentColor = "#f59e0b",
+  logoUrl,
   size = "md",
   className,
 }: {
   shortName: string
   primaryColor?: string
   accentColor?: string
+  logoUrl?: string | null
   size?: "sm" | "md" | "lg" | "xl"
   className?: string
 }) {
   return (
     <TeamBadge
-      team={{ shortName, primaryColor, accentColor }}
+      team={{ shortName, primaryColor, accentColor, logoUrl }}
       size={size}
       className={className}
     />

@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "next-themes";
@@ -31,6 +32,7 @@ export const metadata: Metadata = {
   authors: [{ name: "USACricketers" }],
   icons: {
     icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    apple: "/logo.svg",
   },
   manifest: "/manifest.json",
   openGraph: {
@@ -46,6 +48,29 @@ export const metadata: Metadata = {
     description: "The definitive home of USA cricket.",
   },
 };
+
+// Next.js 13+ moved themeColor + viewport to a dedicated `viewport` export.
+// See: https://nextjs.org/docs/app/api-reference/functions/generateViewport
+export const viewport: Viewport = {
+  themeColor: "#1e2a5e",
+  width: "device-width",
+  initialScale: 1,
+};
+
+// Inline service-worker registration script. Defers to `window.load` so it
+// never blocks first paint. The production-only gate is handled at React
+// render time (see conditional `<Script>` below) — webpack inlines
+// `process.env.NODE_ENV` for component code but NOT for inline-script
+// strings, so the check must live in JSX, not in this template literal.
+const SW_REGISTER_SCRIPT = `
+(function () {
+  if (typeof window === "undefined") return;
+  if (!("serviceWorker" in navigator)) return;
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("/sw.js").catch(function () {});
+  });
+})();
+`;
 
 export default function RootLayout({
   children,
@@ -65,26 +90,15 @@ export default function RootLayout({
         >
           {children}
           <Toaster />
-          <ServiceWorkerRegister />
         </ThemeProvider>
+        {process.env.NODE_ENV === "production" && (
+          <Script
+            id="sw-register"
+            strategy="afterInteractive"
+            dangerouslySetInnerHTML={{ __html: SW_REGISTER_SCRIPT }}
+          />
+        )}
       </body>
     </html>
   );
-}
-
-/** Client component that registers the service worker for PWA offline
- *  support. Only runs in production (dev mode skips SW registration because
- *  the dev server's HMR conflicts with the SW cache). */
-function ServiceWorkerRegister() {
-  if (typeof window === "undefined") return null;
-  if (process.env.NODE_ENV !== "production") return null;
-  if (!("serviceWorker" in navigator)) return null;
-  // Defer registration to after page load so it doesn't compete with
-  // critical rendering.
-  window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("/sw.js")
-      .catch(() => { /* silent — PWA is a progressive enhancement */ })
-  })
-  return null
 }

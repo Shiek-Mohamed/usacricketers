@@ -10,6 +10,7 @@ import { formatDate } from "@/components/cricket/ui"
 import { InnerPageLayout } from "@/components/site/inner-layout"
 import { ShareButtons } from "@/components/site/share-buttons"
 import { SeoMeta } from "@/components/site/seo-meta"
+import { ArticleCard } from "@/components/cricket/article-card"
 import { CustomSidebarBlocks } from "@/components/site/custom-sidebar-blocks"
 import {
   ArticleListWidget,
@@ -22,11 +23,13 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
   ChevronLeft,
+  ChevronRight,
   Newspaper,
   Clock,
   User,
   Info,
   ArrowLeft,
+  Home as HomeIcon,
 } from "lucide-react"
 
 function estimateReadTime(content: string) {
@@ -200,11 +203,59 @@ function ArticleDetailSkeleton() {
   )
 }
 
+/**
+ * Breadcrumb nav: Home > News > [Article title].
+ * Clicking Home/News calls navigate() so SPA routing is preserved.
+ */
+function ArticleBreadcrumbs({
+  title,
+  onNavigate,
+}: {
+  title: string
+  onNavigate: (view: "home" | "news") => void
+}) {
+  return (
+    <nav
+      aria-label="Breadcrumb"
+      className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground"
+    >
+      <button
+        type="button"
+        onClick={() => onNavigate("home")}
+        className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
+      >
+        <HomeIcon className="h-3 w-3" />
+        Home
+      </button>
+      <ChevronRight className="h-3 w-3 shrink-0 opacity-60" aria-hidden="true" />
+      <button
+        type="button"
+        onClick={() => onNavigate("news")}
+        className="transition-colors hover:text-foreground"
+      >
+        News
+      </button>
+      <ChevronRight className="h-3 w-3 shrink-0 opacity-60" aria-hidden="true" />
+      <span className="line-clamp-1 max-w-[60%] truncate font-medium text-foreground/80">
+        {title}
+      </span>
+    </nav>
+  )
+}
+
 export function ArticleDetailView() {
   const id = useAppStore((s) => s.id)
   const navigate = useAppStore((s) => s.navigate)
   const { data, loading, error } = useArticle(id)
   const { data: articlesPage } = useArticles({ pageSize: 10 })
+
+  // Category-filtered "Read Next" list — fetched once we know the article's
+  // primary category. Falls back to [] while the article is loading or when
+  // the article has no categories.
+  const primaryCategory = data?.categories?.[0]
+  const { data: relatedPage } = useArticles(
+    primaryCategory ? { category: primaryCategory, pageSize: 5 } : undefined,
+  )
 
   const content = data?.content ?? ""
   const readTime = useMemo(() => estimateReadTime(content), [content])
@@ -214,6 +265,12 @@ export function ArticleDetailView() {
       .filter((a) => a.id !== id)
       .slice(0, 4)
   }, [articlesPage, id])
+  const readNext = useMemo(() => {
+    const items = relatedPage?.items ?? []
+    return items
+      .filter((a) => a.id !== id)
+      .slice(0, 4)
+  }, [relatedPage, id])
 
   if (loading) return <ArticleDetailSkeleton />
 
@@ -268,14 +325,10 @@ export function ArticleDetailView() {
       mainWidth={600}
       header={
         <>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate("news")}
-            className="gap-1 self-start"
-          >
-            <ChevronLeft className="h-4 w-4" /> Back to news
-          </Button>
+          <ArticleBreadcrumbs
+            title={article.title}
+            onNavigate={(v) => navigate(v)}
+          />
 
           <article className="space-y-4">
             {/* Hero header + large image render full-width above the sidebar */}
@@ -298,7 +351,7 @@ export function ArticleDetailView() {
                   <Clock className="h-3.5 w-3.5" />
                   {formatDate(article.publishedAt)}
                 </span>
-                <span className="inline-flex items-center gap-1">
+                <span className="inline-flex items-center gap-1" title={`About ${readTime} min read`}>
                   <Clock className="h-3.5 w-3.5" />
                   {readTime} min read
                 </span>
@@ -352,6 +405,25 @@ export function ArticleDetailView() {
         </Button>
       </div>
     </InnerPageLayout>
+
+    {/* Read Next — grid of related ArticleCards from the same category,
+        rendered full-width below the article + sidebar layout. */}
+    {readNext.length > 0 && (
+      <section
+        aria-label="Read next"
+        className="mt-10 border-t pt-6"
+      >
+        <h2 className="mb-4 flex items-center gap-2 text-lg font-bold sm:text-xl">
+          <Newspaper className="h-5 w-5 text-primary" />
+          Read Next
+        </h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {readNext.map((a) => (
+            <ArticleCard key={a.id} article={a} />
+          ))}
+        </div>
+      </section>
+    )}
     </>
   )
 }

@@ -2,10 +2,23 @@
 
 import type { Article } from "@/lib/types"
 import { useAppStore } from "@/lib/store"
-import { formatDate } from "@/components/cricket/ui"
+import { formatDate, timeAgo } from "@/components/cricket/ui"
 import { cn } from "@/lib/utils"
 import { Card } from "@/components/ui/card"
-import { Newspaper, User, Clock } from "lucide-react"
+import { Newspaper, User, Clock, Timer } from "lucide-react"
+
+/**
+ * Reading-time estimate (200 wpm). Defensive: only returns a value when the
+ * article actually carries a `content` string — list views sometimes only have
+ * the excerpt, in which case the caller should skip the label entirely.
+ */
+function getReadTime(article: Article): number | null {
+  const content = (article as Partial<Article>).content
+  if (typeof content !== "string" || !content.trim()) return null
+  const words = content.trim().split(/\s+/).filter(Boolean).length
+  if (!words) return null
+  return Math.max(1, Math.ceil(words / 200))
+}
 
 export function ArticleCard({
   article,
@@ -15,6 +28,7 @@ export function ArticleCard({
   variant?: "default" | "featured" | "compact" | "horizontal"
 }) {
   const navigate = useAppStore((s) => s.navigate)
+  const readMinutes = getReadTime(article)
 
   if (variant === "compact") {
     return (
@@ -48,8 +62,19 @@ export function ArticleCard({
           <h3 className="line-clamp-2 text-sm font-semibold leading-snug group-hover:text-primary transition-colors">
             {article.title}
           </h3>
-          <div className="mt-0.5 text-[11px] text-muted-foreground">
-            {article.author} · {formatDate(article.publishedAt)}
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11px] text-muted-foreground">
+            <span className="truncate">{article.author}</span>
+            <span aria-hidden="true">·</span>
+            <span className="whitespace-nowrap">{formatDate(article.publishedAt)}</span>
+            {readMinutes && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="inline-flex items-center gap-0.5 whitespace-nowrap">
+                  <Timer className="h-2.5 w-2.5" aria-hidden="true" />
+                  {readMinutes} min
+                </span>
+              </>
+            )}
           </div>
         </div>
       </button>
@@ -76,8 +101,19 @@ export function ArticleCard({
         <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
           {article.excerpt}
         </p>
-        <div className="mt-1.5 text-[11px] text-muted-foreground">
-          {article.author} · {timeAgo(article.publishedAt)}
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 text-[11px] text-muted-foreground">
+          <span className="truncate">{article.author}</span>
+          <span aria-hidden="true">·</span>
+          <span className="whitespace-nowrap">{timeAgo(article.publishedAt)}</span>
+          {readMinutes && (
+            <>
+              <span aria-hidden="true">·</span>
+              <span className="inline-flex items-center gap-0.5 whitespace-nowrap">
+                <Timer className="h-2.5 w-2.5" aria-hidden="true" />
+                {readMinutes} min read
+              </span>
+            </>
+          )}
         </div>
       </button>
     )
@@ -141,6 +177,18 @@ export function ArticleCard({
             <Clock className="h-3 w-3" aria-hidden="true" />
             {formatDate(article.publishedAt)}
           </span>
+          {readMinutes && (
+            <>
+              <span aria-hidden="true">·</span>
+              <span
+                className="inline-flex items-center gap-1 whitespace-nowrap"
+                title={`About ${readMinutes} min read`}
+              >
+                <Timer className="h-3 w-3" aria-hidden="true" />
+                {readMinutes} min read
+              </span>
+            </>
+          )}
         </div>
         {article.tags && (
           <div className="flex flex-wrap gap-1 pt-1">

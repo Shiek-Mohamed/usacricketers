@@ -164,7 +164,7 @@ export function PlayerDetailView() {
                 )}
               </div>
               {/* Player Info grid — right side, fills the white space */}
-              <div className="w-full shrink-0 sm:w-64">
+              <div className="w-full shrink-0 sm:w-80 lg:w-96">
                 <div className="overflow-hidden rounded-lg border border-border">
                   <div className="bg-gradient-to-r from-[#1e2a5e] to-[#2d3b7a] px-3 py-1.5">
                     <h3 className="flex items-center gap-1.5 text-xs font-bold text-white">
@@ -177,28 +177,28 @@ export function PlayerDetailView() {
                       <Target className="size-3.5 shrink-0 text-emerald-600" />
                       <div className="min-w-0">
                         <div className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Batting</div>
-                        <div className="truncate text-xs font-bold text-foreground">{player.battingStyle}</div>
+                        <div className="text-xs font-bold text-foreground">{player.battingStyle}</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 bg-card px-3 py-2">
                       <Disc className="size-3.5 shrink-0 text-amber-600" />
                       <div className="min-w-0">
                         <div className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Bowling</div>
-                        <div className="truncate text-xs font-bold text-foreground">{player.bowlingStyle || "—"}</div>
+                        <div className="text-xs font-bold text-foreground">{player.bowlingStyle || "—"}</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 bg-card px-3 py-2">
                       <Trophy className="size-3.5 shrink-0 text-purple-600" />
                       <div className="min-w-0">
                         <div className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Role</div>
-                        <div className="truncate text-xs font-bold text-foreground">{player.role}</div>
+                        <div className="text-xs font-bold text-foreground">{player.role}</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 bg-card px-3 py-2">
                       <Users className="size-3.5 shrink-0 text-blue-600" />
                       <div className="min-w-0">
                         <div className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Team</div>
-                        <div className="truncate text-xs font-bold text-foreground">
+                        <div className="text-xs font-bold text-foreground">
                           {player.team ? player.team.name : "—"}
                         </div>
                       </div>

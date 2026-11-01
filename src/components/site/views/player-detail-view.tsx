@@ -203,7 +203,7 @@ export function PlayerDetailView() {
       }
     >
       <div className="space-y-5">
-        {/* Batting stats */}
+        {/* Batting Statistics */}
         <Card className="gap-0 py-0">
           <CardHeader className="border-b px-5 sm:px-6">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -216,86 +216,19 @@ export function PlayerDetailView() {
           </CardContent>
         </Card>
 
-        {/* Batting highlights — stat cards + radar chart */}
-        <Card className="gap-3 py-4">
-          <CardHeader className="px-5 sm:px-6">
-            <CardTitle className="text-sm font-semibold">
-              Batting Highlights
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 px-5 sm:px-6">
-            {/* Stat cards — each at its own scale, no comparison problem */}
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <StatTile label="Runs" value={player.battingStats.runs} color="emerald" />
-              <StatTile label="Highest" value={player.battingStats.highest} color="amber" />
-              <StatTile label="Average" value={player.battingStats.average.toFixed(1)} color="emerald" />
-              <StatTile label="Strike Rate" value={player.battingStats.strikeRate.toFixed(1)} color="emerald" />
-              <StatTile label="100s" value={player.battingStats.hundreds} color="amber" />
-              <StatTile label="50s" value={player.battingStats.fifties} color="amber" />
-              <StatTile label="4s" value={player.battingStats.fours} color="cyan" />
-              <StatTile label="6s" value={player.battingStats.sixes} color="purple" />
-            </div>
-            {/* Radar chart — normalized profile (power vs accumulator shape) */}
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart data={battingRadarData} outerRadius="70%">
-                  <PolarGrid stroke="hsl(var(--border))" />
-                  <PolarAngleAxis dataKey="stat" tick={{ fontSize: 11 }} className="text-muted-foreground" />
-                  <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
-                  <Radar
-                    dataKey="value"
-                    stroke="#059669"
-                    fill="#059669"
-                    fillOpacity={0.3}
-                    strokeWidth={2}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      fontSize: 12,
-                      borderRadius: 8,
-                      border: "1px solid hsl(var(--border))",
-                    }}
-                    formatter={(v: number) => [`${v.toFixed(0)}/100`, "Rating"]}
-                  />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Bowling stats (if any) */}
+        {/* Bowling Statistics (if any) */}
         {player.bowlingStats && (
-          <>
-            <Card className="gap-0 py-0">
-              <CardHeader className="border-b px-5 sm:px-6">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Disc className="size-4 text-amber-600" />
-                  Bowling Statistics
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <BowlingTable stats={player.bowlingStats} />
-              </CardContent>
-            </Card>
-
-            <Card className="gap-3 py-4">
-              <CardHeader className="px-5 sm:px-6">
-                <CardTitle className="text-sm font-semibold">
-                  Bowling Highlights
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-5 sm:px-6">
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  <StatTile label="Wickets" value={player.bowlingStats!.wickets} color="amber" />
-                  <StatTile label="Best" value={player.bowlingStats!.best} color="amber" />
-                  <StatTile label="Economy" value={player.bowlingStats!.economy.toFixed(2)} color="emerald" />
-                  <StatTile label="Average" value={player.bowlingStats!.average.toFixed(1)} color="emerald" />
-                  <StatTile label="Strike Rate" value={player.bowlingStats!.strikeRate.toFixed(1)} color="emerald" />
-                  <StatTile label="Maidens" value={player.bowlingStats!.maidens} color="cyan" />
-                </div>
-              </CardContent>
-            </Card>
-          </>
+          <Card className="gap-0 py-0">
+            <CardHeader className="border-b px-5 sm:px-6">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Disc className="size-4 text-amber-600" />
+                Bowling Statistics
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <BowlingTable stats={player.bowlingStats} />
+            </CardContent>
+          </Card>
         )}
 
       <Separator />

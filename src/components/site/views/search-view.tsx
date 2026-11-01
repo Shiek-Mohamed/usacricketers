@@ -139,7 +139,7 @@ export function SearchView() {
                       onClick={() => navigate("player-detail", p.id)}
                       className="flex flex-col items-center gap-2 rounded-lg border p-3 text-center transition-shadow hover:shadow-md"
                     >
-                      <PlayerAvatar name={p.name} src={p.imageUrl} size="lg" />
+                      <PlayerAvatar name={p.name} imageUrl={p.imageUrl} size="lg" />
                       <div>
                         <div className="text-sm font-bold">{p.name}</div>
                         <div className="text-[11px] text-muted-foreground">{p.role}</div>

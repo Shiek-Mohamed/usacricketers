@@ -202,6 +202,7 @@ function RankList({
             <PlayerAvatar
               name={p.name}
               team={p.team}
+              imageUrl={p.imageUrl}
               size="sm"
             />
             <div className="min-w-0 flex-1">

@@ -248,7 +248,7 @@ export function TeammatesWidget({
               onClick={() => navigate("player-detail", p.id)}
               className="flex w-full items-center gap-2 rounded-md px-1 py-1 text-left transition-colors hover:bg-accent"
             >
-              <PlayerAvatar name={p.name} team={p.team} size="sm" />
+              <PlayerAvatar name={p.name} team={p.team} imageUrl={p.imageUrl} size="sm" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs font-semibold">{p.name}</p>
                 <p className="truncate text-[10px] text-muted-foreground">

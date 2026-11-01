@@ -152,6 +152,7 @@ function PlayerCard({
         <PlayerAvatar
           name={player.name}
           team={player.team}
+          imageUrl={player.imageUrl}
           size="lg"
         />
         <div className="min-w-0 flex-1">

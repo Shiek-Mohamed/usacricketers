@@ -313,6 +313,7 @@ export function AdminPlayersView() {
                             <PlayerAvatar
                               name={p.name}
                               team={team}
+                              imageUrl={p.imageUrl}
                               size="sm"
                             />
                             <span className="font-medium">{p.name}</span>

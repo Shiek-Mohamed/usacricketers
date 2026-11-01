@@ -263,47 +263,46 @@ function LeagueCard({
 
   return (
     <Card className="group flex flex-col overflow-hidden p-0 transition-all hover:shadow-xl hover:-translate-y-0.5">
-      {/* Navy gradient header */}
-      <div className="bg-gradient-to-r from-[#1e2a5e] to-[#2d3b7a] p-4 text-white">
-        <div className="flex items-start justify-between gap-2">
-          <button
-            onClick={onOpen}
-            className="min-w-0 flex-1 text-left"
-            aria-label={`Edit ${series.name}`}
-          >
-            <div className="mb-1 flex items-center gap-1.5">
-              <Trophy className="h-4 w-4 shrink-0 text-amber-400" />
-              <span className="text-[10px] font-bold uppercase tracking-wider text-white/70">
-                {series.shortName} · {series.season}
-              </span>
-            </div>
-            <h3 className="line-clamp-2 text-base font-extrabold leading-tight tracking-tight text-white group-hover:text-amber-300 transition-colors">
-              {series.name}
-            </h3>
-          </button>
-          <div className="flex shrink-0 flex-col items-end gap-1">
-            <FormatPill format={series.format} />
-            <StatusPill status={series.status} />
-          </div>
+      {/* Navy gradient header — centered */}
+      <div className="bg-gradient-to-r from-[#1e2a5e] to-[#2d3b7a] p-4 text-center text-white">
+        <div className="mb-1.5 flex items-center justify-center gap-1.5">
+          <Trophy className="h-4 w-4 shrink-0 text-amber-400" />
+          <span className="text-[10px] font-bold uppercase tracking-wider text-white/70">
+            {series.shortName} · {series.season}
+          </span>
+        </div>
+        <button
+          onClick={onOpen}
+          className="block w-full"
+          aria-label={`Edit ${series.name}`}
+        >
+          <h3 className="line-clamp-2 text-base font-extrabold leading-tight tracking-tight text-white group-hover:text-amber-300 transition-colors">
+            {series.name}
+          </h3>
+        </button>
+        <div className="mt-2 flex items-center justify-center gap-1.5">
+          <FormatPill format={series.format} />
+          <StatusPill status={series.status} />
         </div>
       </div>
 
-      {/* Body — stats + description */}
-      <div className="flex flex-1 flex-col gap-3 p-4">
-        <div className="flex flex-wrap gap-2">
-          <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-            <Users className="h-3.5 w-3.5" />
+      {/* Body — centered stats + description */}
+      <div className="flex flex-1 flex-col items-center gap-2.5 p-4 text-center">
+        {/* Stats — bigger, bolder, centered */}
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+          <span className="inline-flex items-center gap-1 text-sm font-bold text-foreground">
+            <Users className="h-4 w-4 text-blue-600" />
             {series.teams.length} teams
           </span>
-          <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-            <Trophy className="h-3.5 w-3.5" />
+          <span className="inline-flex items-center gap-1 text-sm font-bold text-foreground">
+            <Trophy className="h-4 w-4 text-amber-600" />
             {matchCount} match{matchCount === 1 ? "" : "es"}
           </span>
-          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-            <CalendarDays className="h-3.5 w-3.5" />
-            {datesStr}
-          </span>
         </div>
+        <span className="inline-flex items-center gap-1 text-sm font-bold text-foreground">
+          <CalendarDays className="h-4 w-4 text-emerald-600" />
+          {datesStr}
+        </span>
 
         {series.description && (
           <p className="line-clamp-2 text-xs text-muted-foreground">
@@ -311,8 +310,27 @@ function LeagueCard({
           </p>
         )}
 
-        {/* Action buttons — prominent, clear labels */}
-        <div className="mt-auto flex flex-col gap-2 border-t pt-3 sm:flex-row sm:flex-wrap">
+        {/* Action buttons — Create Schedule + Add Scorers same style, same line */}
+        <div className="mt-auto flex w-full flex-col items-center gap-2 border-t pt-3">
+          <div className="flex w-full flex-row justify-center gap-2">
+            <Button
+              size="sm"
+              onClick={onSchedule}
+              className="gap-1.5 bg-[#1e2a5e] text-xs font-semibold text-white hover:bg-[#1e2a5e]/90"
+            >
+              <CalendarPlus className="h-3.5 w-3.5" />
+              Create Schedule
+            </Button>
+            <Button
+              size="sm"
+              onClick={onScorers}
+              className="gap-1.5 bg-[#1e2a5e] text-xs font-semibold text-white hover:bg-[#1e2a5e]/90"
+            >
+              <UserPlus className="h-3.5 w-3.5" />
+              Add Scorers
+            </Button>
+          </div>
+          {/* Edit Details — below, centered */}
           <Button
             size="sm"
             variant="outline"
@@ -321,23 +339,6 @@ function LeagueCard({
           >
             <Pencil className="h-3.5 w-3.5" />
             Edit Details
-          </Button>
-          <Button
-            size="sm"
-            onClick={onSchedule}
-            className="gap-1.5 bg-[#1e2a5e] text-xs font-semibold text-white hover:bg-[#1e2a5e]/90"
-          >
-            <CalendarPlus className="h-3.5 w-3.5" />
-            Create Schedule
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={onScorers}
-            className="gap-1.5 text-xs font-semibold"
-          >
-            <UserPlus className="h-3.5 w-3.5" />
-            Add Scorers
           </Button>
         </div>
       </div>

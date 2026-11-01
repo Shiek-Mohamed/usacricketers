@@ -21,7 +21,7 @@ export function TeamBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center justify-center rounded-full font-extrabold text-white shrink-0 shadow-sm ring-2 overflow-hidden",
+        "inline-flex items-center justify-center font-extrabold text-white shrink-0 shadow-sm ring-2",
         sizes[size],
         className
       )}

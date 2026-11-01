@@ -44,7 +44,11 @@ export function NewsView() {
   const [category, setCategory] = useState<string>("all")
   const [q, setQ] = useState("")
   const [debouncedQ, setDebouncedQ] = useState("")
-  const [page, setPage] = useState(1)
+  // Lazy init: read page from URL on mount (deep-link support).
+  const [page, setPage] = useState(() => {
+    if (typeof window === "undefined") return 1
+    return Math.max(1, parseInt(new URLSearchParams(window.location.search).get("page") || "1", 10) || 1)
+  })
 
   const apiCategory = category && category !== "all" ? category : undefined
 
@@ -91,11 +95,8 @@ export function NewsView() {
     }
   }
 
-  // On mount: read page from URL. Listen for back/forward to restore it.
+  // Listen for back/forward to restore the page from the URL.
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const p = parseInt(params.get("page") || "1", 10)
-    if (p > 1) setPage(p)
     const onPopState = () => {
       const params = new URLSearchParams(window.location.search)
       setPage(parseInt(params.get("page") || "1", 10))

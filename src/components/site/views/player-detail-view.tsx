@@ -9,14 +9,13 @@ import {
   Activity,
 } from "lucide-react"
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
+  Radar,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
   ResponsiveContainer,
   Tooltip,
-  XAxis,
-  YAxis,
 } from "recharts"
 import { usePlayer, usePlayers } from "@/lib/use-data"
 import { useAppStore } from "@/lib/store"
@@ -75,24 +74,19 @@ export function PlayerDetailView() {
       .catch(() => {})
   }, [player?.id])
 
-  const battingChartData = useMemo(() => {
+  // Normalized radar data for the batting profile chart. Each stat is
+  // scaled to 0-100 based on a "top player" benchmark, so the radar shows
+  // the player's shape (power hitter vs accumulator vs all-rounder).
+  const battingRadarData = useMemo(() => {
     if (!player) return []
     const bs = player.battingStats
     return [
-      { name: "Runs", value: bs.runs, color: "#059669" },
-      { name: "100s", value: bs.hundreds, color: "#d97706" },
-      { name: "50s", value: bs.fifties, color: "#b91c1c" },
-      { name: "4s", value: bs.fours, color: "#0891b2" },
-      { name: "6s", value: bs.sixes, color: "#7c3aed" },
-    ]
-  }, [player])
-
-  const bowlingChartData = useMemo(() => {
-    if (!player?.bowlingStats) return []
-    const bw = player.bowlingStats
-    return [
-      { name: "Wickets", value: bw.wickets, color: "#059669" },
-      { name: "Maidens", value: bw.maidens, color: "#d97706" },
+      { stat: "Avg", value: Math.min(100, (bs.average / 55) * 100) },
+      { stat: "SR", value: Math.min(100, (bs.strikeRate / 140) * 100) },
+      { stat: "100s", value: Math.min(100, (bs.hundreds / 50) * 100) },
+      { stat: "50s", value: Math.min(100, (bs.fifties / 100) * 100) },
+      { stat: "4s", value: Math.min(100, (bs.fours / 2000) * 100) },
+      { stat: "6s", value: Math.min(100, (bs.sixes / 500) * 100) },
     ]
   }, [player])
 
@@ -222,53 +216,48 @@ export function PlayerDetailView() {
           </CardContent>
         </Card>
 
-        {/* Batting chart */}
-        <Card className="gap-2 py-4">
+        {/* Batting highlights — stat cards + radar chart */}
+        <Card className="gap-3 py-4">
           <CardHeader className="px-5 sm:px-6">
             <CardTitle className="text-sm font-semibold">
               Batting Highlights
             </CardTitle>
           </CardHeader>
-          <CardContent className="px-2 sm:px-6">
+          <CardContent className="space-y-4 px-5 sm:px-6">
+            {/* Stat cards — each at its own scale, no comparison problem */}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <StatTile label="Runs" value={player.battingStats.runs} color="emerald" />
+              <StatTile label="Highest" value={player.battingStats.highest} color="amber" />
+              <StatTile label="Average" value={player.battingStats.average.toFixed(1)} color="emerald" />
+              <StatTile label="Strike Rate" value={player.battingStats.strikeRate.toFixed(1)} color="emerald" />
+              <StatTile label="100s" value={player.battingStats.hundreds} color="amber" />
+              <StatTile label="50s" value={player.battingStats.fifties} color="amber" />
+              <StatTile label="4s" value={player.battingStats.fours} color="cyan" />
+              <StatTile label="6s" value={player.battingStats.sixes} color="purple" />
+            </div>
+            {/* Radar chart — normalized profile (power vs accumulator shape) */}
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={battingChartData}
-                  margin={{ top: 10, right: 16, bottom: 0, left: 0 }}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    className="stroke-border"
-                    vertical={false}
-                  />
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fontSize: 11 }}
-                    className="text-muted-foreground"
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 11 }}
-                    className="text-muted-foreground"
-                    axisLine={false}
-                    tickLine={false}
-                    width={36}
+                <RadarChart data={battingRadarData} outerRadius="70%">
+                  <PolarGrid stroke="hsl(var(--border))" />
+                  <PolarAngleAxis dataKey="stat" tick={{ fontSize: 11 }} className="text-muted-foreground" />
+                  <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
+                  <Radar
+                    dataKey="value"
+                    stroke="#059669"
+                    fill="#059669"
+                    fillOpacity={0.3}
+                    strokeWidth={2}
                   />
                   <Tooltip
-                    cursor={{ fill: "rgba(0,0,0,0.04)" }}
                     contentStyle={{
                       fontSize: 12,
                       borderRadius: 8,
                       border: "1px solid hsl(var(--border))",
                     }}
+                    formatter={(v: number) => [`${v.toFixed(0)}/100`, "Rating"]}
                   />
-                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                    {battingChartData.map((d) => (
-                      <Cell key={d.name} fill={d.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
+                </RadarChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
@@ -289,53 +278,20 @@ export function PlayerDetailView() {
               </CardContent>
             </Card>
 
-            <Card className="gap-2 py-4">
+            <Card className="gap-3 py-4">
               <CardHeader className="px-5 sm:px-6">
                 <CardTitle className="text-sm font-semibold">
                   Bowling Highlights
                 </CardTitle>
               </CardHeader>
-              <CardContent className="px-2 sm:px-6">
-                <div className="h-56 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={bowlingChartData}
-                      margin={{ top: 10, right: 16, bottom: 0, left: 0 }}
-                    >
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        className="stroke-border"
-                        vertical={false}
-                      />
-                      <XAxis
-                        dataKey="name"
-                        tick={{ fontSize: 11 }}
-                        className="text-muted-foreground"
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <YAxis
-                        tick={{ fontSize: 11 }}
-                        className="text-muted-foreground"
-                        axisLine={false}
-                        tickLine={false}
-                        width={36}
-                      />
-                      <Tooltip
-                        cursor={{ fill: "rgba(0,0,0,0.04)" }}
-                        contentStyle={{
-                          fontSize: 12,
-                          borderRadius: 8,
-                          border: "1px solid hsl(var(--border))",
-                        }}
-                      />
-                      <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                        {bowlingChartData.map((d) => (
-                          <Cell key={d.name} fill={d.color} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+              <CardContent className="px-5 sm:px-6">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  <StatTile label="Wickets" value={player.bowlingStats!.wickets} color="amber" />
+                  <StatTile label="Best" value={player.bowlingStats!.best} color="amber" />
+                  <StatTile label="Economy" value={player.bowlingStats!.economy.toFixed(2)} color="emerald" />
+                  <StatTile label="Average" value={player.bowlingStats!.average.toFixed(1)} color="emerald" />
+                  <StatTile label="Strike Rate" value={player.bowlingStats!.strikeRate.toFixed(1)} color="emerald" />
+                  <StatTile label="Maidens" value={player.bowlingStats!.maidens} color="cyan" />
                 </div>
               </CardContent>
             </Card>
@@ -548,5 +504,39 @@ function BowlingTable({ stats }: { stats: BowlingStat }) {
         </TableRow>
       </TableBody>
     </Table>
+  )
+}
+
+/* --------------------------- Stat tile card --------------------------- */
+function StatTile({
+  label,
+  value,
+  color,
+}: {
+  label: string
+  value: string | number
+  color: "emerald" | "amber" | "cyan" | "purple"
+}) {
+  const colorMap = {
+    emerald: "border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/40",
+    amber: "border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/40",
+    cyan: "border-cyan-200 bg-cyan-50 dark:border-cyan-900 dark:bg-cyan-950/40",
+    purple: "border-purple-200 bg-purple-50 dark:border-purple-900 dark:bg-purple-950/40",
+  }
+  const textMap = {
+    emerald: "text-emerald-700 dark:text-emerald-300",
+    amber: "text-amber-700 dark:text-amber-300",
+    cyan: "text-cyan-700 dark:text-cyan-300",
+    purple: "text-purple-700 dark:text-purple-300",
+  }
+  return (
+    <div className={`rounded-lg border p-2.5 text-center ${colorMap[color]}`}>
+      <div className={`text-lg font-extrabold tabular-nums ${textMap[color]}`}>
+        {value}
+      </div>
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </div>
+    </div>
   )
 }

@@ -146,6 +146,18 @@ async function main() {
     } catch (e) {
       console.log(`⚠️ sync-db: Team.logoUrl column check: ${String(e).slice(0, 100)}`)
     }
+
+    // Create NewsletterSubscriber table if it doesn't exist (for fly.io).
+    try {
+      const tableExists = await db.$queryRawUnsafe(`SELECT name FROM sqlite_master WHERE type='table' AND name='NewsletterSubscriber'`)
+      if (!tableExists || tableExists.length === 0) {
+        await db.$executeRawUnsafe(`CREATE TABLE "NewsletterSubscriber" (id TEXT PRIMARY KEY NOT NULL, email TEXT NOT NULL, createdAt TEXT NOT NULL)`)
+        await db.$executeRawUnsafe(`CREATE UNIQUE INDEX "NewsletterSubscriber_email_key" ON "NewsletterSubscriber"(email)`)
+        console.log("✅ sync-db: created NewsletterSubscriber table")
+      }
+    } catch (e) {
+      console.log(`⚠️ sync-db: NewsletterSubscriber table: ${String(e).slice(0, 100)}`)
+    }
   } finally {
     await db.$disconnect()
   }

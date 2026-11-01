@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import type { Article, Match, Player, Series, Team } from "@/lib/types"
 import { useAppStore } from "@/lib/store"
 import { ArticleCard } from "@/components/cricket/article-card"
@@ -52,6 +53,40 @@ export function ArticleListWidget({
 }
 
 export function NewsletterWidget() {
+  const [email, setEmail] = useState("")
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
+  const [errorMsg, setErrorMsg] = useState("")
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const trimmed = email.trim()
+    if (!trimmed) {
+      setStatus("error")
+      setErrorMsg("Please enter your email.")
+      return
+    }
+    setStatus("loading")
+    setErrorMsg("")
+    try {
+      const res = await fetch("/api/newsletter/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmed }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setStatus("error")
+        setErrorMsg(data?.error || "Something went wrong. Try again.")
+        return
+      }
+      setStatus("success")
+      setEmail("")
+    } catch {
+      setStatus("error")
+      setErrorMsg("Network error. Please try again.")
+    }
+  }
+
   return (
     <SidebarWidget title="Newsletter">
       <div className="space-y-2.5">
@@ -63,14 +98,37 @@ export function NewsletterWidget() {
           Get the day&apos;s biggest cricket stories, scores and analysis in your
           inbox every morning.
         </p>
-        <input
-          type="email"
-          placeholder="Your email"
-          className="h-8 w-full rounded-md border bg-background px-2.5 text-xs outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        />
-        <button className="h-8 w-full rounded-md bg-primary text-xs font-semibold text-primary-foreground hover:opacity-90">
-          Subscribe
-        </button>
+        <form onSubmit={handleSubmit} className="space-y-2">
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value)
+              if (status !== "idle") setStatus("idle")
+            }}
+            placeholder="Your email"
+            disabled={status === "loading"}
+            className="h-8 w-full rounded-md border bg-background px-2.5 text-xs outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
+            aria-label="Email address"
+          />
+          <button
+            type="submit"
+            disabled={status === "loading"}
+            className="h-8 w-full rounded-md bg-primary text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          >
+            {status === "loading" ? "Subscribing…" : "Subscribe"}
+          </button>
+        </form>
+        {status === "success" && (
+          <p className="text-[11px] font-medium text-emerald-600">
+            ✓ Subscribed! Check your inbox.
+          </p>
+        )}
+        {status === "error" && (
+          <p className="text-[11px] font-medium text-red-600">
+            {errorMsg || "Something went wrong."}
+          </p>
+        )}
       </div>
     </SidebarWidget>
   )

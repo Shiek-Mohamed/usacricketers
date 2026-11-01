@@ -22,6 +22,22 @@ import { CustomSidebarBlocks } from "@/components/site/custom-sidebar-blocks"
 import { RecentResultsWidget } from "@/components/site/sidebar-widgets"
 
 const ALL_TEAMS = "__all__"
+const ALL_ROLES = "__all__"
+const ALL_STYLES = "__all__"
+
+const ROLE_OPTIONS = [
+  { value: ALL_ROLES, label: "All Roles" },
+  { value: "Batsman", label: "Batsman" },
+  { value: "Bowler", label: "Bowler" },
+  { value: "All-rounder", label: "All-rounder" },
+  { value: "Wicket-keeper", label: "Wicket-keeper" },
+] as const
+
+const BATTING_STYLE_OPTIONS = [
+  { value: ALL_STYLES, label: "All Styles" },
+  { value: "Right-hand bat", label: "Right-hand bat" },
+  { value: "Left-hand bat", label: "Left-hand bat" },
+] as const
 
 export function PlayersView() {
   const navigate = useAppStore((s) => s.navigate)
@@ -32,13 +48,19 @@ export function PlayersView() {
     teamId === ALL_TEAMS ? undefined : teamId
   )
   const [query, setQuery] = useState("")
+  const [role, setRole] = useState<string>(ALL_ROLES)
+  const [battingStyle, setBattingStyle] = useState<string>(ALL_STYLES)
 
   const filtered = useMemo(() => {
     if (!players) return []
     const q = query.trim().toLowerCase()
-    if (!q) return players
-    return players.filter((p) => p.name.toLowerCase().includes(q))
-  }, [players, query])
+    return players.filter((p) => {
+      if (q && !p.name.toLowerCase().includes(q)) return false
+      if (role !== ALL_ROLES && p.role !== role) return false
+      if (battingStyle !== ALL_STYLES && p.battingStyle !== battingStyle) return false
+      return true
+    })
+  }, [players, query, role, battingStyle])
 
   return (
     <InnerPageLayout
@@ -64,7 +86,7 @@ export function PlayersView() {
     >
       <div className="space-y-5">
         {/* Filters */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
           <Select
             value={teamId}
             onValueChange={(v) => setTeamId(v)}
@@ -78,6 +100,38 @@ export function PlayersView() {
               {teams?.map((t) => (
                 <SelectItem key={t.id} value={t.id}>
                   {t.shortName} · {t.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={role}
+            onValueChange={(v) => setRole(v)}
+          >
+            <SelectTrigger className="w-full sm:w-44" aria-label="Filter by role">
+              <SelectValue placeholder="All Roles" />
+            </SelectTrigger>
+            <SelectContent>
+              {ROLE_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={battingStyle}
+            onValueChange={(v) => setBattingStyle(v)}
+          >
+            <SelectTrigger className="w-full sm:w-44" aria-label="Filter by batting style">
+              <SelectValue placeholder="All Styles" />
+            </SelectTrigger>
+            <SelectContent>
+              {BATTING_STYLE_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
                 </SelectItem>
               ))}
             </SelectContent>

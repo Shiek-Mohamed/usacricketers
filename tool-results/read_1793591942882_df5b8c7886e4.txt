@@ -1,0 +1,690 @@
+     1→"use client"
+     2→
+     3→import { useState } from "react"
+     4→import { api } from "@/lib/api"
+     5→import { useBannersAll } from "@/lib/use-data"
+     6→import { AdminShell } from "@/components/admin/admin-shell"
+     7→import { UploadButton } from "@/components/admin/upload-button"
+     8→import { Card, CardContent } from "@/components/ui/card"
+     9→import { Button } from "@/components/ui/button"
+    10→import { Input } from "@/components/ui/input"
+    11→import { Label } from "@/components/ui/label"
+    12→import { Textarea } from "@/components/ui/textarea"
+    13→import { Switch } from "@/components/ui/switch"
+    14→import { Badge } from "@/components/ui/badge"
+    15→import { Skeleton } from "@/components/ui/skeleton"
+    16→import {
+    17→  Table,
+    18→  TableHeader,
+    19→  TableBody,
+    20→  TableRow,
+    21→  TableHead,
+    22→  TableCell,
+    23→} from "@/components/ui/table"
+    24→import {
+    25→  Dialog,
+    26→  DialogContent,
+    27→  DialogHeader,
+    28→  DialogTitle,
+    29→  DialogFooter,
+    30→  DialogDescription,
+    31→} from "@/components/ui/dialog"
+    32→import {
+    33→  AlertDialog,
+    34→  AlertDialogAction,
+    35→  AlertDialogCancel,
+    36→  AlertDialogContent,
+    37→  AlertDialogDescription,
+    38→  AlertDialogFooter,
+    39→  AlertDialogHeader,
+    40→  AlertDialogTitle,
+    41→} from "@/components/ui/alert-dialog"
+    42→import {
+    43→  Select,
+    44→  SelectContent,
+    45→  SelectItem,
+    46→  SelectTrigger,
+    47→  SelectValue,
+    48→} from "@/components/ui/select"
+    49→import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+    50→import {
+    51→  Plus,
+    52→  Pencil,
+    53→  Trash2,
+    54→  AlertTriangle,
+    55→  Image as ImageIcon,
+    56→  Code2,
+    57→  Megaphone,
+    58→} from "lucide-react"
+    59→import { toast } from "sonner"
+    60→import type { Banner, BannerType } from "@/lib/types"
+    61→
+    62→/* The fixed set of placement slots the home view exposes. The admin can
+    63→ * still type any custom placement into the dropdown — these are just the
+    64→ * canonical ones we ship with. */
+    65→const PLACEMENT_OPTIONS: { value: string; label: string; rotating: boolean }[] = [
+    66→  { value: "home-live-hero", label: "Home — between Live & Hero (AdSense slot, non-rotating)", rotating: false },
+    67→  { value: "home-above-results", label: "Home — above Latest Results (rotating)", rotating: true },
+    68→  { value: "home-above-news", label: "Home — above Latest News (rotating)", rotating: true },
+    69→  { value: "home-above-galleries", label: "Home — above Latest Galleries (rotating)", rotating: true },
+    70→]
+    71→
+    72→const BANNER_TYPES: { value: BannerType; label: string; icon: typeof ImageIcon; hint: string }[] = [
+    73→  { value: "image", label: "Image", icon: ImageIcon, hint: "Classic image banner with click-through" },
+    74→  { value: "adsense", label: "AdSense", icon: Megaphone, hint: "Google AdSense ad unit" },
+    75→  { value: "html", label: "HTML snippet", icon: Code2, hint: "Raw HTML (affiliate iframes, custom tags)" },
+    76→]
+    77→
+    78→interface BannerFormState {
+    79→  id?: string
+    80→  type: BannerType
+    81→  title: string
+    82→  placement: string
+    83→  order: number
+    84→  published: boolean
+    85→  startDate: string
+    86→  endDate: string
+    87→  weight: number
+    88→  // image
+    89→  imageUrl: string
+    90→  linkUrl: string
+    91→  altText: string
+    92→  // adsense
+    93→  adsenseClient: string
+    94→  adsenseSlot: string
+    95→  adsenseFormat: string
+    96→  responsive: boolean
+    97→  // html
+    98→  htmlContent: string
+    99→}
+   100→
+   101→const emptyForm: BannerFormState = {
+   102→  type: "image",
+   103→  title: "",
+   104→  placement: "home-live-hero",
+   105→  order: 0,
+   106→  published: true,
+   107→  startDate: "",
+   108→  endDate: "",
+   109→  weight: 1,
+   110→  imageUrl: "",
+   111→  linkUrl: "",
+   112→  altText: "",
+   113→  adsenseClient: "",
+   114→  adsenseSlot: "",
+   115→  adsenseFormat: "auto",
+   116→  responsive: true,
+   117→  htmlContent: "",
+   118→}
+   119→
+   120→function toFormState(b: Banner): BannerFormState {
+   121→  return {
+   122→    id: b.id,
+   123→    type: b.type,
+   124→    title: b.title,
+   125→    placement: b.placement,
+   126→    order: b.order,
+   127→    published: b.published,
+   128→    startDate: b.startDate ? b.startDate.slice(0, 10) : "",
+   129→    endDate: b.endDate ? b.endDate.slice(0, 10) : "",
+   130→    weight: b.weight,
+   131→    imageUrl: b.imageUrl ?? "",
+   132→    linkUrl: b.linkUrl ?? "",
+   133→    altText: b.altText ?? "",
+   134→    adsenseClient: b.adsenseClient ?? "",
+   135→    adsenseSlot: b.adsenseSlot ?? "",
+   136→    adsenseFormat: b.adsenseFormat ?? "auto",
+   137→    responsive: b.responsive,
+   138→    htmlContent: b.htmlContent ?? "",
+   139→  }
+   140→}
+   141→
+   142→function isDateActive(b: Banner): boolean {
+   143→  const now = Date.now()
+   144→  const start = b.startDate ? new Date(b.startDate).getTime() : -Infinity
+   145→  const end = b.endDate ? new Date(b.endDate).getTime() : Infinity
+   146→  return start <= now && now <= end
+   147→}
+   148→
+   149→export function AdminBannersView() {
+   150→  const { data: banners, loading, refetch } = useBannersAll()
+   151→  const [open, setOpen] = useState(false)
+   152→  const [form, setForm] = useState<BannerFormState>(emptyForm)
+   153→  const [deleteId, setDeleteId] = useState<string | null>(null)
+   154→  const [saving, setSaving] = useState(false)
+   155→
+   156→  function openCreate() {
+   157→    setForm(emptyForm)
+   158→    setOpen(true)
+   159→  }
+   160→  function openEdit(b: Banner) {
+   161→    setForm(toFormState(b))
+   162→    setOpen(true)
+   163→  }
+   164→
+   165→  async function handleSubmit() {
+   166→    if (!form.title.trim()) {
+   167→      toast.error("Title is required")
+   168→      return
+   169→    }
+   170→    // Type-specific validation
+   171→    if (form.type === "image" && !form.imageUrl) {
+   172→      toast.error("Image banner needs an image URL — upload an image first")
+   173→      return
+   174→    }
+   175→    if (form.type === "adsense" && (!form.adsenseClient || !form.adsenseSlot)) {
+   176→      toast.error("AdSense banner needs both the publisher ID (ca-pub-...) and the slot ID")
+   177→      return
+   178→    }
+   179→    if (form.type === "html" && !form.htmlContent.trim()) {
+   180→      toast.error("HTML banner needs the HTML snippet")
+   181→      return
+   182→    }
+   183→    setSaving(true)
+   184→    try {
+   185→      const payload: Partial<Banner> = {
+   186→        type: form.type,
+   187→        title: form.title.trim(),
+   188→        placement: form.placement,
+   189→        order: form.order,
+   190→        published: form.published,
+   191→        startDate: form.startDate ? new Date(form.startDate).toISOString() : null,
+   192→        endDate: form.endDate ? new Date(form.endDate).toISOString() : null,
+   193→        weight: form.weight,
+   194→        imageUrl: form.imageUrl || null,
+   195→        linkUrl: form.linkUrl || null,
+   196→        altText: form.altText || null,
+   197→        adsenseClient: form.adsenseClient || null,
+   198→        adsenseSlot: form.adsenseSlot || null,
+   199→        adsenseFormat: form.adsenseFormat || null,
+   200→        responsive: form.responsive,
+   201→        htmlContent: form.htmlContent || null,
+   202→      }
+   203→      if (form.id) {
+   204→        await api.banners.update(form.id, payload)
+   205→        toast.success("Banner updated")
+   206→      } else {
+   207→        await api.banners.create(payload)
+   208→        toast.success("Banner created")
+   209→      }
+   210→      setOpen(false)
+   211→      refetch()
+   212→    } catch (e) {
+   213→      toast.error("Failed to save banner", { description: String(e) })
+   214→    } finally {
+   215→      setSaving(false)
+   216→    }
+   217→  }
+   218→
+   219→  async function handleDelete(id: string) {
+   220→    try {
+   221→      await api.banners.remove(id)
+   222→      toast.success("Banner deleted")
+   223→      refetch()
+   224→    } catch (e) {
+   225→      toast.error("Failed to delete", { description: String(e) })
+   226→    }
+   227→    setDeleteId(null)
+   228→  }
+   229→
+   230→  function set<K extends keyof BannerFormState>(key: K, value: BannerFormState[K]) {
+   231→    setForm((f) => ({ ...f, [key]: value }))
+   232→  }
+   233→
+   234→  return (
+   235→    <AdminShell
+   236→      title="Advertising Banners"
+   237→      count={banners?.length}
+   238→      actionLabel="+ New Banner"
+   239→      onAction={openCreate}
+   240→    >
+   241→      <Card>
+   242→        <CardContent className="p-0">
+   243→          <div className="max-h-[65vh] overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
+   244→            <Table>
+   245→              <TableHeader className="sticky top-0 bg-card z-10">
+   246→                <TableRow>
+   247→                  <TableHead className="w-12">Type</TableHead>
+   248→                  <TableHead>Title</TableHead>
+   249→                  <TableHead className="hidden sm:table-cell">Placement</TableHead>
+   250→                  <TableHead className="hidden md:table-cell">Schedule</TableHead>
+   251→                  <TableHead className="text-center">Stats</TableHead>
+   252→                  <TableHead>Status</TableHead>
+   253→                  <TableHead className="text-right">Actions</TableHead>
+   254→                </TableRow>
+   255→              </TableHeader>
+   256→              <TableBody>
+   257→                {loading ? (
+   258→                  Array.from({ length: 4 }).map((_, i) => (
+   259→                    <TableRow key={i}>
+   260→                      <TableCell colSpan={7}>
+   261→                        <Skeleton className="h-7 w-full" />
+   262→                      </TableCell>
+   263→                    </TableRow>
+   264→                  ))
+   265→                ) : !banners || banners.length === 0 ? (
+   266→                  <TableRow>
+   267→                    <TableCell
+   268→                      colSpan={7}
+   269→                      className="py-12 text-center text-sm text-muted-foreground"
+   270→                    >
+   271→                      No banners yet. Click <strong>+ New Banner</strong> to create your first ad.
+   272→                    </TableCell>
+   273→                  </TableRow>
+   274→                ) : (
+   275→                  banners.map((b) => {
+   276→                    const active = isDateActive(b) && b.published
+   277→                    return (
+   278→                      <TableRow key={b.id}>
+   279→                        <TableCell>
+   280→                          <Badge
+   281→                            variant="outline"
+   282→                            className={cn_type_badge(b.type)}
+   283→                          >
+   284→                            {b.type}
+   285→                          </Badge>
+   286→                        </TableCell>
+   287→                        <TableCell className="font-medium">
+   288→                          {b.title}
+   289→                          {b.type === "image" && b.imageUrl && (
+   290→                            <img
+   291→                              src={b.imageUrl}
+   292→                              alt={b.altText || b.title}
+   293→                              className="mt-1 max-h-20 rounded border"
+   294→                            />
+   295→                          )}
+   296→                        </TableCell>
+   297→                        <TableCell className="hidden sm:table-cell text-xs">
+   298→                          <code className="rounded bg-muted px-1.5 py-0.5">
+   299→                            {b.placement}
+   300→                          </code>
+   301→                          <div className="mt-1 text-[10px] text-muted-foreground">
+   302→                            order {b.order} · weight {b.weight}
+   303→                          </div>
+   304→                        </TableCell>
+   305→                        <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
+   306→                          {b.startDate ? b.startDate.slice(0, 10) : "—"} →{" "}
+   307→                          {b.endDate ? b.endDate.slice(0, 10) : "∞"}
+   308→                        </TableCell>
+   309→                        <TableCell className="text-center text-xs tabular-nums">
+   310→                          <div>
+   311→                            <span className="font-semibold">{b.impressions}</span>
+   312→                            <span className="text-muted-foreground"> imp</span>
+   313→                          </div>
+   314→                          <div className="text-muted-foreground">
+   315→                            <span className="font-semibold">{b.clicks}</span>
+   316→                            <span> clicks</span>
+   317→                          </div>
+   318→                          {b.impressions > 0 && (
+   319→                            <div className="text-[10px] text-emerald-600">
+   320→                              CTR {((b.clicks / b.impressions) * 100).toFixed(2)}%
+   321→                            </div>
+   322→                          )}
+   323→                        </TableCell>
+   324→                        <TableCell>
+   325→                          <Badge
+   326→                            variant={active ? "default" : "secondary"}
+   327→                            className={active ? "bg-emerald-600" : ""}
+   328→                          >
+   329→                            {active ? "Live" : b.published ? "Scheduled" : "Draft"}
+   330→                          </Badge>
+   331→                        </TableCell>
+   332→                        <TableCell className="text-right whitespace-nowrap">
+   333→                          <Button
+   334→                            size="icon"
+   335→                            variant="ghost"
+   336→                            onClick={() => openEdit(b)}
+   337→                            aria-label="Edit banner"
+   338→                          >
+   339→                            <Pencil className="h-3.5 w-3.5" />
+   340→                          </Button>
+   341→                          <Button
+   342→                            size="icon"
+   343→                            variant="ghost"
+   344→                            onClick={() => setDeleteId(b.id)}
+   345→                            className="text-destructive"
+   346→                            aria-label="Delete banner"
+   347→                          >
+   348→                            <Trash2 className="h-3.5 w-3.5" />
+   349→                          </Button>
+   350→                        </TableCell>
+   351→                      </TableRow>
+   352→                    )
+   353→                  })
+   354→                )}
+   355→              </TableBody>
+   356→            </Table>
+   357→          </div>
+   358→        </CardContent>
+   359→      </Card>
+   360→
+   361→      {/* Create / Edit dialog */}
+   362→      <Dialog open={open} onOpenChange={setOpen}>
+   363→        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+   364→          <DialogHeader>
+   365→            <DialogTitle>
+   366→              {form.id ? "Edit Banner" : "New Banner"}
+   367→            </DialogTitle>
+   368→            <DialogDescription>
+   369→              Choose a banner type. Image banners support click-through tracking.
+   370→              AdSense is non-rotating (Google TOS). HTML snippets render raw —
+   371→              only paste trusted partner code.
+   372→            </DialogDescription>
+   373→          </DialogHeader>
+   374→
+   375→          <div className="grid gap-3 py-2">
+   376→            <div className="grid gap-1.5">
+   377→              <Label htmlFor="b-title">Title (internal — not shown to viewers)</Label>
+   378→              <Input
+   379→                id="b-title"
+   380→                value={form.title}
+   381→                onChange={(e) => set("title", e.target.value)}
+   382→                placeholder="e.g. Spring sale leaderboard"
+   383→              />
+   384→            </div>
+   385→
+   386→            <Tabs
+   387→              value={form.type}
+   388→              onValueChange={(v) => set("type", v as BannerType)}
+   389→            >
+   390→              <TabsList className="grid w-full grid-cols-3">
+   391→                {BANNER_TYPES.map((t) => (
+   392→                  <TabsTrigger key={t.value} value={t.value} className="gap-1.5">
+   393→                    <t.icon className="h-3.5 w-3.5" />
+   394→                    {t.label}
+   395→                  </TabsTrigger>
+   396→                ))}
+   397→              </TabsList>
+   398→
+   399→              {/* image */}
+   400→              <TabsContent value="image" className="mt-3 space-y-3">
+   401→                <div className="grid gap-1.5">
+   402→                  <Label>Image</Label>
+   403→                  {form.imageUrl ? (
+   404→                    <div className="flex items-center gap-2 rounded-md border p-2">
+   405→                      <img
+   406→                        src={form.imageUrl}
+   407→                        alt={form.altText || "banner"}
+   408→                        className="max-h-24 rounded"
+   409→                      />
+   410→                      <code className="flex-1 truncate text-xs text-muted-foreground">
+   411→                        {form.imageUrl}
+   412→                      </code>
+   413→                      <Button
+   414→                        size="sm"
+   415→                        variant="outline"
+   416→                        onClick={() => set("imageUrl", "")}
+   417→                      >
+   418→                        Replace
+   419→                      </Button>
+   420→                    </div>
+   421→                  ) : (
+   422→                    <UploadButton onUploaded={(url) => set("imageUrl", url)} />
+   423→                  )}
+   424→                  <p className="text-[11px] text-muted-foreground">
+   425→                    Recommended dimensions per placement slot —{" "}
+   426→                    <code className="rounded bg-muted px-1 py-0.5">
+   427→                      home-live-hero
+   428→                    </code>
+   429→                    ,{" "}
+   430→                    <code className="rounded bg-muted px-1 py-0.5">
+   431→                      home-above-results
+   432→                    </code>
+   433→                    ,{" "}
+   434→                    <code className="rounded bg-muted px-1 py-0.5">
+   435→                      home-above-news
+   436→                    </code>{" "}
+   437→                    and{" "}
+   438→                    <code className="rounded bg-muted px-1 py-0.5">
+   439→                      home-above-galleries
+   440→                    </code>
+   441→                    : upload a wide banner image (~970×90 leaderboard, or
+   442→                    728×90 banner). Portrait photos render large and tall —
+   443→                    the image displays at its natural aspect ratio capped by
+   444→                    the slot width, with no cropping or letterboxing.
+   445→                  </p>
+   446→                </div>
+   447→                <div className="grid grid-cols-2 gap-3">
+   448→                  <div className="grid gap-1.5">
+   449→                    <Label htmlFor="b-link">Click-through URL (optional)</Label>
+   450→                    <Input
+   451→                      id="b-link"
+   452→                      value={form.linkUrl}
+   453→                      onChange={(e) => set("linkUrl", e.target.value)}
+   454→                      placeholder="https://sponsor.com/offer"
+   455→                    />
+   456→                  </div>
+   457→                  <div className="grid gap-1.5">
+   458→                    <Label htmlFor="b-alt">Alt text (accessibility)</Label>
+   459→                    <Input
+   460→                      id="b-alt"
+   461→                      value={form.altText}
+   462→                      onChange={(e) => set("altText", e.target.value)}
+   463→                      placeholder="Sponsor name + offer"
+   464→                    />
+   465→                  </div>
+   466→                </div>
+   467→              </TabsContent>
+   468→
+   469→              {/* adsense */}
+   470→              <TabsContent value="adsense" className="mt-3 space-y-3">
+   471→                <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+   472→                  <strong>Non-rotating.</strong> AdSense slots never time-rotate
+   473→                  (Google TOS forbids aggressive ad refreshing). Place at most
+   474→                  one AdSense banner per slot — additional ones in the same
+   475→                  placement are ignored.
+   476→                </div>
+   477→                <div className="grid grid-cols-2 gap-3">
+   478→                  <div className="grid gap-1.5">
+   479→                    <Label htmlFor="b-client">Publisher ID (ca-pub-…)</Label>
+   480→                    <Input
+   481→                      id="b-client"
+   482→                      value={form.adsenseClient}
+   483→                      onChange={(e) => set("adsenseClient", e.target.value)}
+   484→                      placeholder="ca-pub-1234567890123456"
+   485→                    />
+   486→                  </div>
+   487→                  <div className="grid gap-1.5">
+   488→                    <Label htmlFor="b-slot">Slot ID</Label>
+   489→                    <Input
+   490→                      id="b-slot"
+   491→                      value={form.adsenseSlot}
+   492→                      onChange={(e) => set("adsenseSlot", e.target.value)}
+   493→                      placeholder="1234567890"
+   494→                    />
+   495→                  </div>
+   496→                </div>
+   497→                <div className="grid grid-cols-2 gap-3">
+   498→                  <div className="grid gap-1.5">
+   499→                    <Label>Ad format</Label>
+   500→                    <Select
+   501→                      value={form.adsenseFormat}
+   502→                      onValueChange={(v) => set("adsenseFormat", v)}
+   503→                    >
+   504→                      <SelectTrigger className="w-full">
+   505→                        <SelectValue />
+   506→                      </SelectTrigger>
+   507→                      <SelectContent>
+   508→                        <SelectItem value="auto">Auto</SelectItem>
+   509→                        <SelectItem value="horizontal">Horizontal</SelectItem>
+   510→                        <SelectItem value="vertical">Vertical</SelectItem>
+   511→                        <SelectItem value="rectangle">Rectangle</SelectItem>
+   512→                      </SelectContent>
+   513→                    </Select>
+   514→                  </div>
+   515→                  <div className="flex items-end gap-2 pb-1">
+   516→                    <Switch
+   517→                      checked={form.responsive}
+   518→                      onCheckedChange={(v) => set("responsive", v)}
+   519→                      id="b-responsive"
+   520→                    />
+   521→                    <Label htmlFor="b-responsive" className="cursor-pointer">
+   522→                      Full-width responsive
+   523→                    </Label>
+   524→                  </div>
+   525→                </div>
+   526→              </TabsContent>
+   527→
+   528→              {/* html */}
+   529→              <TabsContent value="html" className="mt-3 space-y-3">
+   530→                <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+   531→                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+   532→                  <div>
+   533→                    <strong>Raw HTML is rendered as-is.</strong> Only paste
+   534→                    snippets from trusted partners (AdSense, affiliate
+   535→                    networks, your own ad server). Malicious HTML can blank the
+   536→                    page. Add DOMPurify sanitization later if you don&apos;t
+   537→                    fully trust your site admins.
+   538→                  </div>
+   539→                </div>
+   540→                <div className="grid gap-1.5">
+   541→                  <Label htmlFor="b-html">HTML snippet</Label>
+   542→                  <Textarea
+   543→                    id="b-html"
+   544→                    value={form.htmlContent}
+   545→                    onChange={(e) => set("htmlContent", e.target.value)}
+   546→                    rows={8}
+   547→                    placeholder={
+   548→                      '<iframe src="https://affiliate.example.com/ad?size=728x90" loading="lazy" scrolling="no" class="w-full" />'
+   549→                    }
+   550→                    className="font-mono text-xs"
+   551→                  />
+   552→                </div>
+   553→              </TabsContent>
+   554→            </Tabs>
+   555→
+   556→            {/* Common fields: placement, schedule, weight, published */}
+   557→            <div className="mt-2 grid gap-3 rounded-md border bg-muted/30 p-3">
+   558→              <div className="grid grid-cols-2 gap-3">
+   559→                <div className="grid gap-1.5">
+   560→                  <Label>Placement (slot)</Label>
+   561→                  <Select
+   562→                    value={form.placement}
+   563→                    onValueChange={(v) => set("placement", v)}
+   564→                  >
+   565→                    <SelectTrigger className="w-full">
+   566→                      <SelectValue />
+   567→                    </SelectTrigger>
+   568→                    <SelectContent>
+   569→                      {PLACEMENT_OPTIONS.map((p) => (
+   570→                        <SelectItem key={p.value} value={p.value}>
+   571→                          {p.label}
+   572→                        </SelectItem>
+   573→                      ))}
+   574→                    </SelectContent>
+   575→                  </Select>
+   576→                </div>
+   577→                <div className="grid gap-1.5">
+   578→                  <Label htmlFor="b-order">Order (lower shows first)</Label>
+   579→                  <Input
+   580→                    id="b-order"
+   581→                    type="number"
+   582→                    value={form.order}
+   583→                    onChange={(e) => set("order", Number(e.target.value) || 0)}
+   584→                  />
+   585→                </div>
+   586→              </div>
+   587→              <div className="grid grid-cols-2 gap-3">
+   588→                <div className="grid gap-1.5">
+   589→                  <Label htmlFor="b-start">Start date (optional)</Label>
+   590→                  <Input
+   591→                    id="b-start"
+   592→                    type="date"
+   593→                    value={form.startDate}
+   594→                    onChange={(e) => set("startDate", e.target.value)}
+   595→                  />
+   596→                </div>
+   597→                <div className="grid gap-1.5">
+   598→                  <Label htmlFor="b-end">End date (optional)</Label>
+   599→                  <Input
+   600→                    id="b-end"
+   601→                    type="date"
+   602→                    value={form.endDate}
+   603→                    onChange={(e) => set("endDate", e.target.value)}
+   604→                  />
+   605→                </div>
+   606→              </div>
+   607→              <div className="grid grid-cols-2 gap-3">
+   608→                <div className="grid gap-1.5">
+   609→                  <Label htmlFor="b-weight">Rotation weight (higher = more often)</Label>
+   610→                  <Input
+   611→                    id="b-weight"
+   612→                    type="number"
+   613→                    min="1"
+   614→                    value={form.weight}
+   615→                    onChange={(e) => set("weight", Number(e.target.value) || 1)}
+   616→                  />
+   617→                  <p className="text-[10px] text-muted-foreground">
+   618→                    Defaults to 1 (equal weighting). Set 5 to show 5× more
+   619→                    often than weight-1 banners in the same slot.
+   620→                  </p>
+   621→                </div>
+   622→                <div className="flex items-end gap-2 pb-1">
+   623→                  <Switch
+   624→                    checked={form.published}
+   625→                    onCheckedChange={(v) => set("published", v)}
+   626→                    id="b-published"
+   627→                  />
+   628→                  <Label htmlFor="b-published" className="cursor-pointer">
+   629→                    Published
+   630→                  </Label>
+   631→                </div>
+   632→              </div>
+   633→            </div>
+   634→          </div>
+   635→
+   636→          <DialogFooter>
+   637→            <Button variant="outline" onClick={() => setOpen(false)}>
+   638→              Cancel
+   639→            </Button>
+   640→            <Button onClick={handleSubmit} disabled={saving}>
+   641→              {saving ? "Saving…" : form.id ? "Save Changes" : "Create Banner"}
+   642→            </Button>
+   643→          </DialogFooter>
+   644→        </DialogContent>
+   645→      </Dialog>
+   646→
+   647→      {/* Delete confirmation */}
+   648→      <AlertDialog
+   649→        open={!!deleteId}
+   650→        onOpenChange={(o) => !o && setDeleteId(null)}
+   651→      >
+   652→        <AlertDialogContent>
+   653→          <AlertDialogHeader>
+   654→            <AlertDialogTitle className="flex items-center gap-2">
+   655→              <AlertTriangle className="h-5 w-5 text-amber-500" /> Delete this banner?
+   656→            </AlertDialogTitle>
+   657→            <AlertDialogDescription>
+   658→              The banner will be removed from the rotation pool immediately.
+   659→              Stats (impressions + clicks) are lost. This cannot be undone.
+   660→            </AlertDialogDescription>
+   661→          </AlertDialogHeader>
+   662→          <AlertDialogFooter>
+   663→            <AlertDialogCancel>Cancel</AlertDialogCancel>
+   664→            <AlertDialogAction
+   665→              className="bg-destructive text-white hover:bg-destructive/90"
+   666→              onClick={() => deleteId && handleDelete(deleteId)}
+   667→            >
+   668→              Delete
+   669→            </AlertDialogAction>
+   670→          </AlertDialogFooter>
+   671→        </AlertDialogContent>
+   672→      </AlertDialog>
+   673→    </AdminShell>
+   674→  )
+   675→}
+   676→
+   677→/* Helper: tailwind classes per banner-type badge color. */
+   678→function cn_type_badge(type: BannerType): string {
+   679→  switch (type) {
+   680→    case "image":
+   681→      return "bg-blue-50 text-blue-700 border-blue-300"
+   682→    case "adsense":
+   683→      return "bg-amber-50 text-amber-700 border-amber-300"
+   684→    case "html":
+   685→      return "bg-purple-50 text-purple-700 border-purple-300"
+   686→    default:
+   687→      return ""
+   688→  }
+   689→}
+   690→

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NY Metropolitan Cricket League | Official League Hub</title>
+<!-- DESIGN REFERENCE — League Public Page template. Colors already added to tailwind.config.ts as navy/cricket-red/gold/league-green. -->
+<style>
+:root{--navy:#10243d;--navy2:#173657;--red:#e34243;--gold:#e6b84c;--ink:#172536;--muted:#718096;--line:#e5eaf0;--bg:#f4f6f9;--white:#fff;--green:#159b69}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}a{color:inherit;text-decoration:none}button{font:inherit;cursor:pointer}.wrap{width:min(1200px,calc(100% - 40px));margin:auto}
+.topline{background:#0b1b2d;color:#b8c5d4;font-size:12px;padding:8px 0}.topline .wrap{display:flex;justify-content:space-between;gap:16px}.topline a{margin-left:16px}
+.header{background:var(--navy);color:white;position:sticky;top:0;z-index:20;box-shadow:0 4px 18px #0b1b2d22}.nav{height:76px;display:flex;align-items:center;gap:28px}.brand{display:flex;align-items:center;gap:11px;min-width:220px}.crest{width:43px;height:48px;background:linear-gradient(145deg,#f3c85f,#dca536);clip-path:polygon(50% 0,95% 15%,88% 72%,50% 100%,12% 72%,5% 15%);display:grid;place-items:center;color:var(--navy);font-weight:1000;font-size:19px;text-shadow:0 1px #fff8}.brand strong{display:block;font-size:14px;letter-spacing:.7px;line-height:1.2}.brand small{display:block;color:#b8c8d9;font-size:10px;letter-spacing:1.7px;margin-top:4px}.links{display:flex;align-items:center;gap:21px;flex:1}.links a{font-size:13px;font-weight:650;color:#e4ebf3;white-space:nowrap}.links a:hover,.links a.active{color:#ffd46d}.nav-actions{display:flex;gap:10px;align-items:center}.login{font-size:13px;color:#e5edf6}.register{background:var(--red);color:white;padding:10px 16px;border-radius:5px;font-weight:750;font-size:13px}.menu-btn{display:none;background:none;border:0;color:white;font-size:25px}
+.ticker{background:#fff;border-bottom:1px solid var(--line);padding:17px 0}.ticker-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:11px}.eyebrow{font-size:10px;font-weight:850;letter-spacing:1.6px;color:var(--red);text-transform:uppercase}.ticker-head h2,.section-head h2{font-size:19px;margin:2px 0 0;color:var(--navy)}.ticker-controls{display:flex;gap:7px}.circle{border:1px solid var(--line);background:white;border-radius:50%;width:31px;height:31px;color:var(--navy)}.score-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.score-card{border:1px solid var(--line);border-radius:8px;padding:12px 14px;background:#fff;min-width:0}.score-top{display:flex;justify-content:space-between;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.7px}.score-top b{color:var(--green)}.teamscore{display:grid;grid-template-columns:1fr auto;gap:5px;margin-top:8px;font-weight:750;font-size:13px}.teamscore strong{font-variant-numeric:tabular-nums}.result{font-size:11px;color:var(--muted);margin-top:7px}
+.hero{padding:27px 0 24px}.hero-grid{display:grid;grid-template-columns:1.75fr 1fr;gap:17px}.hero-main{height:390px;border-radius:10px;overflow:hidden;position:relative;background:#182c40 url('https://images.unsplash.com/photo-1531415074968-036ba1b575da?auto=format&fit=crop&w=1500&q=85') center/cover}.hero-main:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#081a2be8 0%,#081a2b9c 53%,transparent 100%)}.hero-copy{position:absolute;z-index:1;left:34px;bottom:34px;max-width:570px;color:white}.tag{display:inline-block;background:var(--red);color:white;border-radius:3px;padding:5px 9px;font-size:10px;font-weight:850;letter-spacing:1px;text-transform:uppercase}.hero-copy h1{font-size:clamp(27px,3.3vw,43px);line-height:1.08;margin:14px 0 11px;letter-spacing:-1px}.hero-copy p{color:#dce6ef;max-width:500px;margin:0 0 17px;font-size:14px}.read{display:inline-flex;background:white;color:var(--navy);padding:10px 15px;border-radius:4px;font-weight:800;font-size:12px}.hero-side{display:grid;grid-template-rows:1fr 1fr;gap:17px}.side-story{position:relative;overflow:hidden;border-radius:9px;min-height:0;background:#253c52 center/cover}.side-story.one{background-image:url('https://images.unsplash.com/photo-1593766827228-8737b9cd6cc3?auto=format&fit=crop&w=900&q=80')}.side-story.two{background-image:url('https://images.unsplash.com/photo-1624897174291-1bd715e371c5?auto=format&fit=crop&w=900&q=80')}.side-story:after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,#081a2be8,transparent 75%)}.side-story div{position:absolute;z-index:1;bottom:18px;left:19px;right:18px;color:white}.side-story h3{font-size:17px;line-height:1.2;margin:8px 0 0}
+.section{padding:26px 0}.section.white{background:#fff}.section-head{display:flex;align-items:end;justify-content:space-between;margin-bottom:17px}.section-head p{margin:4px 0 0;color:var(--muted);font-size:12px}.view{font-size:12px;font-weight:800;color:var(--red)}.tabs{display:flex;gap:5px;border-bottom:1px solid var(--line);margin-bottom:15px}.tab{border:0;background:transparent;padding:10px 18px;color:#6d7a89;font-size:13px;font-weight:800;border-bottom:3px solid transparent}.tab.active{color:var(--navy);border-color:var(--red)}.match-list{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}.match{background:#fff;border:1px solid var(--line);border-radius:8px;padding:16px}.match .meta{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;display:flex;justify-content:space-between}.match .live{color:var(--red);font-weight:900}.match-teams{display:grid;grid-template-columns:1fr auto;gap:7px;margin:15px 0 10px;font-size:13px;font-weight:750}.match-teams b{font-variant-numeric:tabular-nums}.match-foot{border-top:1px solid var(--line);padding-top:10px;color:var(--muted);font-size:11px}
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:white}.standings{width:100%;border-collapse:collapse;min-width:650px}.standings th{background:#f1f4f8;color:#6b7888;font-size:10px;text-transform:uppercase;letter-spacing:.7px;text-align:right;padding:12px}.standings th:first-child,.standings td:first-child{text-align:left}.standings td{padding:12px;border-top:1px solid var(--line);text-align:right;font-size:12px;font-weight:650}.standings .team{display:flex;align-items:center;gap:10px;font-weight:800}.team-badge{width:25px;height:25px;display:grid;place-items:center;border-radius:6px;background:#eaf0f7;color:var(--navy);font-size:10px;font-weight:900}.standings tr:first-child td:first-child{border-left:3px solid var(--green)}.pos{color:var(--muted);width:25px;display:inline-block}.division-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:13px}.division-tabs button{border:1px solid var(--line);background:white;border-radius:20px;padding:7px 13px;font-size:11px;font-weight:750;color:#637184}.division-tabs button.active{background:var(--navy);border-color:var(--navy);color:white}
+.gallery{display:grid;grid-template-columns:1.35fr 1fr 1fr;grid-template-rows:155px 155px;gap:10px}.photo{border-radius:8px;overflow:hidden;position:relative;background:#d8e0e8 center/cover}.photo:first-child{grid-row:span 2}.photo:after{content:"";position:absolute;inset:45% 0 0;background:linear-gradient(transparent,#071a2acc)}.photo span{position:absolute;z-index:1;bottom:12px;left:14px;color:white;font-weight:800;font-size:12px}
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.stat-card{background:white;border:1px solid var(--line);border-radius:9px;padding:17px}.stat-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.stat-title h3{font-size:14px;margin:0;color:var(--navy)}.stat-title span{font-size:10px;color:var(--red);font-weight:850;text-transform:uppercase}.player{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid #edf0f4}.avatar{width:36px;height:36px;border-radius:50%;background:#e7edf4;color:var(--navy);display:grid;place-items:center;font-size:11px;font-weight:900}.player-info{flex:1;min-width:0}.player-info b{display:block;font-size:12px}.player-info small{color:var(--muted);font-size:10px}.metric{text-align:right;font-size:17px;font-weight:900;color:var(--navy)}.metric small{display:block;font-size:9px;color:var(--muted);font-weight:600}
+.feature-player{display:grid;grid-template-columns:190px 1fr;background:var(--navy);border-radius:10px;overflow:hidden;color:white}.feature-photo{min-height:190px;background:url('https://images.unsplash.com/photo-1593766827228-8737b9cd6cc3?auto=format&fit=crop&w=600&q=80') center/cover}.feature-copy{padding:24px}.feature-copy h3{font-size:23px;margin:8px 0}.feature-copy p{color:#c5d2df;font-size:12px;max-width:650px}.feature-numbers{display:flex;gap:32px;margin-top:16px}.feature-numbers b{display:block;font-size:21px}.feature-numbers small{color:#aebfd0;font-size:10px;text-transform:uppercase}
+.footer{background:#0b1b2d;color:#d8e1ea;padding:38px 0 18px}.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:35px}.footer h4{font-size:12px;color:white;text-transform:uppercase;letter-spacing:1px;margin:0 0 13px}.footer p,.footer a{font-size:12px;color:#aebdcb}.footer a{display:block;margin:8px 0}.footer-bottom{border-top:1px solid #26394d;margin-top:27px;padding-top:15px;display:flex;justify-content:space-between;color:#8496a8;font-size:10px}.notice{font-size:10px;color:var(--muted);margin-top:10px}
+@media(max-width:1000px){.links{gap:12px}.links a{font-size:11px}.brand{min-width:180px}.hero-grid{grid-template-columns:1.5fr 1fr}}
+@media(max-width:800px){.nav{height:66px;justify-content:space-between}.menu-btn{display:block}.links{display:none;position:absolute;top:66px;left:0;right:0;background:var(--navy);padding:18px 22px 22px;flex-direction:column;align-items:flex-start;gap:16px}.links.open{display:flex}.nav-actions{margin-left:auto}.hero-grid{grid-template-columns:1fr}.hero-main{height:350px}.hero-side{grid-template-columns:1fr 1fr;grid-template-rows:170px}.score-strip,.match-list,.stats-grid{grid-template-columns:1fr 1fr}.footer-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.wrap{width:min(100% - 26px,1200px)}.topline .right{display:none}.brand{min-width:0}.score-strip,.match-list,.stats-grid{grid-template-columns:1fr}.hero-main{height:360px}.hero-copy{left:20px;right:18px;bottom:22px}.hero-copy h1{font-size:30px}.hero-side{grid-template-rows:150px}.section{padding:22px 0}.section-head h2{font-size:17px}.gallery{grid-template-columns:1fr 1fr;grid-template-rows:150px 115px 115px}.photo:first-child{grid-row:auto;grid-column:span 2}.feature-player{grid-template-columns:1fr}.feature-photo{min-height:180px}.feature-copy{padding:20px}.feature-numbers{gap:20px}.footer-grid{grid-template-columns:1fr 1fr;gap:22px}.footer-bottom{flex-direction:column}}
+</style>
+</head>
+<body>
+<!-- SECTION 1: TOPLINE BAR -->
+<div class="topline"><div class="wrap"><div>OFFICIAL LEAGUE HUB • Season 2026</div><div><a href="#">About</a><a href="#">Contact</a><a href="#">Follow Us</a></div></div></div>
+
+<!-- SECTION 2: HEADER/NAV -->
+<header class="header"><div class="wrap nav">
+<a class="brand" href="#"><div class="crest">NY</div><div><strong>NEW YORK METROPOLITAN</strong><small>CRICKET LEAGUE</small></div></a>
+<button class="menu-btn">☰</button>
+<nav class="links"><a class="active" href="#">Home</a><a href="#news">News</a><a href="#players">Players</a><a href="#matches">Matches</a><a href="#teams">Teams</a><a href="#statistics">Statistics</a><a href="#series">Series</a><a href="#league">League</a></nav>
+<div class="nav-actions"><a class="login" href="#">Log In</a><a class="register" href="#">Register</a></div>
+</div></header>
+
+<!-- SECTION 3: RECENT MATCH RESULTS TICKER -->
+<section class="ticker"><div class="wrap"><div class="ticker-head"><div><div class="eyebrow">The latest from the league</div><h2>Recent Match Results</h2></div><div class="ticker-controls"><button class="circle">‹</button><button class="circle">›</button></div></div>
+<div class="score-strip">
+<div class="score-card"><div class="score-top"><span>Premier Division · Oct 29</span><b>FINAL</b></div><div class="teamscore"><span>Queens United</span><strong>168/6</strong><span>Brooklyn XI</span><strong>151/9</strong></div><div class="result">Queens United won by 17 runs</div></div>
+<div class="score-card"><div class="score-top"><span>Division One · Oct 28</span><b>FINAL</b></div><div class="teamscore"><span>East Bay Warriors</span><strong>142/8</strong><span>Metro Stars</span><strong>143/4</strong></div><div class="result">Metro Stars won by 6 wickets</div></div>
+<div class="score-card"><div class="score-top"><span>Premier Division · Oct 27</span><b>FINAL</b></div><div class="teamscore"><span>New York Strikers</span><strong>191/5</strong><span>Long Island Lions</span><strong>177/8</strong></div><div class="result">New York Strikers won by 14 runs</div></div>
+</div></div></section>
+
+<!-- SECTION 4: HERO/NEWS -->
+<section class="hero wrap" id="news"><div class="hero-grid">
+<article class="hero-main"><div class="hero-copy"><span class="tag">League News · Featured</span><h1>Race for the title heats up as league season enters its decisive stretch</h1><p>Teams across the divisions are pushing for playoff positions as the 2026 campaign approaches its final rounds.</p><a class="read" href="#">READ THE STORY →</a></div></article>
+<div class="hero-side"><article class="side-story one"><div><span class="tag">Team News</span><h3>Clubs prepare for a crucial weekend of fixtures</h3></div></article><article class="side-story two"><div><span class="tag">Around the League</span><h3>Young talent making an impact across divisions</h3></div></article></div>
+</div></section>
+
+<!-- SECTION 5: MATCH CENTRE (tabs: LIVE/RESULTS/SCHEDULE) -->
+<section class="section white" id="matches"><div class="wrap"><div class="section-head"><div><div class="eyebrow">Follow every game</div><h2>Match Centre</h2><p>Live action, completed scorecards and upcoming fixtures.</p></div><a class="view" href="#">ALL MATCHES →</a></div>
+<div class="tabs"><button class="tab active">LIVE</button><button class="tab">RESULTS</button><button class="tab">SCHEDULE</button></div>
+<div class="match-list">
+<!-- LIVE matches sample data -->
+<div class="match"><div class="meta"><span>Premier Division · Today 11:00 AM</span><span class="live">● LIVE</span></div><div class="match-teams"><span>New York Strikers</span><b>86/2 (10.4)</b><span>Long Island Lions</span><b>Yet to bat</b></div><div class="match-foot">Strikers batting · 1st innings</div></div>
+<div class="match"><div class="meta"><span>Division One · Today 12:30 PM</span><span class="live">● LIVE</span></div><div class="match-teams"><span>Queens United</span><b>42/1 (5.2)</b><span>Metro Stars</span><b>Yet to bat</b></div><div class="match-foot">Queens United batting · 1st innings</div></div>
+<div class="match"><div class="meta"><span>Division Two · Today 1:00 PM</span><span class="live">● LIVE</span></div><div class="match-teams"><span>Brooklyn XI</span><b>—</b><span>East Bay Warriors</span><b>—</b></div><div class="match-foot">Match starting shortly</div></div>
+</div></div></section>
+
+<!-- SECTION 6: POINTS TABLE / STANDINGS -->
+<section class="section" id="series"><div class="wrap"><div class="section-head"><div><div class="eyebrow">2026 season standings</div><h2>Points Table</h2><p>Track the race for the top spots in every division.</p></div><a class="view" href="#">FULL STANDINGS →</a></div>
+<div class="division-tabs"><button class="active">Premier Division</button><button>Division One</button><button>Division Two</button><button>Division Three</button></div>
+<div class="table-wrap"><table class="standings"><thead><tr><th>Pos / Team</th><th>Played</th><th>Won</th><th>Lost</th><th>Tied</th><th>Points</th><th>NRR</th></tr></thead><tbody>
+<tr><td><div class="team"><span class="pos">1</span><span class="team-badge">QU</span>Queens United</div></td><td>8</td><td>7</td><td>1</td><td>0</td><td><b>14</b></td><td>+1.25</td></tr>
+<tr><td><div class="team"><span class="pos">2</span><span class="team-badge">NY</span>New York Strikers</div></td><td>8</td><td>6</td><td>2</td><td>0</td><td><b>12</b></td><td>+0.85</td></tr>
+<tr><td><div class="team"><span class="pos">3</span><span class="team-badge">BX</span>Brooklyn XI</div></td><td>8</td><td>4</td><td>4</td><td>0</td><td><b>8</b></td><td>+0.12</td></tr>
+<tr><td><div class="team"><span class="pos">4</span><span class="team-badge">LI</span>Long Island Lions</div></td><td>8</td><td>3</td><td>5</td><td>0</td><td><b>6</b></td><td>-0.34</td></tr>
+<tr><td><div class="team"><span class="pos">5</span><span class="team-badge">MS</span>Metro Stars</div></td><td>8</td><td>2</td><td>6</td><td>0</td><td><b>4</b></td><td>-0.71</td></tr>
+</tbody></table></div></div></section>
+
+<!-- SECTION 7: PHOTO GALLERY -->
+<section class="section white" id="teams"><div class="wrap"><div class="section-head"><div><div class="eyebrow">Moments from the boundary</div><h2>League Photo Gallery</h2><p>Match-day action, team celebrations and the people behind the game.</p></div><a class="view" href="#">VIEW ALL PHOTOS →</a></div>
+<div class="gallery">
+<a class="photo" style="background-image:url('https://images.unsplash.com/photo-1531415074968-036ba1b575da?auto=format&fit=crop&w=1000&q=80')"><span>Match-day action</span></a>
+<a class="photo" style="background-image:url('https://images.unsplash.com/photo-1593766827228-8737b9cd6cc3?auto=format&fit=crop&w=800&q=80')"><span>Club celebrations</span></a>
+<a class="photo" style="background-image:url('https://images.unsplash.com/photo-1624897174291-1bd715e371c5?auto=format&fit=crop&w=800&q=80')"><span>On the field</span></a>
+<a class="photo" style="background-image:url('https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=800&q=80')"><span>League community</span></a>
+<a class="photo" style="background-image:url('https://images.unsplash.com/photo-1517466787929-bc90951d0974?auto=format&fit=crop&w=800&q=80')"><span>Cricket moments</span></a>
+</div></div></section>
+
+<!-- SECTION 8: PLAYER STATISTICS -->
+<section class="section" id="statistics"><div class="wrap"><div class="section-head"><div><div class="eyebrow">Season leaders</div><h2>Player Statistics</h2><p>Recognizing the leading performers across the league.</p></div><a class="view" href="#">ALL STATISTICS →</a></div>
+<div class="stats-grid">
+<div class="stat-card"><div class="stat-title"><h3>Top Batsmen</h3><span>Most Runs</span></div>
+<div class="player"><div class="avatar">AR</div><div class="player-info"><b>Alex Roberts</b><small>Queens United</small></div><div class="metric">485<small>RUNS</small></div></div>
+<div class="player"><div class="avatar">JM</div><div class="player-info"><b>Jordan Mitchell</b><small>Metro Stars</small></div><div class="metric">412<small>RUNS</small></div></div>
+<div class="player"><div class="avatar">SK</div><div class="player-info"><b>Samir Khan</b><small>Brooklyn XI</small></div><div class="metric">376<small>RUNS</small></div></div>
+</div>
+<div class="stat-card"><div class="stat-title"><h3>Top Bowlers</h3><span>Most Wickets</span></div>
+<div class="player"><div class="avatar">DP</div><div class="player-info"><b>Daniel Patel</b><small>East Bay Warriors</small></div><div class="metric">22<small>WICKETS</small></div></div>
+<div class="player"><div class="avatar">MR</div><div class="player-info"><b>Michael Reed</b><small>Long Island Lions</small></div><div class="metric">19<small>WICKETS</small></div></div>
+<div class="player"><div class="avatar">FA</div><div class="player-info"><b>Farhan Ali</b><small>Queens United</small></div><div class="metric">16<small>WICKETS</small></div></div>
+</div>
+<div class="stat-card"><div class="stat-title"><h3>Top Fielders</h3><span>Dismissals</span></div>
+<div class="player"><div class="avatar">CW</div><div class="player-info"><b>Chris Wilson</b><small>New York Strikers</small></div><div class="metric">12<small>DISMISSALS</small></div></div>
+<div class="player"><div class="avatar">RK</div><div class="player-info"><b>Ravi Kumar</b><small>Metro Stars</small></div><div class="metric">10<small>DISMISSALS</small></div></div>
+<div class="player"><div class="avatar">TB</div><div class="player-info"><b>Thomas Brown</b><small>Brooklyn XI</small></div><div class="metric">8<small>DISMISSALS</small></div></div>
+</div>
+</div></div></section>
+
+<!-- SECTION 9: PLAYER OF THE WEEK -->
+<section class="section white" id="players"><div class="wrap"><div class="section-head"><div><div class="eyebrow">Spotlight</div><h2>Player of the Week</h2></div><a class="view" href="#">MEET OUR PLAYERS →</a></div>
+<div class="feature-player"><div class="feature-photo" style="background-image:url('https://images.unsplash.com/photo-1593766827228-8737b9cd6cc3?auto=format&fit=crop&w=600&q=80')"></div><div class="feature-copy"><span class="tag">Player Spotlight</span><h3>Alex Roberts</h3><p>Queens United · Premier Division. A match-defining performance helped his side secure an important result in the title race.</p><div class="feature-numbers"><div><b>78</b><small>Runs scored</small></div><div><b>52</b><small>Balls faced</small></div><div><b>4</b><small>Sixes</small></div><div><b>150.0</b><small>Strike rate</small></div></div></div></div></div></section>
+
+<!-- SECTION 10: FOOTER -->
+<footer class="footer" id="footer"><div class="wrap"><div class="footer-grid">
+<div><a class="brand" href="#"><div class="crest">NY</div><div><strong>NEW YORK METROPOLITAN</strong><small>CRICKET LEAGUE</small></div></a><p style="max-width:310px;margin-top:17px">Your home for league news, fixtures, results, team information and player performances across the divisions.</p><p>In association with <b style="color:white">USACricketers.com</b></p></div>
+<div><h4>League</h4><a href="#">About the League</a><a href="#">Divisions</a><a href="#">Rules & Regulations</a><a href="#">League Officials</a></div>
+<div><h4>Cricket</h4><a href="#">Latest News</a><a href="#">Matches</a><a href="#">Teams</a><a href="#">Statistics</a></div>
+<div><h4>Information</h4><a href="#">Contact Us</a><a href="#">Privacy Policy</a><a href="#">Terms & Conditions</a><a href="#">Facebook · Instagram · YouTube</a></div>
+</div><div class="footer-bottom"><span>© 2026 New York Metropolitan Cricket League. All rights reserved.</span><span>Powered by the cricket community.</span></div></div></footer>
+</body>
+</html>

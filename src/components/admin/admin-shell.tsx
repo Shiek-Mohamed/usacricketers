@@ -22,6 +22,7 @@ import {
   Play,
   Megaphone,
   Upload,
+  MessageSquare,
 } from "lucide-react"
 import type { ViewKey } from "@/lib/types"
 
@@ -43,6 +44,7 @@ const navItems: { label: string; view: ViewKey; icon: React.ElementType }[] = [
   { label: "Tournaments", view: "admin-series", icon: Trophy },
   { label: "Scorers", view: "admin-scorers", icon: UserCog },
   { label: "League Admins", view: "admin-league-admins", icon: Trophy },
+  { label: "Feedback", view: "admin-feedback", icon: MessageSquare },
   { label: "Sidebar", view: "admin-sidebar", icon: PanelRight },
   { label: "Import", view: "admin-import", icon: DownloadCloud },
   { label: "Import League", view: "admin-import-league", icon: Upload },
@@ -55,7 +57,7 @@ const navItems: { label: string; view: ViewKey; icon: React.ElementType }[] = [
 const navGroups: { title: string; views: Set<ViewKey> }[] = [
   { title: "Cricket", views: new Set<ViewKey>(["admin-matches", "live-scorer", "admin-players", "admin-teams", "admin-series"]) },
   { title: "Content", views: new Set<ViewKey>(["admin-articles", "admin-galleries", "admin-videos", "admin-banners", "admin-sidebar", "admin-import", "admin-import-league"]) },
-  { title: "System", views: new Set<ViewKey>(["admin-scorers", "admin-league-admins"]) },
+  { title: "System", views: new Set<ViewKey>(["admin-scorers", "admin-league-admins", "admin-feedback"]) },
 ]
 
 function getGroup(view: ViewKey): string {

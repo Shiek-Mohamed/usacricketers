@@ -1,8 +1,29 @@
 import { NextRequest, NextResponse } from "next/server"
 import { randomUUID } from "node:crypto"
 import { db } from "@/lib/db"
+import { requireSiteAdmin } from "@/lib/scorer-auth"
 
 export const dynamic = "force-dynamic"
+
+// GET /api/feedback — admin: list all submitted feedback, newest first.
+// Uses raw SQL to avoid the Prisma 6.x DateTime read bug on SQLite.
+export async function GET(req: NextRequest) {
+  const admin = requireSiteAdmin(req)
+  if (!admin) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 })
+  }
+  try {
+    const rows = await db.$queryRawUnsafe(
+      `SELECT id, name, email, category, message, page, createdAt FROM "Feedback" ORDER BY createdAt DESC LIMIT 200`
+    )
+    return NextResponse.json(rows)
+  } catch (e) {
+    return NextResponse.json(
+      { error: String(e).slice(0, 200) },
+      { status: 500 }
+    )
+  }
+}
 
 // POST /api/feedback — submit user feedback
 // Body: { name?, email?, category, message }

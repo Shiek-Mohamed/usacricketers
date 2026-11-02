@@ -1,0 +1,29 @@
+# Production Caddyfile for Fly.io deployment
+# Caddy listens on port 8080 (Fly.io's internal_port).
+# Routes XTransformPort queries to the score-service (port 3003),
+# everything else to Next.js (port 3000).
+# This preserves the same gateway pattern used in the dev sandbox.
+
+:8080 {
+	@transform_port_query {
+		query XTransformPort=*
+	}
+
+	handle @transform_port_query {
+		reverse_proxy localhost:{query.XTransformPort} {
+			header_up Host {host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	handle {
+		reverse_proxy localhost:3000 {
+			header_up Host {host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+}

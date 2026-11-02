@@ -218,6 +218,7 @@ export type ViewKey =
   | "admin-banners"
   | "admin-scorers"
   | "admin-league-admins"
+  | "admin-feedback"
   | "live-scorer"
   | "scorer-login"
   | "scorer-landing"

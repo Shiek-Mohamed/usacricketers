@@ -107,7 +107,13 @@ function inningsTotal(match: Match, teamId: string): string {
   return `${last.totalRuns}/${last.totalWickets}`
 }
 
-/** Compact horizontal live-match bar (cricket.com.au-style live strip). */
+/** Compact horizontal live-match bar (cricket.com.au-style live strip).
+ *  Mobile-first: everything fits in one row on a 375px (iPhone SE) viewport.
+ *  - Badges + scores are `shrink-0` (never compressed).
+ *  - Team short-name spans are `min-w-0 truncate` so they clip instead of
+ *    pushing siblings past the card boundary.
+ *  - Gaps + font sizes scale up at the `sm:` breakpoint.
+ */
 function LiveMatchStrip({ match }: { match: Match }) {
   const navigate = useAppStore((s) => s.navigate)
   const t1 = match.team1
@@ -117,9 +123,10 @@ function LiveMatchStrip({ match }: { match: Match }) {
   return (
     <button
       onClick={() => navigate("match-detail", match.id)}
-      className="group flex w-full flex-wrap items-center gap-2 rounded-lg border bg-card px-3 py-2.5 text-left shadow-sm transition-shadow hover:shadow-md sm:px-4"
+      className="group flex w-full items-center gap-1.5 overflow-hidden rounded-lg border bg-card px-2.5 py-2 text-left shadow-sm transition-shadow hover:shadow-md sm:gap-2 sm:px-4 sm:py-2.5"
     >
-      <span className="flex items-center gap-1.5">
+      {/* Live indicator */}
+      <span className="flex shrink-0 items-center gap-1">
         <span className="relative flex h-2 w-2">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-red-600" />
@@ -129,32 +136,40 @@ function LiveMatchStrip({ match }: { match: Match }) {
         </span>
       </span>
       <FormatPill format={match.format} />
-      <span className="hidden text-xs text-muted-foreground sm:inline">
+      {/* Match metadata — hidden below `sm` to save horizontal real estate */}
+      <span className="hidden min-w-0 truncate text-xs text-muted-foreground sm:inline">
         {match.matchNo}
         {match.series?.shortName ? ` · ${match.series.shortName}` : ""}
       </span>
-      <div className="ml-auto flex items-center gap-3 sm:gap-5">
-        <div className="flex items-center gap-2">
+      {/* Teams + scores — pushed right; truncates names instead of overflowing */}
+      <div className="ml-auto flex min-w-0 items-center justify-end gap-1.5 sm:gap-3">
+        <div className="flex min-w-0 items-center gap-1 sm:gap-1.5">
           {t1 && <TeamBadge team={t1} size="sm" />}
-          <span className="text-sm font-bold">{t1?.shortName}</span>
+          <span className="min-w-0 truncate text-xs font-bold sm:text-sm">
+            {t1?.shortName}
+          </span>
           {t1Score && (
-            <span className="text-sm font-extrabold tabular-nums">
+            <span className="shrink-0 text-xs font-extrabold tabular-nums sm:text-sm">
               {t1Score}
             </span>
           )}
         </div>
-        <span className="text-xs font-medium text-muted-foreground">v</span>
-        <div className="flex items-center gap-2">
+        <span className="shrink-0 text-[10px] font-medium text-muted-foreground sm:text-xs">
+          v
+        </span>
+        <div className="flex min-w-0 items-center gap-1 sm:gap-1.5">
           {t2 && <TeamBadge team={t2} size="sm" />}
-          <span className="text-sm font-bold">{t2?.shortName}</span>
+          <span className="min-w-0 truncate text-xs font-bold sm:text-sm">
+            {t2?.shortName}
+          </span>
           {t2Score && (
-            <span className="text-sm font-extrabold tabular-nums">
+            <span className="shrink-0 text-xs font-extrabold tabular-nums sm:text-sm">
               {t2Score}
             </span>
           )}
         </div>
       </div>
-      <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
     </button>
   )
 }
@@ -424,7 +439,7 @@ export function HomeView() {
           onAction={() => navigate("news")}
         />
         {articlesLoadingAll ? (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="space-y-2">
                 <Skeleton className="aspect-[16/9] w-full rounded-lg" />
@@ -435,7 +450,7 @@ export function HomeView() {
             ))}
           </div>
         ) : latestNews.length > 0 ? (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {latestNews.map((a) => (
               <ArticleCard key={a.id} article={a} variant="default" />
             ))}

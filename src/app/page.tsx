@@ -226,7 +226,7 @@ export default function Home() {
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
       <main className="flex-1 w-full">
-        <div className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6">
+        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6">
           {renderView()}
         </div>
       </main>

@@ -126,7 +126,7 @@ export function Header() {
         scrolled ? "shadow-lg shadow-black/25" : "shadow-md"
       )}
     >
-      <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-3 sm:px-4">
+      <div className="mx-auto flex h-14 max-w-7xl items-center gap-2 px-3 sm:gap-3 sm:px-4">
         {/* Mobile menu */}
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
@@ -190,12 +190,12 @@ export function Header() {
           </SheetContent>
         </Sheet>
 
-        {/* Logo */}
+        {/* Logo — shrinks on mobile so the right-side CTAs fit */}
         <button
           onClick={() => navigate(mode === "public" ? "home" : "admin-dashboard")}
           className="flex items-center shrink-0 rounded-md transition-opacity hover:opacity-90"
         >
-          <span className="font-extrabold text-xl tracking-tight">
+          <span className="font-extrabold text-base tracking-tight sm:text-xl">
             usacricketers<span className="text-amber-400">.</span>
           </span>
         </button>
@@ -259,7 +259,7 @@ export function Header() {
           })}
         </nav>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-1 sm:gap-2">
           {/* Search */}
           <div className="relative hidden md:block">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/60" />
@@ -287,14 +287,15 @@ export function Header() {
               <Moon className="h-4 w-4" />
             )}
           </Button>
+          {/* Admin button — hidden on mobile (still reachable via the Sheet menu) */}
           <Button
             variant="ghost"
             size="sm"
             onClick={onAdmin}
-            className="gap-1.5 border border-white/15 bg-white/5 text-xs font-semibold text-white/90 transition-colors hover:bg-white/15 hover:text-white"
+            className="hidden gap-1.5 border border-white/15 bg-white/5 text-xs font-semibold text-white/90 transition-colors hover:bg-white/15 hover:text-white sm:inline-flex"
           >
             <Shield className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">
+            <span className="hidden lg:inline">
               {mode === "public" ? "Admin" : "Exit"}
             </span>
           </Button>

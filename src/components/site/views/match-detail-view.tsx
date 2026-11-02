@@ -48,83 +48,87 @@ function MatchHeaderCard({ match }: { match: Match }) {
   const t2Innings = sc?.innings?.filter((i) => i.teamId === match.team2Id) ?? []
 
   return (
-    <Card className={`overflow-hidden p-0 ${live ? "ring-2 ring-red-500/40" : ""}`}>
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-4 py-3 sm:px-6">
-        <div className="flex flex-wrap items-center gap-2 min-w-0">
+    <Card className={`overflow-hidden border-2 p-0 ${live ? "border-red-500/60 ring-2 ring-red-500/20" : "border-border"}`}>
+      {/* Header bar — format + match title + series on left, status on right */}
+      <div className="flex items-center justify-between gap-2 border-b border-border/40 bg-muted/30 px-4 py-2.5 sm:px-6">
+        <div className="flex items-center gap-2 min-w-0">
           <FormatPill format={match.format} />
-          <span className="truncate text-sm font-semibold">
+          <span className="truncate text-sm font-bold">
             {match.matchNo}
           </span>
-          <span className="text-xs text-muted-foreground">
+          <span className="hidden text-xs text-muted-foreground sm:inline">
             {match.series?.shortName || match.series?.name || ""}
           </span>
         </div>
         <StatusPill status={match.status} />
       </div>
 
-      <CardContent className="p-4 sm:p-6">
-        <div className="grid grid-cols-1 gap-3 sm:gap-4">
-          {[t1, t2].map((team, idx) => {
-            if (!team) return null
-            const innings = idx === 0 ? t1Innings : t2Innings
-            return (
-              <div
-                key={team.id}
-                className="flex items-center justify-between gap-3 rounded-lg border bg-card/40 p-3 sm:p-4"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <TeamBadge team={team} size="lg" />
-                  <div className="min-w-0">
-                    <div className="truncate text-base font-bold sm:text-lg">
-                      {team.name}
-                    </div>
-                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                      {team.shortName}
-                    </div>
+      {/* Team rows — stacked, no inner borders, prominent scores */}
+      <div className="divide-y divide-border/40">
+        {[t1, t2].map((team, idx) => {
+          if (!team) return null
+          const innings = idx === 0 ? t1Innings : t2Innings
+          return (
+            <div
+              key={team.id}
+              className="flex items-center justify-between gap-3 px-4 py-4 sm:px-6"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <TeamBadge team={team} size="lg" />
+                <div className="min-w-0">
+                  <div className="truncate text-base font-bold sm:text-lg">
+                    {team.name}
+                  </div>
+                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                    {team.shortName}
                   </div>
                 </div>
-                <div className="text-right">
-                  {innings.length > 0 ? (
-                    innings.map((inn, i) => (
-                      <div
-                        key={i}
-                        className="text-xl font-extrabold tabular-nums sm:text-2xl"
-                      >
-                        {inn.totalRuns}/{inn.totalWickets}
-                        <span className="ml-1 text-xs font-normal text-muted-foreground">
-                          ({inn.totalOvers} ov)
-                        </span>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-sm text-muted-foreground">
-                      Yet to bat
-                    </div>
-                  )}
-                </div>
               </div>
-            )
-          })}
-        </div>
+              <div className="shrink-0 text-right">
+                {innings.length > 0 ? (
+                  innings.map((inn, i) => (
+                    <div
+                      key={i}
+                      className="text-xl font-extrabold tabular-nums sm:text-2xl"
+                    >
+                      {inn.totalRuns}/{inn.totalWickets}
+                      <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                        ({inn.totalOvers} ov)
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-sm text-muted-foreground">
+                    Yet to bat
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1">
-            <MapPin className="h-3.5 w-3.5" />
-            {match.venue}
-            {match.city ? `, ${match.city}` : ""}
-          </span>
+      {/* Footer — venue + date with icons */}
+      <div className="border-t border-border/40 px-4 py-3 sm:px-6">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          {match.venue && (
+            <span className="inline-flex items-center gap-1">
+              <MapPin className="h-3.5 w-3.5" />
+              {match.venue}
+              {match.city ? `, ${match.city}` : ""}
+            </span>
+          )}
           <span className="inline-flex items-center gap-1">
             <CalendarDays className="h-3.5 w-3.5" />
             {formatMatchDate(match.startDate)} · {formatMatchTime(match.startDate)}
           </span>
         </div>
-
         {!sc && (
-          <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            Match yet to begin / Scorecard will be available once play starts.
+          <div className="mt-2 text-sm text-muted-foreground">
+            Match yet to begin — scorecard will be available once play starts.
           </div>
         )}
-      </CardContent>
+      </div>
     </Card>
   )
 }

@@ -47,6 +47,7 @@ import {
   Info,
   MessageSquare,
   Radio,
+  Mic,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ShareButtons } from "@/components/site/share-buttons"
@@ -601,7 +602,21 @@ function CommentaryFeed({
                           Commentator
                         </span>
                       )}
-                      {entry.text}
+                      {entry.text.startsWith("[audio:") ? (
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400">
+                            <Mic className="h-3 w-3" />
+                            Voice commentary
+                          </span>
+                          <audio
+                            src={entry.text.match(/\[audio:(.+?)\]/)?.[1]}
+                            controls
+                            className="h-8"
+                          />
+                        </span>
+                      ) : (
+                        entry.text
+                      )}
                     </span>
                   </div>
                 )

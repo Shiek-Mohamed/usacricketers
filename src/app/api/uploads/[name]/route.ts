@@ -38,6 +38,11 @@ export async function GET(
   try {
     const buf = await readFile(filePath)
     const ext = path.extname(safe).toLowerCase()
+    // Content-type detection — covers images (png/webp/gif/jpeg) and the
+    // audio formats emitted by the voice-clip recorder (audio/webm from
+    // Chrome/Firefox, audio/mp4 from Safari, audio/ogg from Firefox/older
+    // Chromium). Falls back to image/jpeg for any unknown extension (legacy
+    // behaviour: this route originally served only images).
     const ct =
       ext === ".png"
         ? "image/png"
@@ -45,7 +50,15 @@ export async function GET(
           ? "image/webp"
           : ext === ".gif"
             ? "image/gif"
-            : "image/jpeg"
+            : ext === ".webm"
+              ? "audio/webm"
+              : ext === ".ogg"
+                ? "audio/ogg"
+                : ext === ".mp4" || ext === ".m4a"
+                  ? "audio/mp4"
+                  : ext === ".mp3"
+                    ? "audio/mpeg"
+                    : "image/jpeg"
     return new NextResponse(buf, {
       headers: {
         "Content-Type": ct,

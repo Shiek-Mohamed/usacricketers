@@ -62,6 +62,7 @@ import {
   Repeat,
   Zap,
   Send,
+  Mic,
 } from "lucide-react"
 import type { Player } from "@/lib/types"
 
@@ -132,6 +133,138 @@ export function LiveScorerView() {
   // with a blue accent + "Commentator" label so it's distinguishable from
   // the auto-generated ball-by-ball feed).
   const [commentaryText, setCommentaryText] = useState("")
+
+  /* ------------------ Voice clip (🎙 mic) recording ------------------
+   * The scorer clicks "Record voice clip", the browser captures audio from
+   * `getUserMedia`, MediaRecorder collects chunks, and on stop the blob is
+   * POSTed to /api/voice-clip. The returned URL is inserted into the
+   * commentary feed as `[audio:/api/uploads/voice-xxx.webm]` — both the
+   * live-scorer feed and the public match-detail feed detect this prefix
+   * and render an inline <audio> player instead of the raw text.
+   *
+   * Refs hold the MediaRecorder + stream + chunk list (no re-render needed
+   * while recording). `isRecording` / `isUploading` are state so the button
+   * reflects what's happening. */
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const [isRecording, setIsRecording] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+
+  /** Begin a voice clip recording. Requests microphone permission — the
+   *  browser shows a permission prompt the first time, then remembers the
+   *  decision for subsequent recordings on this origin. */
+  async function startRecording() {
+    if (!liveState || !id) return
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      toast.error("Voice recording is not supported in this browser")
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      streamRef.current = stream
+      chunksRef.current = []
+      // Pick the most likely mime type the browser supports — Chrome/Firefox
+      // emit audio/webm, Safari emits audio/mp4. We pass this through to the
+      // upload so the API saves the file with the correct extension.
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm")
+        ? "audio/webm"
+        : MediaRecorder.isTypeSupported("audio/mp4")
+          ? "audio/mp4"
+          : ""
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream)
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) chunksRef.current.push(e.data)
+      }
+      recorder.onstop = async () => {
+        // Tear down the mic stream first so the browser's red dot disappears.
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((t) => t.stop())
+          streamRef.current = null
+        }
+        const chunks = chunksRef.current
+        chunksRef.current = []
+        if (chunks.length === 0) return
+        const blob = new Blob(chunks, {
+          type: recorder.mimeType || "audio/webm",
+        })
+        // Upload the blob.
+        setIsUploading(true)
+        try {
+          const formData = new FormData()
+          const ext = (recorder.mimeType || "").includes("mp4")
+            ? "mp4"
+            : (recorder.mimeType || "").includes("ogg")
+              ? "ogg"
+              : "webm"
+          formData.append("audio", blob, `voice-${Date.now()}.${ext}`)
+          const headers: Record<string, string> = {}
+          // Always send the bearer scorer token if we have one (real scorer
+          // session OR the god-mode token minted for site admins). The API
+          // also accepts site-admin cookie auth as a fallback.
+          if (token) headers["Authorization"] = `Bearer ${token}`
+          // CSRF double-submit for the cookie-auth path (site admin).
+          if (typeof document !== "undefined") {
+            const csrf = document.cookie.match(/csrf-token=([^;]+)/)?.[1] || ""
+            if (csrf) headers["X-CSRF-Token"] = csrf
+          }
+          const res = await fetch(
+            `/api/voice-clip?matchId=${encodeURIComponent(id)}`,
+            {
+              method: "POST",
+              headers,
+              credentials: "include",
+              body: formData,
+            }
+          )
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({ error: "upload failed" }))
+            toast.error(`Voice clip upload failed: ${err.error || res.statusText}`)
+            return
+          }
+          const body = (await res.json()) as { url?: string; id?: string }
+          if (body?.url) {
+            // Insert as a commentary entry — the feed renders an audio
+            // player when the text starts with `[audio:`.
+            addCommentary(`[audio:${body.url}]`)
+            toast.success("Voice clip added to commentary")
+          }
+        } catch (e) {
+          toast.error(`Voice clip upload failed: ${String(e).slice(0, 100)}`)
+        } finally {
+          setIsUploading(false)
+        }
+      }
+      recorder.start()
+      mediaRecorderRef.current = recorder
+      setIsRecording(true)
+    } catch (e) {
+      // Most common: user denied the mic permission, or no mic attached.
+      toast.error(
+        `Microphone unavailable: ${String(e).slice(0, 120)}. Allow microphone access in your browser and try again.`
+      )
+      setIsRecording(false)
+    }
+  }
+
+  /** Stop the active recording (triggers `onstop` → upload → commentary). */
+  function stopRecording() {
+    const recorder = mediaRecorderRef.current
+    if (!recorder || recorder.state === "inactive") {
+      // Already stopped — just make sure the stream is released.
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop())
+        streamRef.current = null
+      }
+      mediaRecorderRef.current = null
+      setIsRecording(false)
+      return
+    }
+    recorder.stop() // fires onstop → uploads + inserts commentary entry
+    setIsRecording(false)
+  }
 
   /* ------------------ Keyboard shortcuts (power-user scorers) ------------------
    * 0,1,2,3,4,6 → score N runs | . / - → dot | w → wicket dialog |
@@ -670,6 +803,53 @@ export function LiveScorerView() {
                   onSubmit={() => addCommentary(commentaryText)}
                   disabled={!liveState}
                 />
+              )}
+
+              {/* Voice clip (🎙) recorder — captures mic audio via the
+                  MediaRecorder API, uploads it to /api/voice-clip, and
+                  inserts a `[audio:URL]` entry into the commentary feed.
+                  The public match-detail Live tab renders an inline audio
+                  player for those entries. */}
+              {!isComplete && !showSetup && liveState && (
+                <div className="rounded-lg border bg-card p-2">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant={isRecording ? "destructive" : "outline"}
+                      onClick={isRecording ? stopRecording : startRecording}
+                      disabled={isUploading || !liveState}
+                      className="gap-1.5"
+                    >
+                      {isRecording ? (
+                        <>
+                          <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
+                          Stop recording…
+                        </>
+                      ) : isUploading ? (
+                        <>
+                          <span className="h-2 w-2 animate-pulse rounded-full bg-blue-500" />
+                          Uploading…
+                        </>
+                      ) : (
+                        <>
+                          <Mic className="h-3.5 w-3.5" />
+                          Record voice clip
+                        </>
+                      )}
+                    </Button>
+                    {isRecording && (
+                      <span className="text-xs text-muted-foreground">
+                        🔴 Recording… click to stop
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    The browser will ask for microphone permission the first
+                    time you click “Record voice clip”. After granting,
+                    subsequent recordings work without prompting. Voice clips
+                    play inline on the public match detail Live tab.
+                  </p>
+                </div>
               )}
 
               {/* Wicket dialog — dismissal type + fielder picker */}
@@ -1571,7 +1751,21 @@ function CommentaryFeed({ state }: { state: LiveMatchState }) {
                     Commentator
                   </span>
                 )}
-                {c.text}
+                {c.text.startsWith("[audio:") ? (
+                  <span className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400">
+                      <Mic className="h-3 w-3" />
+                      Voice commentary
+                    </span>
+                    <audio
+                      src={c.text.match(/\[audio:(.+?)\]/)?.[1]}
+                      controls
+                      className="h-7"
+                    />
+                  </span>
+                ) : (
+                  c.text
+                )}
               </span>
             </div>
           )

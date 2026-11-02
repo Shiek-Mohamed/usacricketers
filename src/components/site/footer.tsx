@@ -1,7 +1,7 @@
 "use client"
 
 import { useAppStore } from "@/lib/store"
-import { Trophy, Users, CalendarDays, Newspaper, BarChart3, Activity, Mic, Images, Play } from "lucide-react"
+import { Trophy, Users, CalendarDays, Newspaper, BarChart3, Activity, Mic, Images, Play, MessageSquare } from "lucide-react"
 import type { ViewKey } from "@/lib/types"
 
 const footerNav: { title: string; links: { label: string; view: ViewKey }[] }[] = [
@@ -69,6 +69,13 @@ export function Footer() {
               The definitive home of cricket. Live scores, news, stats and analysis
               from every corner of the cricket world.
             </p>
+            <button
+              onClick={() => navigate("feedback")}
+              className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-amber-400 transition-colors duration-200 hover:text-amber-300"
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+              Feedback
+            </button>
           </div>
           {footerNav.map((section) => (
             <div key={section.title}>

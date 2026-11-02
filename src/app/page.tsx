@@ -24,6 +24,7 @@ import { GalleryDetailView } from "@/components/site/views/gallery-detail-view"
 import { VideosView } from "@/components/site/views/videos-view"
 import { VideoDetailView } from "@/components/site/views/video-detail-view"
 import { SearchView } from "@/components/site/views/search-view"
+import { FeedbackView } from "@/components/site/views/feedback-view"
 import { DashboardView } from "@/components/admin/views/dashboard-view"
 import { AdminArticlesView } from "@/components/admin/views/articles-view"
 import { AdminMatchesView } from "@/components/admin/views/matches-view"
@@ -134,6 +135,8 @@ export default function Home() {
         return <VideoDetailView />
       case "search":
         return <SearchView />
+      case "feedback":
+        return <FeedbackView />
       // Admin
       case "admin-login":
         return <AdminLoginView />

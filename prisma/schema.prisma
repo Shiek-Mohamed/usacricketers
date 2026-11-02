@@ -352,3 +352,13 @@ model NewsletterSubscriber {
   email     String   @unique
   createdAt DateTime @default(now())
 }
+
+model Feedback {
+  id        String   @id @default(cuid())
+  name      String   @default("")
+  email     String   @default("")
+  category  String   @default("General")
+  message   String
+  page      String   @default("")
+  createdAt DateTime @default(now())
+}

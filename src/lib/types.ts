@@ -202,6 +202,7 @@ export type ViewKey =
   | "videos"
   | "video-detail"
   | "search"
+  | "feedback"
   | "admin-dashboard"
   | "admin-login"
   | "admin-reset-password"

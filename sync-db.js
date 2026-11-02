@@ -158,6 +158,17 @@ async function main() {
     } catch (e) {
       console.log(`⚠️ sync-db: NewsletterSubscriber table: ${String(e).slice(0, 100)}`)
     }
+
+    // Create Feedback table if it doesn't exist (for fly.io).
+    try {
+      const fbExists = await db.$queryRawUnsafe(`SELECT name FROM sqlite_master WHERE type='table' AND name='Feedback'`)
+      if (!fbExists || fbExists.length === 0) {
+        await db.$executeRawUnsafe(`CREATE TABLE "Feedback" (id TEXT PRIMARY KEY NOT NULL, name TEXT NOT NULL DEFAULT '', email TEXT NOT NULL DEFAULT '', category TEXT NOT NULL DEFAULT 'General', message TEXT NOT NULL, page TEXT NOT NULL DEFAULT '', createdAt TEXT NOT NULL)`)
+        console.log("✅ sync-db: created Feedback table")
+      }
+    } catch (e) {
+      console.log(`⚠️ sync-db: Feedback table: ${String(e).slice(0, 100)}`)
+    }
   } finally {
     await db.$disconnect()
   }

@@ -194,9 +194,13 @@ io.on("connection", (socket) => {
       // Throttle: drop broadcasts faster than MIN_BROADCAST_GAP_MS for this match
       const now = Date.now()
       const last = lastBroadcast.get(matchId) ?? 0
-      if (now - last < MIN_BROADCAST_GAP_MS) return
+      if (now - last < MIN_BROADCAST_GAP_MS) {
+        console.log(`[score-service] throttled broadcast for ${matchId} (${now - last}ms gap)`)
+        return
+      }
       lastBroadcast.set(matchId, now)
       cache.set(matchId, state)
+      console.log(`[score-service] broadcasting state for ${matchId} to room match:${matchId}`)
       io.to(`match:${matchId}`).emit("state", { matchId, state })
     }
   )

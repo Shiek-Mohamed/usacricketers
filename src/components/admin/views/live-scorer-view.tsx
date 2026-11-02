@@ -244,9 +244,14 @@ export function LiveScorerView() {
   }
 
   function handleBall(event: BallEvent) {
-    if (!liveState) return
+    if (!liveState) {
+      console.log("[scorer] handleBall: no liveState, ignoring")
+      return
+    }
+    console.log("[scorer] handleBall:", event, "strikerId:", liveState.strikerId, "bowlerId:", liveState.bowlerId, "status:", liveState.status)
     setHistory((h) => [...h, liveState].slice(-50))
     const next = applyBall(liveState, event)
+    console.log("[scorer] applyBall result: runs:", next.innings[next.currentInnings]?.runs, "balls:", next.innings[next.currentInnings]?.balls)
     pushState(next)
     persist(next)
   }

@@ -212,7 +212,6 @@ export function MatchDetailView() {
     <InnerPageLayout
       sidebar={
         <>
-          <MatchInfoWidget match={match_} />
           <RecentResultsWidget matches={allMatches ?? []} />
           <CustomSidebarBlocks placement="match" />
         </>

@@ -95,7 +95,16 @@ export interface CommentaryEntry {
   ballNo: number
   over: string
   text: string
-  kind: "run" | "boundary" | "six" | "wicket" | "extra" | "over" | "info" | "dot"
+  kind:
+    | "run"
+    | "boundary"
+    | "six"
+    | "wicket"
+    | "extra"
+    | "over"
+    | "info"
+    | "dot"
+    | "manual"
 }
 
 export interface LiveMatchState {

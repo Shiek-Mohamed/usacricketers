@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useMemo, useRef } from "react"
 import { useAppStore } from "@/lib/store"
 import { useMatch } from "@/lib/use-data"
 import type { Match } from "@/lib/types"
@@ -18,25 +19,51 @@ import {
   RecentResultsWidget,
 } from "@/components/site/sidebar-widgets"
 import { useLiveScore } from "@/lib/use-live-score"
-import { stateToScorecard } from "@/lib/scoring"
+import {
+  stateToScorecard,
+  oversString,
+  type LiveMatchState,
+  type ScorerBatsman,
+  type ScorerBowler,
+} from "@/lib/scoring"
 import { useMatches } from "@/lib/use-data"
 import {
   Card,
-  CardContent,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from "@/components/ui/tabs"
 import {
   ChevronLeft,
   MapPin,
   Trophy,
   CalendarDays,
   Info,
+  MessageSquare,
+  Radio,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ShareButtons } from "@/components/site/share-buttons"
 import { SeoMeta } from "@/components/site/seo-meta"
+
+/* -------------------------------------------------------------------------- */
+/*  Commentary item — loose type that accepts both liveState entries and      */
+/*  the persisted Scorecard.commentary entries (whose `kind` is a plain       */
+/*  string). Color-coding below handles every known kind + the new "manual"   */
+/*  kind emitted by the human-commentary input in the live-scorer view.       */
+/* -------------------------------------------------------------------------- */
+interface CommentaryItem {
+  id: string
+  over: string
+  text: string
+  kind: string
+}
 
 function MatchHeaderCard({ match }: { match: Match }) {
   const sc = match.scorecard
@@ -155,12 +182,469 @@ function MatchDetailSkeleton() {
   )
 }
 
+/* -------------------------------------------------------------------------- */
+/*  Live tab sub-components                                                   */
+/* -------------------------------------------------------------------------- */
+
+/** A small colored pill for one ball in the recent-balls strip.
+ *  Color coding (ESPNcricinfo-ish):
+ *    dot=gray · 1-3 runs=green · 4=blue · 6=purple · W=red · wide/noball=amber
+ */
+function ballPillStyle(entry: CommentaryItem): {
+  cls: string
+  label: string
+} {
+  const k = entry.kind
+  if (k === "wicket") return { cls: "bg-red-600 text-white", label: "W" }
+  if (k === "six") return { cls: "bg-purple-600 text-white", label: "6" }
+  if (k === "boundary") return { cls: "bg-blue-600 text-white", label: "4" }
+  if (k === "extra") {
+    // Distinguish wide vs noball from the text when possible.
+    const t = entry.text.toLowerCase()
+    if (t.includes("wide")) return { cls: "bg-amber-500 text-amber-950", label: "wd" }
+    if (t.includes("no ball")) return { cls: "bg-amber-500 text-amber-950", label: "nb" }
+    return { cls: "bg-amber-500 text-amber-950", label: "+" }
+  }
+  if (k === "run") {
+    // Extract the run count from text like "3 runs — Smith"
+    const m = entry.text.match(/^(\d+)/)
+    const r = m ? Number(m[1]) : 0
+    return { cls: "bg-emerald-600 text-white", label: String(r) }
+  }
+  if (k === "dot") return { cls: "bg-muted text-muted-foreground", label: "•" }
+  // Manual / info / over end / unknown — render as a subtle gray dot.
+  return { cls: "bg-muted text-muted-foreground", label: "•" }
+}
+
+/** Recent balls strip — shows the last 6 ball-events as colored pills.
+ *  Uses the liveState.commentary feed (which is already newest-first) so
+ *  we can pick out the most recent deliveries with their proper kinds. */
+function RecentBallsStrip({
+  commentary,
+}: {
+  commentary: CommentaryItem[]
+}) {
+  // Pick only ball-event kinds — skip "info", "over" (end-of-over markers)
+  // and "manual" (commentator notes). These 6 kinds cover every legal
+  // delivery + extras.
+  const ballKinds = new Set(["run", "boundary", "six", "wicket", "extra", "dot"])
+  const recent = commentary.filter((c) => ballKinds.has(c.kind)).slice(0, 6)
+
+  if (recent.length === 0) {
+    return (
+      <div className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 text-xs text-muted-foreground">
+        <span className="text-[10px] font-bold uppercase tracking-wide">This over</span>
+        <span>No balls bowled yet</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2">
+      <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+        Recent
+      </span>
+      <div className="flex items-center gap-1.5">
+        {/* Reverse so the most-recent ball sits on the right (reading order
+            matches the natural "left→right = older→newer" of an over). */}
+        {[...recent].reverse().map((entry, i) => {
+          const { cls, label } = ballPillStyle(entry)
+          return (
+            <span
+              key={entry.id + i}
+              className={cn(
+                "grid h-7 w-7 place-items-center rounded-full text-xs font-extrabold tabular-nums",
+                cls
+              )}
+              title={`${entry.over} · ${entry.text}`}
+            >
+              {label}
+            </span>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/** Live batsmen + bowler strip. Mirrors the operator's LiveScoreboard
+ *  but stripped down for the public view (no swap/change controls). */
+function LiveBattingStrip({
+  state,
+}: {
+  state: LiveMatchState
+}) {
+  const inn = state.innings[state.currentInnings]
+  if (!inn) return null
+  const striker = inn.batsmen.find((b) => b.id === state.strikerId)
+  const nonStriker = inn.batsmen.find((b) => b.id === state.nonStrikerId)
+  const bowler = inn.bowlers.find((b) => b.id === state.bowlerId)
+
+  return (
+    <div className="space-y-2">
+      <div className="grid gap-2 sm:grid-cols-2">
+        <BatsmanCard batsman={striker} striker />
+        <BatsmanCard batsman={nonStriker} />
+      </div>
+      {bowler && <BowlerCard bowler={bowler} />}
+    </div>
+  )
+}
+
+function BatsmanCard({
+  batsman,
+  striker,
+}: {
+  batsman?: ScorerBatsman
+  striker?: boolean
+}) {
+  if (!batsman) {
+    return (
+      <div className="rounded-lg border bg-card p-3 text-xs text-muted-foreground">
+        No batsman
+      </div>
+    )
+  }
+  const sr = batsman.balls > 0 ? ((batsman.runs / batsman.balls) * 100).toFixed(1) : "0.0"
+  return (
+    <div
+      className={cn(
+        "rounded-lg border p-3",
+        striker ? "border-emerald-400 bg-emerald-50/60 dark:bg-emerald-950/30" : "bg-card"
+      )}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            {striker && (
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            )}
+            <span
+              className={cn(
+                "truncate text-sm",
+                striker ? "font-extrabold text-emerald-700 dark:text-emerald-300" : "font-semibold"
+              )}
+            >
+              {batsman.name}
+            </span>
+            {striker && (
+              <span className="rounded bg-emerald-600 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+                Strike
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="shrink-0 text-right">
+          <span className="text-lg font-extrabold tabular-nums">{batsman.runs}</span>
+          <span className="ml-1 text-xs text-muted-foreground">({batsman.balls})</span>
+        </div>
+      </div>
+      <div className="mt-1.5 flex items-center gap-3 text-[11px] text-muted-foreground">
+        <span>4s <span className="font-semibold text-foreground">{batsman.fours}</span></span>
+        <span>6s <span className="font-semibold text-foreground">{batsman.sixes}</span></span>
+        <span>SR <span className="font-semibold text-foreground tabular-nums">{sr}</span></span>
+      </div>
+    </div>
+  )
+}
+
+function BowlerCard({ bowler }: { bowler: ScorerBowler }) {
+  const econ = bowler.balls > 0 ? ((bowler.runsConceded / bowler.balls) * 6).toFixed(2) : "0.00"
+  return (
+    <div className="rounded-lg border bg-card p-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500" />
+            <span className="truncate text-sm font-semibold">{bowler.name}</span>
+            <span className="rounded bg-red-600 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+              Bowling
+            </span>
+          </div>
+        </div>
+        <div className="shrink-0 text-right">
+          <span className="text-sm font-extrabold tabular-nums">
+            {oversString(bowler.balls)}-{bowler.maidens}-{bowler.runsConceded}-{bowler.wickets}
+          </span>
+        </div>
+      </div>
+      <div className="mt-1.5 flex items-center gap-3 text-[11px] text-muted-foreground">
+        <span>Overs <span className="font-semibold text-foreground tabular-nums">{oversString(bowler.balls)}</span></span>
+        <span>Maidens <span className="font-semibold text-foreground">{bowler.maidens}</span></span>
+        <span>Runs <span className="font-semibold text-foreground">{bowler.runsConceded}</span></span>
+        <span>Wkts <span className="font-semibold text-foreground">{bowler.wickets}</span></span>
+        <span>Econ <span className="font-semibold text-foreground tabular-nums">{econ}</span></span>
+      </div>
+    </div>
+  )
+}
+
+/** Compact score + partnership + RRR summary bar at the top of the Live tab. */
+function LiveSummaryBar({ state }: { state: LiveMatchState }) {
+  const inn = state.innings[state.currentInnings]
+  if (!inn) return null
+  const overs = oversString(inn.balls)
+  const crr = inn.balls > 0 ? (inn.runs / inn.balls * 6).toFixed(2) : "0.00"
+  // Partnership runs = current total − runs on the board when this
+  // partnership began. Balls faced = current balls − balls then.
+  const pRuns = Math.max(0, inn.runs - inn.partnershipStartRuns)
+  const pBalls = Math.max(0, inn.balls - inn.partnershipStartBalls)
+  const target = inn.target
+  const ballsLeft = state.maxOvers > 0 ? state.maxOvers * 6 - inn.balls : null
+  const runsNeeded = target ? target - inn.runs : null
+  const rrr =
+    target && ballsLeft && ballsLeft > 0
+      ? ((runsNeeded! / ballsLeft) * 6).toFixed(2)
+      : null
+
+  return (
+    <div className="rounded-lg border bg-gradient-to-br from-slate-900 to-slate-800 p-3 text-white sm:p-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[11px] uppercase tracking-wide text-slate-400">
+            {inn.battingTeamShortName} · Innings {state.currentInnings + 1}
+            {inn.target ? ` · target ${inn.target}` : ""}
+          </div>
+          <div className="mt-1 text-3xl font-extrabold tabular-nums sm:text-4xl">
+            {inn.runs}/{inn.wickets}
+            <span className="ml-2 text-base font-normal text-slate-300">
+              ({overs} ov)
+            </span>
+            {inn.freeHit && (
+              <span className="ml-3 inline-flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-amber-950 animate-pulse">
+                Free hit
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="text-right text-xs text-slate-300">
+          <div>CRR <span className="font-bold text-white tabular-nums">{crr}</span></div>
+          {rrr && (
+            <div>
+              RRR <span className="font-bold text-white tabular-nums">{rrr}</span>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-white/10 pt-2 text-[11px] text-slate-300">
+        <span>
+          Partnership:{" "}
+          <span className="font-bold text-white tabular-nums">{pRuns} ({pBalls})</span>
+        </span>
+        {target && runsNeeded !== null && ballsLeft !== null && ballsLeft > 0 ? (
+          <span>
+            Need <span className="font-bold text-amber-300 tabular-nums">{runsNeeded}</span> from{" "}
+            <span className="font-bold text-white tabular-nums">{ballsLeft}</span> balls · RRR{" "}
+            <span className="font-bold text-white tabular-nums">{rrr}</span>
+          </span>
+        ) : target && runsNeeded !== null && runsNeeded <= 0 ? (
+          <span className="font-bold text-emerald-300">Target reached</span>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Commentary feed (public) — newest at top, grouped by over, color-coded.    */
+/* -------------------------------------------------------------------------- */
+
+/** Color-class helper for a commentary entry. Returns Tailwind classes for
+ *  the over badge + the text. Manual entries get a blue treatment so they
+ *  stand out from auto-generated ball-by-ball commentary. */
+function commentaryColors(kind: string): {
+  badge: string
+  text: string
+  border?: string
+} {
+  switch (kind) {
+    case "wicket":
+      return { badge: "bg-red-600 text-white", text: "font-semibold text-red-700 dark:text-red-300" }
+    case "six":
+      return { badge: "bg-purple-600 text-white", text: "font-semibold text-purple-700 dark:text-purple-300" }
+    case "boundary":
+      return { badge: "bg-blue-600 text-white", text: "font-semibold text-blue-700 dark:text-blue-300" }
+    case "extra":
+      return { badge: "bg-amber-500 text-amber-950", text: "text-amber-700 dark:text-amber-300" }
+    case "run":
+      return { badge: "bg-emerald-600 text-white", text: "text-emerald-700 dark:text-emerald-300" }
+    case "dot":
+      return { badge: "bg-muted text-muted-foreground", text: "text-muted-foreground" }
+    case "over":
+      return { badge: "bg-slate-700 text-white", text: "font-semibold text-foreground" }
+    case "info":
+      return { badge: "bg-muted text-muted-foreground", text: "italic text-muted-foreground" }
+    case "manual":
+      // Commentator entry — blue accent + left border to distinguish
+      return {
+        badge: "bg-blue-600 text-white",
+        text: "text-foreground",
+        border: "border-l-2 border-blue-500 pl-2",
+      }
+    default:
+      return { badge: "bg-muted text-muted-foreground", text: "text-foreground" }
+  }
+}
+
+/** Group commentary by over, preserving the newest-first order inside
+ *  each over. Returns an array of { over, entries } blocks sorted so
+ *  the most recent over appears first. */
+function groupByOver(commentary: CommentaryItem[]): {
+  over: string
+  entries: CommentaryItem[]
+}[] {
+  const groups = new Map<string, CommentaryItem[]>()
+  for (const entry of commentary) {
+    // Use the integer part of the over string ("12.3" → "12", "12" → "12").
+    // The "over" entry at end-of-over has over like "12" (no decimal).
+    const overNum = entry.over.split(".")[0] ?? "0"
+    const key = overNum
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key)!.push(entry)
+  }
+  // Sort group keys numerically descending (newest over first).
+  const sorted = [...groups.entries()].sort((a, b) => {
+    const an = parseInt(a[0], 10) || 0
+    const bn = parseInt(b[0], 10) || 0
+    return bn - an
+  })
+  return sorted.map(([over, entries]) => ({ over, entries }))
+}
+
+function CommentaryFeed({
+  commentary,
+}: {
+  commentary: CommentaryItem[]
+}) {
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+  // Track the latest entry id so we know when "new" entries arrive.
+  const latestId = commentary[0]?.id ?? ""
+
+  // Auto-scroll to top (newest entry) when new entries arrive. The feed
+  // renders newest-first, so "scroll to top" means showing the freshest
+  // commentary — exactly what ESPNcricinfo does.
+  useEffect(() => {
+    const el = scrollRef.current
+    if (el) el.scrollTop = 0
+  }, [latestId])
+
+  if (commentary.length === 0) {
+    return (
+      <div className="rounded-lg border bg-card">
+        <div className="flex items-center gap-2 border-b bg-muted/40 px-3 py-2">
+          <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
+          <h3 className="text-[11px] font-extrabold uppercase tracking-wide">
+            Commentary
+          </h3>
+        </div>
+        <div className="flex flex-col items-center justify-center px-3 py-10 text-center">
+          <MessageSquare className="h-8 w-8 text-muted-foreground/60" />
+          <p className="mt-2 text-sm text-muted-foreground">No commentary yet</p>
+          <p className="text-[11px] text-muted-foreground/80">
+            Ball-by-ball updates will appear here once scoring begins.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  const grouped = groupByOver(commentary)
+
+  return (
+    <div className="rounded-lg border bg-card overflow-hidden">
+      <div className="flex items-center justify-between gap-2 border-b bg-muted/40 px-3 py-2">
+        <div className="flex items-center gap-2">
+          <Radio className="h-3.5 w-3.5 text-red-600" />
+          <h3 className="text-[11px] font-extrabold uppercase tracking-wide">
+            Live Commentary
+          </h3>
+        </div>
+        <span className="text-[10px] text-muted-foreground">
+          {commentary.length} entries · newest first
+        </span>
+      </div>
+      <div
+        ref={scrollRef}
+        className="max-h-[500px] overflow-y-auto p-3 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border"
+      >
+        {grouped.map((group) => (
+          <div key={group.over} className="mb-3 last:mb-0">
+            <div className="mb-1.5 flex items-center gap-2">
+              <span className="text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground">
+                Over {group.over}
+              </span>
+              <span className="h-px flex-1 bg-border/60" />
+            </div>
+            <div className="space-y-1.5">
+              {group.entries.map((entry) => {
+                const colors = commentaryColors(entry.kind)
+                const isManual = entry.kind === "manual"
+                return (
+                  <div
+                    key={entry.id}
+                    className={cn(
+                      "flex gap-2 text-sm",
+                      colors.border
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "inline-flex h-6 min-w-[2.75rem] shrink-0 items-center justify-center rounded-md px-1.5 text-[11px] font-bold tabular-nums",
+                        colors.badge
+                      )}
+                    >
+                      {entry.over}
+                    </span>
+                    <span className={cn("min-w-0 flex-1 leading-snug", colors.text)}>
+                      {isManual && (
+                        <span className="mr-1 inline-block rounded bg-blue-600 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white align-middle">
+                          Commentator
+                        </span>
+                      )}
+                      {entry.text}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Main view                                                                  */
+/* -------------------------------------------------------------------------- */
+
 export function MatchDetailView() {
   const id = useAppStore((s) => s.id)
   const navigate = useAppStore((s) => s.navigate)
   const { data, loading, error } = useMatch(id)
   const { data: allMatches } = useMatches()
   const { liveState, connected } = useLiveScore(id)
+
+  // Default to the Live tab when the match is live, otherwise Scorecard.
+  // Controlled so the user can switch freely; defaultValue only kicks in
+  // on first mount (keyed on the match id so navigating between matches
+  // re-evaluates the default).
+  const isLiveLiveState = liveState?.status === "live"
+  const defaultTab = isLiveLiveState ? "live" : "scorecard"
+
+  // Commentary source: prefer the live feed, fall back to the persisted
+  // scorecard's commentary array (for completed matches).
+  const commentary: CommentaryItem[] = useMemo(() => {
+    if (liveState?.commentary?.length) {
+      return liveState.commentary.map((c) => ({
+        id: c.id,
+        over: c.over,
+        text: c.text,
+        kind: c.kind,
+      }))
+    }
+    return []
+  }, [liveState])
 
   if (loading) return <MatchDetailSkeleton />
 
@@ -199,6 +683,25 @@ export function MatchDetailView() {
     : match
   const sc = match_.scorecard
   const isLive = match_.status === "live"
+
+  // Merge in the persisted scorecard's commentary when there's no live
+  // feed (completed matches) — this is what powers the Commentary section
+  // for finished games. (Plain derivation — no useMemo, since `sc` here
+  // is only available after the early-return guards above; calling a hook
+  // now would violate the Rules of Hooks.)
+  const persistedCommentary: CommentaryItem[] = (() => {
+    const c = sc?.commentary
+    if (!c || c.length === 0) return []
+    return c.map((x) => ({
+      id: x.id,
+      over: x.over,
+      text: x.text,
+      kind: x.kind,
+    }))
+  })()
+
+  const effectiveCommentary =
+    commentary.length > 0 ? commentary : persistedCommentary
 
   return (
     <>
@@ -288,60 +791,72 @@ export function MatchDetailView() {
           </div>
         )}
 
-        {/* Scorecard */}
-        <section>
-          <div className="mb-3 flex items-center gap-2">
-            <span className="h-5 w-1 rounded-full bg-red-600" />
-            <h2 className="text-sm font-extrabold uppercase tracking-tight sm:text-base">
-              Full Scorecard
-            </h2>
-          </div>
-          {sc ? (
-            <ScorecardView scorecard={sc} />
-          ) : (
-            <Card className="grid place-items-center p-6">
-              <p className="text-sm text-muted-foreground">
-                Scorecard will be available once the match begins.
-              </p>
-            </Card>
-          )}
-        </section>
+        {/* Tabbed layout — Live (default for live matches) + Scorecard */}
+        <Tabs defaultValue={defaultTab} className="w-full">
+          <TabsList className="w-full sm:w-auto">
+            <TabsTrigger value="live" className="gap-1.5" disabled={!isLive && effectiveCommentary.length === 0}>
+              <Radio className="h-3.5 w-3.5" />
+              Live
+            </TabsTrigger>
+            <TabsTrigger value="scorecard" className="gap-1.5">
+              Scorecard
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Commentary feed */}
-        {sc?.commentary && sc.commentary.length > 0 && (
-          <section>
-            <div className="mb-3 flex items-center gap-2">
-              <span className="h-5 w-1 rounded-full bg-red-600" />
-              <h2 className="text-sm font-extrabold uppercase tracking-tight sm:text-base">
-                Commentary
-              </h2>
-            </div>
-            <div className="rounded-lg border bg-card overflow-hidden">
-              <div className="max-h-80 space-y-1 overflow-y-auto p-3 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
-                {sc.commentary.map((c) => (
-                  <div key={c.id} className="flex gap-2 text-sm">
-                    <span className="w-12 shrink-0 font-mono tabular-nums text-muted-foreground">
-                      {c.over}
-                    </span>
-                    <span
-                      className={cn(
-                        "min-w-0 flex-1",
-                        c.kind === "wicket" && "font-bold text-red-700",
-                        c.kind === "six" && "font-bold text-purple-700",
-                        c.kind === "boundary" && "font-bold text-emerald-700",
-                        c.kind === "over" && "font-semibold text-foreground",
-                        c.kind === "info" && "italic text-muted-foreground",
-                        c.kind === "dot" && "text-muted-foreground/70 tabular-nums"
-                      )}
-                    >
-                      {c.text}
-                    </span>
+          {/* ----- Live tab ----- */}
+          <TabsContent value="live" className="mt-4 space-y-4">
+            {liveState && liveState.innings.length > 0 ? (
+              <>
+                {/* Score + partnership + RRR summary */}
+                <LiveSummaryBar state={liveState} />
+
+                {/* Recent balls + batsmen/bowler strips side-by-side on sm+ */}
+                <div className="grid gap-3 sm:grid-cols-[auto_1fr] sm:items-start">
+                  <RecentBallsStrip commentary={effectiveCommentary} />
+                  <div className="sm:min-w-0">
+                    <LiveBattingStrip state={liveState} />
                   </div>
-                ))}
+                </div>
+
+                {/* Commentary feed */}
+                <CommentaryFeed commentary={effectiveCommentary} />
+              </>
+            ) : (
+              <Card className="grid place-items-center p-6 text-center">
+                <div className="space-y-1">
+                  <Radio className="mx-auto h-6 w-6 text-muted-foreground" />
+                  <p className="text-sm font-semibold">Match not yet live</p>
+                  <p className="text-xs text-muted-foreground">
+                    {isLive
+                      ? "Innings setup is in progress — live feed will appear here shortly."
+                      : "Live commentary is only available during scoring."}
+                  </p>
+                </div>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* ----- Scorecard tab ----- */}
+          <TabsContent value="scorecard" className="mt-4">
+            <section>
+              <div className="mb-3 flex items-center gap-2">
+                <span className="h-5 w-1 rounded-full bg-red-600" />
+                <h2 className="text-sm font-extrabold uppercase tracking-tight sm:text-base">
+                  Full Scorecard
+                </h2>
               </div>
-            </div>
-          </section>
-        )}
+              {sc ? (
+                <ScorecardView scorecard={sc} />
+              ) : (
+                <Card className="grid place-items-center p-6">
+                  <p className="text-sm text-muted-foreground">
+                    Scorecard will be available once the match begins.
+                  </p>
+                </Card>
+              )}
+            </section>
+          </TabsContent>
+        </Tabs>
       </div>
     </InnerPageLayout>
     </>

@@ -61,6 +61,7 @@ import {
   Flag,
   Repeat,
   Zap,
+  Send,
 } from "lucide-react"
 import type { Player } from "@/lib/types"
 
@@ -124,6 +125,13 @@ export function LiveScorerView() {
   // admin pick dismissal type + fielder(s) involved, then sends the structured
   // wicket BallEvent to applyBall via handleBall.
   const [wicketOpen, setWicketOpen] = useState(false)
+  // Free-text commentary input — the scorer types a note ("DRS review taken",
+  // "Rain stops play", etc.) and presses Enter / clicks Send. The entry is
+  // added to liveState.commentary with kind="manual" and broadcast via the
+  // socket so the public match-detail Live tab shows it instantly (rendered
+  // with a blue accent + "Commentator" label so it's distinguishable from
+  // the auto-generated ball-by-ball feed).
+  const [commentaryText, setCommentaryText] = useState("")
 
   /* ------------------ Keyboard shortcuts (power-user scorers) ------------------
    * 0,1,2,3,4,6 → score N runs | . / - → dot | w → wicket dialog |
@@ -241,6 +249,34 @@ export function LiveScorerView() {
         })
       }
     }, 800)
+  }
+
+  /** Add a manual / commentator note to the live commentary feed.
+   *  Pushes the updated state through the socket (so subscribers like the
+   *  public match-detail view see it instantly) and schedules a DB persist.
+   *  Manual entries get kind="manual" + a blue accent in the feed so they're
+   *  visually distinct from the auto-generated ball-by-ball commentary. */
+  function addCommentary(text: string) {
+    const trimmed = text.trim()
+    if (!trimmed || !liveState) return
+    const inn = liveState.innings[liveState.currentInnings]
+    const overLabel = inn ? oversString(inn.balls) : "0.0"
+    const entry = {
+      id: Math.random().toString(36).slice(2),
+      ballNo: liveState.ballNo,
+      over: overLabel,
+      text: trimmed,
+      kind: "manual" as const,
+    }
+    const next: LiveMatchState = {
+      ...liveState,
+      // Newest-first (matches the engine's pushCommentary pattern).
+      commentary: [entry, ...liveState.commentary].slice(0, 120),
+    }
+    setHistory((h) => [...h, liveState].slice(-50))
+    pushState(next)
+    persist(next)
+    setCommentaryText("")
   }
 
   function handleBall(event: BallEvent) {
@@ -621,6 +657,19 @@ export function LiveScorerView() {
               {/* Ball entry buttons */}
               {!isComplete && !needBatsman && !needBowler && (
                 <BallPad onBall={handleBall} disabled={!liveState} onWicket={() => setWicketOpen(true)} />
+              )}
+
+              {/* Human / manual commentary input — only shown when there's an
+                  active live innings (the setup phase has no live commentary
+                  feed to attach the note to). Enter or the Send button
+                  submits; Esc or empty input is a no-op. */}
+              {!isComplete && !showSetup && liveState && (
+                <CommentaryInput
+                  value={commentaryText}
+                  onChange={setCommentaryText}
+                  onSubmit={() => addCommentary(commentaryText)}
+                  disabled={!liveState}
+                />
               )}
 
               {/* Wicket dialog — dismissal type + fielder picker */}
@@ -1490,27 +1539,97 @@ function CommentaryFeed({ state }: { state: LiveMatchState }) {
         </h3>
       </div>
       <div className="max-h-64 space-y-1.5 overflow-y-auto p-3 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
-        {state.commentary.map((c) => (
-          <div key={c.id} className="flex gap-2 text-xs">
-            <span className="w-10 shrink-0 font-mono tabular-nums text-muted-foreground">
-              {c.over}
-            </span>
-            <span
+        {state.commentary.map((c) => {
+          const isManual = c.kind === "manual"
+          return (
+            <div
+              key={c.id}
               className={cn(
-                "min-w-0 flex-1",
-                c.kind === "wicket" && "font-bold text-red-700",
-                c.kind === "six" && "font-bold text-purple-700",
-                c.kind === "boundary" && "font-bold text-emerald-700",
-                c.kind === "over" && "font-semibold text-foreground",
-                c.kind === "info" && "italic text-muted-foreground",
-                c.kind === "dot" && "text-muted-foreground/70 tabular-nums"
+                "flex gap-2 text-xs",
+                isManual && "border-l-2 border-blue-500 bg-blue-50/40 pl-2 dark:bg-blue-950/20"
               )}
             >
-              {c.text}
-            </span>
-          </div>
-        ))}
+              <span className="w-10 shrink-0 font-mono tabular-nums text-muted-foreground">
+                {c.over}
+              </span>
+              <span
+                className={cn(
+                  "min-w-0 flex-1",
+                  c.kind === "wicket" && "font-bold text-red-700",
+                  c.kind === "six" && "font-bold text-purple-700",
+                  c.kind === "boundary" && "font-bold text-emerald-700",
+                  c.kind === "extra" && "text-amber-700 dark:text-amber-300",
+                  c.kind === "run" && "text-emerald-700 dark:text-emerald-300",
+                  c.kind === "over" && "font-semibold text-foreground",
+                  c.kind === "info" && "italic text-muted-foreground",
+                  c.kind === "dot" && "text-muted-foreground/70 tabular-nums",
+                  isManual && "text-foreground"
+                )}
+              >
+                {isManual && (
+                  <span className="mr-1 inline-block rounded bg-blue-600 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white align-middle">
+                    Commentator
+                  </span>
+                )}
+                {c.text}
+              </span>
+            </div>
+          )
+        })}
       </div>
+    </div>
+  )
+}
+
+/* ------------------ Human / manual commentary input ------------------ */
+
+function CommentaryInput({
+  value,
+  onChange,
+  onSubmit,
+  disabled,
+}: {
+  value: string
+  onChange: (v: string) => void
+  onSubmit: () => void
+  disabled?: boolean
+}) {
+  return (
+    <div className="rounded-lg border bg-card p-2">
+      <div className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+        <CircleDot className="h-3 w-3 text-blue-500" />
+        Add commentary
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={value}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault()
+              onSubmit()
+            }
+          }}
+          placeholder="Add commentary… (e.g. ‘DRS review taken', ‘Rain stops play')"
+          className="flex h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50"
+        />
+        <Button
+          size="sm"
+          disabled={disabled || !value.trim()}
+          onClick={onSubmit}
+          className="gap-1.5 bg-blue-600 text-white hover:bg-blue-700"
+        >
+          <Send className="h-3.5 w-3.5" />
+          Send
+        </Button>
+      </div>
+      <p className="mt-1 text-[10px] text-muted-foreground">
+        Manual notes are pushed to the public Live tab instantly (shown with a
+        blue “Commentator" label). Press{" "}
+        <code className="rounded bg-muted px-1 py-0.5">Enter</code> to send.
+      </p>
     </div>
   )
 }

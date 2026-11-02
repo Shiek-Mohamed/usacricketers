@@ -1,6 +1,6 @@
 #!/bin/bash
-# start-all.sh — entrypoint that runs both the Next.js app (port 3000) and
-# the score-service mini-service (port 3003) concurrently. Used by the
+# start-all.sh — entrypoint that runs Caddy gateway + Next.js app (port 3000)
+# + the score-service mini-service (port 3003) concurrently. Used by the
 # Docker container's CMD.
 
 set -e
@@ -27,10 +27,16 @@ cd /app
 node server.js &
 NEXT_PID=$!
 
-# Wait for either to exit
-wait -n $SCORE_PID $NEXT_PID
+# Start Caddy gateway (port 8080) — routes ?XTransformPort=3003 to the
+# score-service (WebSocket) and everything else to Next.js.
+echo "🌐 Starting Caddy gateway on port 8080..."
+caddy run --config /app/Caddyfile --adapter caddyfile &
+CADDY_PID=$!
+
+# Wait for any to exit
+wait -n $SCORE_PID $NEXT_PID $CADDY_PID
 EXIT_CODE=$?
 
-# Kill the other process
-kill $SCORE_PID $NEXT_PID 2>/dev/null || true
+# Kill the others
+kill $SCORE_PID $NEXT_PID $CADDY_PID 2>/dev/null || true
 exit $EXIT_CODE

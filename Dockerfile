@@ -26,10 +26,15 @@ FROM node:22-slim AS runner
 
 WORKDIR /app
 
-# Install bun for the score-service mini-service + OpenSSL for Prisma.
+# Install bun for the score-service mini-service + OpenSSL for Prisma + Caddy
+# for the gateway (routes WebSocket traffic to the score-service on port 3003).
 # Without OpenSSL, Prisma falls back to a wrong query-engine binary and
 # mishandles DateTime serialization (Inconsistent column data errors).
-RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+# Without Caddy, the score-service (port 3003) is unreachable from the public
+# URL — live scoring doesn't work.
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates curl && \
+    curl -sL "https://github.com/caddyserver/caddy/releases/download/v2.8.4/caddy_2.8.4_linux_amd64.tar.gz" | tar -xz -C /usr/bin caddy && \
+    rm -rf /var/lib/apt/lists/*
 RUN npm install -g bun
 
 # Copy standalone Next.js build + static assets + public
@@ -62,8 +67,9 @@ ENV HOSTNAME=0.0.0.0
 # Expose ports: 3000 = Next.js, 3003 = score-service
 EXPOSE 3000 3003
 
-# Copy the entrypoint script
+# Copy the entrypoint script + Caddyfile for the gateway
 COPY --from=builder /app/start-all.sh ./start-all.sh
+COPY Caddyfile.fly ./Caddyfile
 RUN chmod +x ./start-all.sh
 
 # Create the DB directory (volume mount point)
@@ -72,5 +78,7 @@ RUN mkdir -p /app/db
 # Volume for persistent SQLite data
 VOLUME ["/app/db"]
 
-# Start both services
+# Expose ports: 8080 = Caddy gateway (fly internal_port), 3000 = Next.js, 3003 = score-service
+EXPOSE 8080 3000 3003
+# Start all services (Caddy gateway + Next.js + score-service)
 CMD ["./start-all.sh"]

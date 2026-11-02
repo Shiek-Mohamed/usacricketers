@@ -76,13 +76,18 @@ export function LiveScorerView() {
   const { refetch } = useMatches()
   const scorerToken = useScorerSession((s) => s.session?.token ?? null)
 
-  // Site admins (mode === "admin") don't have a scorer session — they only
-  // have the sa-session httpOnly cookie the score-service can't read. Fall
-  // back to fetching a god-mode scorer token (POST /api/admin/scorer-token),
-  // which the score-service accepts as `tournamentIds: ["*"]` god-mode.
+  // Site admins don't have a scorer session — they only have the sa-session
+  // httpOnly cookie the score-service can't read. Fall back to fetching a
+  // god-mode scorer token (POST /api/admin/scorer-token), which the
+  // score-service accepts as `tournamentIds: ["*"]` god-mode.
+  //
+  // NOTE: We don't gate on `mode === "admin"` because navigating directly to
+  // ?view=live-scorer&id=... bypasses the admin-login flow that sets the mode.
+  // Instead, we try fetching the scorer token unconditionally (if scorerToken
+  // isn't already set). If the admin cookie isn't there, the API returns 401
+  // and adminToken stays null — the shell shows "Not authenticated".
   const [adminToken, setAdminToken] = useState<string | null>(null)
   useEffect(() => {
-    if (mode !== "admin") return
     if (scorerToken) return // already have a real scorer session — prefer it
     let cancelled = false
     fetch("/api/admin/scorer-token", {
@@ -104,7 +109,7 @@ export function LiveScorerView() {
     return () => {
       cancelled = true
     }
-  }, [mode, scorerToken])
+  }, [scorerToken])
 
   const token = scorerToken ?? adminToken
   const { liveState, connected, pushState } = useLiveScore(id, token)

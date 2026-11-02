@@ -575,6 +575,8 @@ export function LiveScorerView() {
               t1Players={t1Players ?? []}
               t2Players={t2Players ?? []}
               onStart={startInnings}
+              tokenReady={!!token}
+              connected={connected}
             />
           ) : (
             <div className="mt-4 space-y-5">
@@ -723,12 +725,16 @@ function SetupPanel({
   t1Players,
   t2Players,
   onStart,
+  tokenReady,
+  connected,
 }: {
   t1: Player["team"] | undefined
   t2: Player["team"] | undefined
   t1Players: Player[]
   t2Players: Player[]
   onStart: (battingFirstId: string, strikerId: string, nonStrikerId: string, bowlerId: string) => void
+  tokenReady: boolean
+  connected: boolean
 }) {
   const [battingFirstId, setBattingFirstId] = useState(t1?.id ?? "")
   const [strikerId, setStrikerId] = useState("")
@@ -844,10 +850,16 @@ function SetupPanel({
         </div>
         <Button
           className="mt-4 w-full gap-1.5 bg-red-600 text-white hover:bg-red-700"
-          disabled={!battingFirstId || !strikerId || !nonStrikerId || !bowlerId || strikerId === nonStrikerId}
-          onClick={() => onStart(battingFirstId, strikerId, nonStrikerId, bowlerId)}
+          disabled={!battingFirstId || !strikerId || !nonStrikerId || !bowlerId || strikerId === nonStrikerId || !connected || !tokenReady}
+          onClick={() => {
+            if (!tokenReady) {
+              toast.error("Scorer token still loading — please wait a moment and try again.")
+              return
+            }
+            onStart(battingFirstId, strikerId, nonStrikerId, bowlerId)
+          }}
         >
-          <Activity className="h-4 w-4" /> Start innings (set LIVE)
+          <Activity className="h-4 w-4" /> {!tokenReady ? "Loading scorer token…" : !connected ? "Connecting…" : "Start innings (set LIVE)"}
         </Button>
       </div>
     </div>

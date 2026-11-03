@@ -164,8 +164,8 @@ export function Header() {
             <div className="flex flex-col gap-1 pt-6">
               <button
                 onClick={() => {
-                  navigate("home")
                   setOpen(false)
+                  setTimeout(() => navigate("home"), 50)
                 }}
                 className="flex items-center gap-2 px-3 py-2 text-left text-sm font-semibold hover:bg-muted rounded-md"
               >
@@ -175,8 +175,8 @@ export function Header() {
                 <button
                   key={item.view}
                   onClick={() => {
-                    navigate(item.view)
                     setOpen(false)
+                    setTimeout(() => navigate(item.view), 50)
                   }}
                   className={cn(
                     "flex items-center gap-2 px-3 py-2 text-left text-sm rounded-md hover:bg-muted",
@@ -189,8 +189,8 @@ export function Header() {
               <div className="my-2 h-px bg-border" />
               <button
                 onClick={() => {
-                  onScore()
                   setOpen(false)
+                  setTimeout(() => onScore(), 50)
                 }}
                 className="flex items-center gap-2 px-3 py-2 text-left text-sm rounded-md transition-colors hover:bg-muted text-emerald-600 dark:text-emerald-400 font-semibold"
               >
@@ -199,8 +199,8 @@ export function Header() {
               </button>
               <button
                 onClick={() => {
-                  onAdmin()
                   setOpen(false)
+                  setTimeout(() => onAdmin(), 50)
                 }}
                 className="flex items-center gap-2 px-3 py-2 text-left text-sm rounded-md hover:bg-muted"
               >

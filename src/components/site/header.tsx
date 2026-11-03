@@ -30,6 +30,9 @@ import {
   Sun,
   Moon,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  RotateCw,
 } from "lucide-react"
 import type { ViewKey } from "@/lib/types"
 
@@ -100,6 +103,24 @@ export function Header() {
     onScroll()
     window.addEventListener("scroll", onScroll, { passive: true })
     return () => window.removeEventListener("scroll", onScroll)
+  }, [])
+
+  // PWA navigation — back/forward/refresh buttons. Only visible in
+  // standalone PWA mode (no browser chrome) or on small screens.
+  const [showPwaNav, setShowPwaNav] = useState(false)
+  const [canGoBack, setCanGoBack] = useState(false)
+  const [canGoForward, setCanGoForward] = useState(false)
+  useEffect(() => {
+    const standalone = window.matchMedia("(display-mode: standalone)").matches
+    const mobile = window.innerWidth < 768
+    setShowPwaNav(standalone || mobile)
+    const updateNavState = () => {
+      setCanGoBack(window.history.length > 1)
+      setCanGoForward(window.history.length > 1)
+    }
+    updateNavState()
+    window.addEventListener("popstate", updateNavState)
+    return () => window.removeEventListener("popstate", updateNavState)
   }, [])
 
   // "Live Scoring" button → goes to the scoring landing page (which handles
@@ -189,6 +210,42 @@ export function Header() {
             </div>
           </SheetContent>
         </Sheet>
+
+        {/* PWA navigation — back/forward/refresh. Only shows in standalone
+            PWA mode or on mobile (desktop browsers have their own controls). */}
+        {showPwaNav && (
+          <div className="flex items-center gap-0.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => window.history.back()}
+              disabled={!canGoBack}
+              className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-default"
+              aria-label="Go back"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => window.history.forward()}
+              disabled={!canGoForward}
+              className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-default"
+              aria-label="Go forward"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => window.location.reload()}
+              className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
+              aria-label="Refresh page"
+            >
+              <RotateCw className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
 
         {/* Logo — shrinks on mobile so the right-side CTAs fit */}
         <button

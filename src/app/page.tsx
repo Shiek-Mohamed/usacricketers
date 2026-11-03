@@ -55,6 +55,7 @@ import { LeagueAdminSeriesEditView } from "@/components/site/views/league-admin-
 import { LeagueAdminMatchesView } from "@/components/site/views/league-admin-matches-view"
 import { LeagueAdminScorersView } from "@/components/site/views/league-admin-scorers-view"
 import { useLeagueAdminSession } from "@/lib/league-admin-session"
+import { ViewErrorBoundary } from "@/components/site/view-error-boundary"
 import { useEffect } from "react"
 
 export default function Home() {
@@ -213,13 +214,21 @@ export default function Home() {
   // Scorer mode: minimal shell, no regular header/footer. The login view is
   // full-screen; everything else (home + live-scorer) renders bare.
   if (mode === "scorer") {
-    return <>{renderView()}</>
+    return (
+      <ViewErrorBoundary key={view} label={`scorer:${view}`}>
+        {renderView()}
+      </ViewErrorBoundary>
+    )
   }
 
   // League admin mode: minimal shell, no regular header/footer. Views wrap
   // themselves in LeagueAdminShell internally (except the login view).
   if (mode === "leagueAdmin") {
-    return <>{renderView()}</>
+    return (
+      <ViewErrorBoundary key={view} label={`league-admin:${view}`}>
+        {renderView()}
+      </ViewErrorBoundary>
+    )
   }
 
   return (
@@ -227,7 +236,12 @@ export default function Home() {
       <Header />
       <main className="flex-1 w-full">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6">
-          {renderView()}
+          {/* Per-view error boundary: if a single view crashes during render,
+              only this area shows the error card — the header, footer, and
+              navigation stay fully usable so the user can click away. */}
+          <ViewErrorBoundary key={view} label={view}>
+            {renderView()}
+          </ViewErrorBoundary>
         </div>
       </main>
       {mode === "public" && <Footer />}

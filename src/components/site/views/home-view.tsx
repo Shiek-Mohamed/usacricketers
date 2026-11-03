@@ -176,11 +176,14 @@ function LiveMatchStrip({ match }: { match: Match }) {
 
 /** The big featured story — asymmetric split: text card (left) layered over a large image (right). */
 function FeaturedHero({ article }: { article: Article }) {
-  const navigate = useAppStore((s) => s.navigate)
+  // Direct link to the SSR article page — full page navigation.
+  const href = article.slug
+    ? `/news/${article.slug}`
+    : `/?view=article-detail&id=${article.id}`
   return (
-    <article
-      onClick={() => navigate("article-detail", article.id)}
-      className="group relative grid cursor-pointer grid-cols-1 items-stretch overflow-hidden rounded-xl border bg-card shadow-sm transition-shadow hover:shadow-lg lg:grid-cols-12"
+    <a
+      href={href}
+      className="group relative grid grid-cols-1 items-stretch overflow-hidden rounded-xl border bg-card shadow-sm transition-shadow hover:shadow-lg lg:grid-cols-12"
     >
       {/* Text card — left, layered over the image on large screens */}
       <div className="order-2 flex flex-col justify-center bg-card p-5 shadow-xl ring-1 ring-black/5 lg:order-1 lg:col-span-5 lg:-mr-12 lg:z-10 lg:p-8">
@@ -222,16 +225,18 @@ function FeaturedHero({ article }: { article: Article }) {
           </div>
         )}
       </div>
-    </article>
+    </a>
   )
 }
 
 /** A secondary story card — image on top, headline + meta below. */
 function SecondaryStoryCard({ article }: { article: Article }) {
-  const navigate = useAppStore((s) => s.navigate)
+  const href = article.slug
+    ? `/news/${article.slug}`
+    : `/?view=article-detail&id=${article.id}`
   return (
-    <button
-      onClick={() => navigate("article-detail", article.id)}
+    <a
+      href={href}
       className="group flex flex-col overflow-hidden rounded-lg border bg-card text-left shadow-sm transition-shadow hover:shadow-md"
     >
       <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
@@ -265,7 +270,7 @@ function SecondaryStoryCard({ article }: { article: Article }) {
           </span>
         </div>
       </div>
-    </button>
+    </a>
   )
 }
 
@@ -509,7 +514,6 @@ function InterviewsSection({ articles }: { articles: Article[] }) {
             <InterviewCard
               article={hero}
               variant="hero"
-              onClick={() => navigate("article-detail", hero.id)}
             />
           )}
           {secondary.map((a) => (
@@ -517,7 +521,6 @@ function InterviewsSection({ articles }: { articles: Article[] }) {
               key={a.id}
               article={a}
               variant="secondary"
-              onClick={() => navigate("article-detail", a.id)}
             />
           ))}
         </div>
@@ -532,8 +535,8 @@ function InterviewsSection({ articles }: { articles: Article[] }) {
           <ul className="space-y-5">
             {popular.map((a, i) => (
               <li key={a.id}>
-                <button
-                  onClick={() => navigate("article-detail", a.id)}
+                <a
+                  href={a.slug ? `/news/${a.slug}` : `/?view=article-detail&id=${a.id}`}
                   className="group flex items-start gap-4 text-left"
                 >
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-gray-300 pt-0.5 text-base font-bold text-[#1e2a5e]">
@@ -547,7 +550,7 @@ function InterviewsSection({ articles }: { articles: Article[] }) {
                       {a.title}
                     </p>
                   </div>
-                </button>
+                </a>
               </li>
             ))}
           </ul>
@@ -560,16 +563,17 @@ function InterviewsSection({ articles }: { articles: Article[] }) {
 function InterviewCard({
   article,
   variant,
-  onClick,
 }: {
   article: Article
   variant: "hero" | "secondary"
-  onClick: () => void
 }) {
   const hero = variant === "hero"
+  const href = article.slug
+    ? `/news/${article.slug}`
+    : `/?view=article-detail&id=${article.id}`
   return (
-    <button
-      onClick={onClick}
+    <a
+      href={href}
       className={cn(
         "group relative block w-full overflow-hidden rounded-xl bg-black text-left",
         hero ? "aspect-[16/9] md:col-span-2 md:aspect-[21/9]" : "aspect-[4/3]"
@@ -603,7 +607,7 @@ function InterviewCard({
           </time>
         </div>
       </div>
-    </button>
+    </a>
   )
 }
 

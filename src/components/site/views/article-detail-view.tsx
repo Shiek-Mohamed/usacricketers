@@ -205,36 +205,33 @@ function ArticleDetailSkeleton() {
 
 /**
  * Breadcrumb nav: Home > News > [Article title].
- * Clicking Home/News calls navigate() so SPA routing is preserved.
+ *
+ * Uses plain `<a>` tags → full page navigation. Home → `/` (SPA home view),
+ * News → `/news` (which 301-redirects to the SPA news listing `/?view=news`).
+ *
+ * The SPA `navigate()` flow is intentionally avoided here so the breadcrumbs
+ * produce shareable clean URLs that match the SSR article pages.
  */
-function ArticleBreadcrumbs({
-  title,
-  onNavigate,
-}: {
-  title: string
-  onNavigate: (view: "home" | "news") => void
-}) {
+function ArticleBreadcrumbs({ title }: { title: string }) {
   return (
     <nav
       aria-label="Breadcrumb"
       className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground"
     >
-      <button
-        type="button"
-        onClick={() => onNavigate("home")}
+      <a
+        href="/"
         className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
       >
         <HomeIcon className="h-3 w-3" />
         Home
-      </button>
+      </a>
       <ChevronRight className="h-3 w-3 shrink-0 opacity-60" aria-hidden="true" />
-      <button
-        type="button"
-        onClick={() => onNavigate("news")}
+      <a
+        href="/news"
         className="transition-colors hover:text-foreground"
       >
         News
-      </button>
+      </a>
       <ChevronRight className="h-3 w-3 shrink-0 opacity-60" aria-hidden="true" />
       <span className="line-clamp-1 max-w-[60%] truncate font-medium text-foreground/80">
         {title}
@@ -325,10 +322,7 @@ export function ArticleDetailView() {
       mainWidth={600}
       header={
         <>
-          <ArticleBreadcrumbs
-            title={article.title}
-            onNavigate={(v) => navigate(v)}
-          />
+          <ArticleBreadcrumbs title={article.title} />
 
           <article className="space-y-4">
             {/* Hero header + large image render full-width above the sidebar */}

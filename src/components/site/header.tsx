@@ -165,7 +165,7 @@ export function Header() {
               <button
                 onClick={() => {
                   setOpen(false)
-                  setTimeout(() => navigate("home"), 50)
+                  navigate("home")
                 }}
                 className="flex items-center gap-2 px-3 py-2 text-left text-sm font-semibold hover:bg-muted rounded-md"
               >
@@ -176,7 +176,7 @@ export function Header() {
                   key={item.view}
                   onClick={() => {
                     setOpen(false)
-                    setTimeout(() => navigate(item.view), 50)
+                    navigate(item.view)
                   }}
                   className={cn(
                     "flex items-center gap-2 px-3 py-2 text-left text-sm rounded-md hover:bg-muted",
@@ -190,7 +190,7 @@ export function Header() {
               <button
                 onClick={() => {
                   setOpen(false)
-                  setTimeout(() => onScore(), 50)
+                  onScore()
                 }}
                 className="flex items-center gap-2 px-3 py-2 text-left text-sm rounded-md transition-colors hover:bg-muted text-emerald-600 dark:text-emerald-400 font-semibold"
               >
@@ -200,7 +200,7 @@ export function Header() {
               <button
                 onClick={() => {
                   setOpen(false)
-                  setTimeout(() => onAdmin(), 50)
+                  onAdmin()
                 }}
                 className="flex items-center gap-2 px-3 py-2 text-left text-sm rounded-md hover:bg-muted"
               >

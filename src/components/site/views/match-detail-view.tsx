@@ -91,15 +91,19 @@ function MatchHeaderCard({ match }: { match: Match }) {
         <StatusPill status={match.status} />
       </div>
 
-      {/* Team rows — stacked, no inner borders, prominent scores */}
+      {/* Team rows — stacked, no inner borders, prominent scores.
+          Each row is wrapped in an `<a href="/teams/${team.id}">` so the
+          team badge + name deep-link to the SSR team profile (full page
+          navigation — what we want for SEO + shareability). */}
       <div className="divide-y divide-border/40">
         {[t1, t2].map((team, idx) => {
           if (!team) return null
           const innings = idx === 0 ? t1Innings : t2Innings
           return (
-            <div
+            <a
               key={team.id}
-              className="flex items-center justify-between gap-3 px-4 py-4 sm:px-6"
+              href={`/teams/${team.id}`}
+              className="flex items-center justify-between gap-3 px-4 py-4 transition-colors hover:bg-accent/30 sm:px-6"
             >
               <div className="flex items-center gap-3 min-w-0">
                 <TeamBadge team={team} size="lg" />
@@ -131,7 +135,7 @@ function MatchHeaderCard({ match }: { match: Match }) {
                   </div>
                 )}
               </div>
-            </div>
+            </a>
           )
         })}
       </div>

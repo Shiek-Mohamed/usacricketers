@@ -2,11 +2,9 @@
 
 import type { Match } from "@/lib/types"
 import { TeamBadge, StatusPill, FormatPill, formatMatchDate } from "./ui"
-import { useAppStore } from "@/lib/store"
 import { cn } from "@/lib/utils"
 
 export function MiniScorecard({ match }: { match: Match }) {
-  const navigate = useAppStore((s) => s.navigate)
   const t1 = match.team1
   const t2 = match.team2
   const live = match.status === "live"
@@ -23,9 +21,15 @@ export function MiniScorecard({ match }: { match: Match }) {
     }
   }
 
+  // Render as a real `<a href="/matches/${id}">` so the card deep-links to
+  // the SSR match page (full page navigation — what we want for SEO +
+  // shareability). The SPA `?view=match-detail&id=xxx` flow still works for
+  // legacy links.
+  const href = `/matches/${match.id}`
+
   return (
-    <button
-      onClick={() => navigate("match-detail", match.id)}
+    <a
+      href={href}
       className={cn(
         "block w-full text-left rounded-lg border bg-card overflow-hidden transition-shadow hover:shadow-md",
         live && "border-red-300"
@@ -55,7 +59,7 @@ export function MiniScorecard({ match }: { match: Match }) {
       <div className="px-3 pb-2 text-[11px] text-muted-foreground">
         {match.result || `${match.venue}, ${formatMatchDate(match.startDate)}`}
       </div>
-    </button>
+    </a>
   )
 }
 

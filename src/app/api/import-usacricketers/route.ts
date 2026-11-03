@@ -40,10 +40,17 @@ function resolveUrl(src: string): string | null {
 }
 
 function slugToId(s: string): string {
+  // Extract just the filename from the URL (e.g. "66e6b4b7-8rwrw" from
+  // "https://usacricketers.com/uploads/66e6b4b7-8rwrw.jpg") instead of
+  // slugifying the entire URL. Falls back to a short hash if no filename.
+  const filename = s.split("/").pop()?.split("?")[0]?.replace(/\.[^.]+$/, "")
+  if (filename && filename.length > 2) {
+    return filename.slice(0, 30) + "-" + Math.random().toString(36).slice(2, 7)
+  }
   return (
-    s.replace(/[^a-z0-9-]+/gi, "-").slice(0, 40) +
-    "-" +
-    Math.random().toString(36).slice(2, 7)
+    Buffer.from(Math.random().toString(36).slice(2) + Date.now().toString(36))
+      .toString("hex")
+      .slice(0, 16)
   )
 }
 

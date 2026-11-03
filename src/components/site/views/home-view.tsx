@@ -115,14 +115,18 @@ function inningsTotal(match: Match, teamId: string): string {
  *  - Gaps + font sizes scale up at the `sm:` breakpoint.
  */
 function LiveMatchStrip({ match }: { match: Match }) {
-  const navigate = useAppStore((s) => s.navigate)
   const t1 = match.team1
   const t2 = match.team2
   const t1Score = inningsTotal(match, match.team1Id)
   const t2Score = inningsTotal(match, match.team2Id)
+  // Render as a real `<a href="/matches/${id}">` so the strip deep-links to
+  // the SSR match page (full page navigation — what we want for SEO +
+  // shareability). The SPA `?view=match-detail&id=xxx` flow still works for
+  // legacy links.
+  const href = `/matches/${match.id}`
   return (
-    <button
-      onClick={() => navigate("match-detail", match.id)}
+    <a
+      href={href}
       className="group flex w-full items-center gap-1.5 overflow-hidden rounded-lg border bg-card px-2.5 py-2 text-left shadow-sm transition-shadow hover:shadow-md sm:gap-2 sm:px-4 sm:py-2.5"
     >
       {/* Live indicator */}
@@ -170,7 +174,7 @@ function LiveMatchStrip({ match }: { match: Match }) {
         </div>
       </div>
       <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-    </button>
+    </a>
   )
 }
 

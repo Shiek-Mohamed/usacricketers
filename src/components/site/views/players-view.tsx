@@ -3,9 +3,8 @@
 import { useMemo, useState } from "react"
 import { Search, Users, Users2 } from "lucide-react"
 import { useMatches, usePlayers, useTeams } from "@/lib/use-data"
-import { useAppStore } from "@/lib/store"
 import { PlayerAvatar, TeamBadge } from "@/components/cricket/ui"
-import { Card, CardContent } from "@/components/ui/card"
+import { CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -40,7 +39,6 @@ const BATTING_STYLE_OPTIONS = [
 ] as const
 
 export function PlayersView() {
-  const navigate = useAppStore((s) => s.navigate)
   const { data: teams, loading: teamsLoading } = useTeams()
   const { data: matchesData } = useMatches()
   const [teamId, setTeamId] = useState<string>(ALL_TEAMS)
@@ -168,7 +166,7 @@ export function PlayersView() {
               <PlayerCard
                 key={p.id}
                 player={p}
-                onClick={() => navigate("player-detail", p.id)}
+                href={`/players/${p.id}`}
               />
             ))}
           </div>
@@ -180,27 +178,19 @@ export function PlayersView() {
 
 function PlayerCard({
   player,
-  onClick,
+  href,
 }: {
   player: Player
-  onClick: () => void
+  href: string
 }) {
   const bs = player.battingStats
   const bw = player.bowlingStats
   const isBowler = bw !== null
 
   return (
-    <Card
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault()
-          onClick()
-        }
-      }}
-      className="group cursor-pointer gap-0 overflow-hidden p-0 py-0 transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+    <a
+      href={href}
+      className="group flex flex-col gap-0 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm p-0 transition-all hover:shadow-md hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
     >
       <div className="flex items-center gap-3 p-4">
         <PlayerAvatar
@@ -210,7 +200,9 @@ function PlayerCard({
           size="lg"
         />
         <div className="min-w-0 flex-1">
-          <p className="line-clamp-1 font-bold leading-tight">{player.name}</p>
+          <p className="line-clamp-1 font-bold leading-tight group-hover:text-emerald-600 transition-colors">
+            {player.name}
+          </p>
           <div className="mt-0.5 flex items-center gap-1.5">
             {player.team && <TeamBadge team={player.team} size="sm" />}
             <span className="truncate text-xs text-muted-foreground">
@@ -237,7 +229,7 @@ function PlayerCard({
           {isBowler && bw && <Stat label="W" value={bw.wickets} />}
         </div>
       </CardContent>
-    </Card>
+    </a>
   )
 }
 

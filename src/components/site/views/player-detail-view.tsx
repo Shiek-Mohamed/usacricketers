@@ -143,17 +143,15 @@ export function PlayerDetailView() {
                 </h1>
                 <div className="flex flex-wrap items-center gap-2 text-sm">
                   {player.team && (
-                    <button
+                    <a
+                      href={`/teams/${player.team.id}`}
                       className="flex items-center gap-1.5 rounded-full px-1 py-0.5 transition-colors hover:bg-accent"
-                      onClick={() =>
-                        player.team && navigate("team-detail", player.team.id)
-                      }
                     >
                       <TeamBadge team={player.team} size="sm" />
                       <span className="font-semibold text-foreground">
                         {player.team.name}
                       </span>
-                    </button>
+                    </a>
                   )}
                   <Badge variant="secondary">{player.role}</Badge>
                 </div>

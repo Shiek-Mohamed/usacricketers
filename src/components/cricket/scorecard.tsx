@@ -3,7 +3,6 @@
 import type { Innings, Scorecard, BattingLine, BowlingLine } from "@/lib/types"
 import { TeamBadgeByName } from "./ui"
 import { cn } from "@/lib/utils"
-import { useAppStore } from "@/lib/store"
 
 /* -------------------------------------------------------------------------- */
 /*  Public entry                                                               */
@@ -111,7 +110,6 @@ function PlayerName({
   isCaptain?: boolean
   isKeeper?: boolean
 }) {
-  const navigate = useAppStore((s) => s.navigate)
   const decorated = (
     <>
       {name}
@@ -119,20 +117,23 @@ function PlayerName({
       {isCaptain && <span className="ml-0.5 text-muted-foreground">(c)</span>}
     </>
   )
+  // Render as a real `<a href="/players/${id}">` so the link deep-links to the
+  // SSR player profile (full page navigation — what we want for SEO +
+  // shareability). The SPA `?view=player-detail&id=xxx` flow still works for
+  // legacy links. `stopPropagation` keeps the click from bubbling up into any
+  // row-hover handlers in the batting/bowling tables.
   if (playerId) {
     return (
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          navigate("player-detail", playerId)
-        }}
+      <a
+        href={`/players/${playerId}`}
+        onClick={(e) => e.stopPropagation()}
         className={cn(
           className,
           "hover:underline hover:text-primary transition-colors text-left"
         )}
       >
         {decorated}
-      </button>
+      </a>
     )
   }
   return <span className={className}>{decorated}</span>

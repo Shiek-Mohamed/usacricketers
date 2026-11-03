@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import type { Article, Match, Player, Series, Team } from "@/lib/types"
-import { useAppStore } from "@/lib/store"
 import { ArticleCard } from "@/components/cricket/article-card"
 import {
   TeamBadge,
@@ -175,7 +174,6 @@ export function RecentResultsWidget({
   matches: Match[]
   title?: string
 }) {
-  const navigate = useAppStore((s) => s.navigate)
   const list = matches.filter((m) => m.status === "completed").slice(0, 4)
   if (!list.length) return null
   return (
@@ -183,8 +181,8 @@ export function RecentResultsWidget({
       <ul className="space-y-2">
         {list.map((m) => (
           <li key={m.id}>
-            <button
-              onClick={() => navigate("match-detail", m.id)}
+            <a
+              href={`/matches/${m.id}`}
               className="flex w-full items-center gap-2 rounded-md px-1 py-1 text-left transition-colors hover:bg-accent"
             >
               <FormatPill format={m.format} />
@@ -197,7 +195,7 @@ export function RecentResultsWidget({
                 </p>
               </div>
               <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
-            </button>
+            </a>
           </li>
         ))}
       </ul>
@@ -239,7 +237,6 @@ export function PlayerSummaryWidget({ player }: { player: Player }) {
 }
 
 export function PlayerInfoWidget({ player }: { player: Player }) {
-  const navigate = useAppStore((s) => s.navigate)
   const rows: { icon: React.ElementType; label: string; value: React.ReactNode }[] =
     [
       { icon: Target, label: "Batting", value: player.battingStyle },
@@ -248,8 +245,8 @@ export function PlayerInfoWidget({ player }: { player: Player }) {
         icon: Users,
         label: "Team",
         value: player.team ? (
-          <button
-            onClick={() => player.team && navigate("team-detail", player.team.id)}
+          <a
+            href={`/teams/${player.team.id}`}
             className="inline-flex items-center gap-1.5 hover:text-primary"
           >
             <TeamBadge
@@ -258,7 +255,7 @@ export function PlayerInfoWidget({ player }: { player: Player }) {
               className="!h-4 !w-4 !text-[7px]"
             />
             {player.team.name}
-          </button>
+          </a>
         ) : (
           "—"
         ),
@@ -294,7 +291,6 @@ export function TeammatesWidget({
   excludeId?: string
   title?: string
 }) {
-  const navigate = useAppStore((s) => s.navigate)
   const list = players.filter((p) => p.id !== excludeId).slice(0, 5)
   if (!list.length) return null
   return (
@@ -302,8 +298,8 @@ export function TeammatesWidget({
       <ul className="space-y-2">
         {list.map((p) => (
           <li key={p.id}>
-            <button
-              onClick={() => navigate("player-detail", p.id)}
+            <a
+              href={`/players/${p.id}`}
               className="flex w-full items-center gap-2 rounded-md px-1 py-1 text-left transition-colors hover:bg-accent"
             >
               <PlayerAvatar name={p.name} team={p.team} imageUrl={p.imageUrl} size="sm" />
@@ -314,7 +310,7 @@ export function TeammatesWidget({
                 </p>
               </div>
               <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
-            </button>
+            </a>
           </li>
         ))}
       </ul>
@@ -433,15 +429,14 @@ export function SeriesMatchesWidget({
   matches: Match[]
   title?: string
 }) {
-  const navigate = useAppStore((s) => s.navigate)
   if (!matches.length) return null
   return (
     <SidebarWidget title={title}>
       <ul className="space-y-2">
         {matches.map((m) => (
           <li key={m.id}>
-            <button
-              onClick={() => navigate("match-detail", m.id)}
+            <a
+              href={`/matches/${m.id}`}
               className="flex w-full items-center gap-2 rounded-md px-1 py-1 text-left transition-colors hover:bg-accent"
             >
               <FormatPill format={m.format} />
@@ -452,7 +447,7 @@ export function SeriesMatchesWidget({
                 </p>
               </div>
               <StatusPill status={m.status} />
-            </button>
+            </a>
           </li>
         ))}
       </ul>

@@ -183,7 +183,6 @@ export function TeamDetailView() {
                           <PlayerRow
                             key={p.id}
                             player={p}
-                            onClick={() => navigate("player-detail", p.id)}
                           />
                         ))}
                       </li>
@@ -232,14 +231,12 @@ export function TeamDetailView() {
 
 function PlayerRow({
   player,
-  onClick,
 }: {
   player: Player
-  onClick: () => void
 }) {
   return (
-    <button
-      onClick={onClick}
+    <a
+      href={`/players/${player.id}`}
       className="flex w-full items-center gap-3 px-5 py-2.5 text-left transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:bg-accent"
     >
       <PlayerAvatar name={player.name} team={player.team} imageUrl={player.imageUrl} size="sm" />
@@ -253,6 +250,6 @@ function PlayerRow({
       <Badge variant="secondary" className="shrink-0 text-[10px]">
         {player.role}
       </Badge>
-    </button>
+    </a>
   )
 }

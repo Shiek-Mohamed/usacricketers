@@ -3,9 +3,8 @@
 import { useMemo, useState } from "react"
 import { Search, Trophy, Users } from "lucide-react"
 import { useMatches, useTeams } from "@/lib/use-data"
-import { useAppStore } from "@/lib/store"
 import { TeamBadge } from "@/components/cricket/ui"
-import { Card, CardContent } from "@/components/ui/card"
+import { CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { Team } from "@/lib/types"
@@ -16,7 +15,6 @@ import { RecentResultsWidget } from "@/components/site/sidebar-widgets"
 export function TeamsView() {
   const { data: teams, loading } = useTeams()
   const { data: matchesData } = useMatches()
-  const navigate = useAppStore((s) => s.navigate)
   const [query, setQuery] = useState("")
 
   const filtered = useMemo(() => {
@@ -88,7 +86,7 @@ export function TeamsView() {
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {filtered.map((t) => (
-              <TeamCard key={t.id} team={t} onClick={() => navigate("team-detail", t.id)} />
+              <TeamCard key={t.id} team={t} href={`/teams/${t.id}`} />
             ))}
           </div>
         )}
@@ -99,23 +97,15 @@ export function TeamsView() {
 
 function TeamCard({
   team,
-  onClick,
+  href,
 }: {
   team: Team
-  onClick: () => void
+  href: string
 }) {
   return (
-    <Card
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault()
-          onClick()
-        }
-      }}
-      className="group cursor-pointer gap-0 overflow-hidden p-0 py-0 transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+    <a
+      href={href}
+      className="group flex flex-col gap-0 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
     >
       {/* Color strip */}
       <div
@@ -125,11 +115,13 @@ function TeamCard({
       />
       <CardContent className="flex flex-col items-center gap-2 p-4 text-center">
         <TeamBadge team={team} size="xl" />
-        <p className="line-clamp-1 text-sm font-bold leading-tight">{team.name}</p>
+        <p className="line-clamp-1 text-sm font-bold leading-tight group-hover:text-emerald-600 transition-colors">
+          {team.name}
+        </p>
         <p className="text-xs text-muted-foreground">
           {team.shortName} · {team.country}
         </p>
       </CardContent>
-    </Card>
+    </a>
   )
 }

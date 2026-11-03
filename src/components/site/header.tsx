@@ -123,6 +123,37 @@ export function Header() {
     return () => window.removeEventListener("popstate", updateNavState)
   }, [])
 
+  // Detect if we're on an SSR route (not the SPA root at "/").
+  // On SSR pages, navigate() (pushState) doesn't work because the SPA
+  // view switcher isn't loaded. We need full page navigation instead.
+  const isSSRPage = typeof window !== "undefined" && window.location.pathname !== "/"
+  const onNavClick = (view: ViewKey) => {
+    setOpen(false)
+    if (isSSRPage) {
+      // Full page load to the SPA root with the view param
+      window.location.href = `/?view=${view}`
+    } else {
+      // SPA navigation (works on the root page)
+      navigate(view)
+    }
+  }
+  const onScoreNav = () => {
+    setOpen(false)
+    if (isSSRPage) {
+      window.location.href = `/?view=scorer-landing`
+    } else {
+      enterScorerLanding()
+    }
+  }
+  const onAdminNav = () => {
+    setOpen(false)
+    if (isSSRPage) {
+      window.location.href = `/?view=admin-login`
+    } else {
+      onAdmin()
+    }
+  }
+
   // "Live Scoring" button → goes to the scoring landing page (which handles
   // both scorer + league-admin sign-in).
   const onScore = () => {
@@ -163,10 +194,7 @@ export function Header() {
           <SheetContent side="left" className="w-72 bg-background text-foreground">
             <div className="flex flex-col gap-1 pt-6">
               <button
-                onClick={() => {
-                  setOpen(false)
-                  navigate("home")
-                }}
+                onClick={() => onNavClick("home")}
                 className="flex items-center gap-2 px-3 py-2 text-left text-sm font-semibold hover:bg-muted rounded-md"
               >
                 <Home className="h-4 w-4" /> Home
@@ -174,10 +202,7 @@ export function Header() {
               {navItems.slice(1).map((item) => (
                 <button
                   key={item.view}
-                  onClick={() => {
-                    setOpen(false)
-                    navigate(item.view)
-                  }}
+                  onClick={() => onNavClick(item.view)}
                   className={cn(
                     "flex items-center gap-2 px-3 py-2 text-left text-sm rounded-md hover:bg-muted",
                     view === item.view && "bg-muted font-semibold"
@@ -188,20 +213,14 @@ export function Header() {
               ))}
               <div className="my-2 h-px bg-border" />
               <button
-                onClick={() => {
-                  setOpen(false)
-                  onScore()
-                }}
+                onClick={onScoreNav}
                 className="flex items-center gap-2 px-3 py-2 text-left text-sm rounded-md transition-colors hover:bg-muted text-emerald-600 dark:text-emerald-400 font-semibold"
               >
                 <Radio className="h-4 w-4" />
                 Live Scoring
               </button>
               <button
-                onClick={() => {
-                  setOpen(false)
-                  onAdmin()
-                }}
+                onClick={onAdminNav}
                 className="flex items-center gap-2 px-3 py-2 text-left text-sm rounded-md hover:bg-muted"
               >
                 <Shield className="h-4 w-4" />
@@ -249,7 +268,7 @@ export function Header() {
 
         {/* Logo — shrinks on mobile so the right-side CTAs fit */}
         <button
-          onClick={() => navigate(mode === "public" ? "home" : "admin-dashboard")}
+          onClick={() => onNavClick(mode === "public" ? "home" : "admin-dashboard")}
           className="flex items-center shrink-0 rounded-md transition-opacity hover:opacity-90"
         >
           <span className="font-extrabold text-base tracking-tight sm:text-xl">
@@ -265,7 +284,7 @@ export function Header() {
               return (
                 <button
                   key={group.label}
-                  onClick={() => group.view && navigate(group.view)}
+                  onClick={() => group.view && onNavClick(group.view as ViewKey)}
                   className={cn(
                     "px-3 py-1.5 text-sm font-medium rounded-md transition-colors duration-150 hover:bg-white/10",
                     group.view === view && "bg-white/15 font-semibold"
@@ -296,7 +315,7 @@ export function Header() {
                       return (
                         <button
                           key={child.view}
-                          onClick={() => navigate(child.view)}
+                          onClick={() => onNavClick(child.view)}
                           className={cn(
                             "flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-white/10",
                             child.view === view
@@ -326,7 +345,7 @@ export function Header() {
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   const val = (e.target as HTMLInputElement).value.trim()
-                  if (val) navigate("search", val)
+                  if (val) onNavClick("search")
                 }
               }}
             />
@@ -348,7 +367,7 @@ export function Header() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={onAdmin}
+            onClick={onAdminNav}
             className="hidden gap-1.5 border border-white/15 bg-white/5 text-xs font-semibold text-white/90 transition-colors hover:bg-white/15 hover:text-white sm:inline-flex"
           >
             <Shield className="h-3.5 w-3.5" />
@@ -359,7 +378,13 @@ export function Header() {
           {mode === "public" && (
             <Button
               size="sm"
-              onClick={onScore}
+              onClick={() => {
+                if (isSSRPage) {
+                  window.location.href = `/?view=scorer-landing`
+                } else {
+                  onScore()
+                }
+              }}
               className="gap-1.5 text-xs font-bold bg-gradient-to-r from-emerald-600 to-emerald-500 text-white hover:from-emerald-700 hover:to-emerald-600 shadow-md shadow-emerald-900/20"
             >
               <span className="relative flex h-2 w-2">

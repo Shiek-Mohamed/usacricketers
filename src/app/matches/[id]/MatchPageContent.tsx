@@ -83,7 +83,7 @@ function MatchScorebox({ match }: { match: Match }) {
       </div>
 
       {/* Two-column layout: scores on left, details on right */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px]">
+      <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr]">
         {/* LEFT: Team scores */}
         <div className="divide-y divide-border/40">
           {[t1, t2].map((team, idx) => {

@@ -811,42 +811,51 @@ export function LiveScorerView() {
                   The public match-detail Live tab renders an inline audio
                   player for those entries. */}
               {!isComplete && !showSetup && liveState && (
-                <div className="rounded-lg border bg-card p-2">
+                <div className="rounded-xl border-2 border-emerald-200 bg-emerald-50/50 p-3 dark:border-emerald-900 dark:bg-emerald-950/30">
+                  <div className="mb-2 flex items-center gap-2">
+                    <div className="grid h-7 w-7 place-items-center rounded-lg bg-emerald-600 text-white">
+                      <Mic className="h-4 w-4" />
+                    </div>
+                    <span className="text-sm font-extrabold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                      Record Voice Clip
+                    </span>
+                  </div>
                   <div className="flex items-center gap-2">
                     <Button
                       size="sm"
-                      variant={isRecording ? "destructive" : "outline"}
+                      variant={isRecording ? "destructive" : "default"}
                       onClick={isRecording ? stopRecording : startRecording}
                       disabled={isUploading || !liveState}
-                      className="gap-1.5"
+                      className="gap-2 bg-emerald-600 text-sm font-bold text-white hover:bg-emerald-700"
                     >
                       {isRecording ? (
                         <>
-                          <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
-                          Stop recording…
+                          <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-white" />
+                          Stop Recording
                         </>
                       ) : isUploading ? (
                         <>
-                          <span className="h-2 w-2 animate-pulse rounded-full bg-blue-500" />
-                          Uploading…
+                          <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-white" />
+                          Uploading Clip…
                         </>
                       ) : (
                         <>
-                          <Mic className="h-3.5 w-3.5" />
-                          Record voice clip
+                          <Mic className="h-4 w-4" />
+                          Start Recording
                         </>
                       )}
                     </Button>
                     {isRecording && (
-                      <span className="text-xs text-muted-foreground">
-                        🔴 Recording… click to stop
+                      <span className="flex items-center gap-1 text-sm font-bold text-red-600">
+                        <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
+                        Recording live…
                       </span>
                     )}
                   </div>
-                  <p className="mt-1 text-[10px] text-muted-foreground">
-                    The browser will ask for microphone permission the first
-                    time you click “Record voice clip”. After granting,
-                    subsequent recordings work without prompting. Voice clips
+                  <p className="mt-1.5 text-[11px] font-medium text-emerald-600/70 dark:text-emerald-400/70">
+                    Click to record your voice → broadcasts to all viewers as a
+                    playable audio clip. Browser will ask for mic permission
+                    the first time.
                     play inline on the public match detail Live tab.
                   </p>
                 </div>
@@ -1789,10 +1798,14 @@ function CommentaryInput({
   disabled?: boolean
 }) {
   return (
-    <div className="rounded-lg border bg-card p-2">
-      <div className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-        <CircleDot className="h-3 w-3 text-blue-500" />
-        Add commentary
+    <div className="rounded-xl border-2 border-blue-200 bg-blue-50/50 p-3 dark:border-blue-900 dark:bg-blue-950/30">
+      <div className="mb-2 flex items-center gap-2">
+        <div className="grid h-7 w-7 place-items-center rounded-lg bg-blue-600 text-white">
+          <CircleDot className="h-4 w-4" />
+        </div>
+        <span className="text-sm font-extrabold uppercase tracking-wide text-blue-700 dark:text-blue-300">
+          Add Text Commentary
+        </span>
       </div>
       <div className="flex items-center gap-2">
         <input
@@ -1806,23 +1819,22 @@ function CommentaryInput({
               onSubmit()
             }
           }}
-          placeholder="Add commentary… (e.g. ‘DRS review taken', ‘Rain stops play')"
-          className="flex h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50"
+          placeholder="Type your commentary here… (e.g. ‘DRS review taken', ‘Rain stops play')"
+          className="flex h-10 w-full min-w-0 rounded-lg border-2 border-blue-300 bg-white px-3 py-1.5 text-sm font-medium shadow-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-card dark:border-blue-800"
         />
         <Button
           size="sm"
           disabled={disabled || !value.trim()}
           onClick={onSubmit}
-          className="gap-1.5 bg-blue-600 text-white hover:bg-blue-700"
+          className="gap-1.5 bg-blue-600 text-sm font-bold text-white hover:bg-blue-700"
         >
-          <Send className="h-3.5 w-3.5" />
+          <Send className="h-4 w-4" />
           Send
         </Button>
       </div>
-      <p className="mt-1 text-[10px] text-muted-foreground">
-        Manual notes are pushed to the public Live tab instantly (shown with a
-        blue “Commentator" label). Press{" "}
-        <code className="rounded bg-muted px-1 py-0.5">Enter</code> to send.
+      <p className="mt-1.5 text-[11px] font-medium text-blue-600/70 dark:text-blue-400/70">
+        Broadcasts instantly to all viewers on the Live tab. Press{" "}
+        <code className="rounded bg-blue-100 px-1 py-0.5 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Enter</code> to send.
       </p>
     </div>
   )

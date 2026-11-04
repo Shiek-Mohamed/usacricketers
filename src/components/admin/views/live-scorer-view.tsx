@@ -69,6 +69,62 @@ import type { Player } from "@/lib/types"
 
 const RUN_BUTTONS = [0, 1, 2, 3, 4, 6] as const
 
+/* ─── localStorage backup for live scoring state ───
+ * The score-service caches live state in MEMORY. If it restarts (every
+ * fly.io deploy), the cache is wiped + the scorer sees the setup screen.
+ * To recover, we keep a backup copy in the scorer's localStorage. When the
+ * score-service sends { state: null } after a restart, the scorer
+ * automatically re-pushes the local backup — restoring the session without
+ * the scorer losing any balls.
+ *
+ * Key:   `live-score:${matchId}`
+ * Value: `{ state: LiveMatchState, savedAt: number }`
+ * Freshness: entries older than 4 hours are ignored (stale session).
+ */
+const LOCAL_BACKUP_TTL_MS = 4 * 60 * 60 * 1000 // 4 hours
+
+function saveLocalBackup(matchId: string, state: LiveMatchState) {
+  if (typeof window === "undefined") return
+  try {
+    window.localStorage.setItem(
+      `live-score:${matchId}`,
+      JSON.stringify({ state, savedAt: Date.now() }),
+    )
+  } catch {
+    // localStorage might be full or disabled (private browsing) — silently
+    // skip. The DB persist (via `persist()`) is the primary save path.
+  }
+}
+
+function loadLocalBackup(matchId: string): LiveMatchState | null {
+  if (typeof window === "undefined") return null
+  try {
+    const raw = window.localStorage.getItem(`live-score:${matchId}`)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as { state: LiveMatchState; savedAt: number }
+    // Stale check — ignore backups older than the TTL.
+    if (Date.now() - parsed.savedAt > LOCAL_BACKUP_TTL_MS) {
+      window.localStorage.removeItem(`live-score:${matchId}`)
+      return null
+    }
+    // Only restore live sessions — completed/abandoned matches don't need
+    // a backup (the final scorecard is in the DB).
+    if (parsed.state.status !== "live") return null
+    return parsed.state
+  } catch {
+    return null
+  }
+}
+
+function clearLocalBackup(matchId: string) {
+  if (typeof window === "undefined") return
+  try {
+    window.localStorage.removeItem(`live-score:${matchId}`)
+  } catch {
+    // ignore
+  }
+}
+
 export function LiveScorerView() {
   const id = useAppStore((s) => s.id)
   const navigate = useAppStore((s) => s.navigate)
@@ -384,6 +440,48 @@ export function LiveScorerView() {
       }
     }, 800)
   }
+
+  /* ─── localStorage backup: save + auto-restore ───
+   * SAVE: whenever liveState changes, write a backup to localStorage so
+   *   we can recover if the score-service restarts (deploys wipe its
+   *   in-memory cache).
+   * RESTORE: when the server confirms no cached state (stateReceived &&
+   *   !liveState), check localStorage + re-push the backup to restore the
+   *   session. Only restores "live" sessions younger than 4 hours.
+   */
+  useEffect(() => {
+    if (liveState && id) saveLocalBackup(id, liveState)
+  }, [liveState, id])
+
+  // Auto-restore on cache miss (score-service restarted after a deploy).
+  // Tracks which matchId we've attempted restore for, so switching to a
+  // different match resets the guard (allows restore for the new match).
+  const restoreAttemptedForRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!id || !token || !pushState) return
+    // Only attempt restore when the server has confirmed no cached state.
+    if (!stateReceived || liveState) return
+    // Only attempt once per matchId (prevents restore loop).
+    if (restoreAttemptedForRef.current === id) return
+    restoreAttemptedForRef.current = id
+
+    const backup = loadLocalBackup(id)
+    if (!backup) return
+    // Re-push the backup to the score-service → restores the cache for
+    // all subscribers + this scorer's session continues.
+    pushState(backup)
+    toast.success("Restored live scoring session from backup", {
+      description: "The scoring service restarted — your session was recovered from this browser.",
+    })
+  }, [id, token, pushState, stateReceived, liveState])
+
+  // Clear the backup when the match completes (no need to keep it — the
+  // final scorecard is in the DB).
+  useEffect(() => {
+    if (id && liveState?.status === "completed") {
+      clearLocalBackup(id)
+    }
+  }, [id, liveState?.status])
 
   /** Add a manual / commentator note to the live commentary feed.
    *  Pushes the updated state through the socket (so subscribers like the

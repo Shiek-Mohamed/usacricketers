@@ -3,7 +3,7 @@
 import { useMemo } from "react"
 import { useLiveScore } from "@/lib/use-live-score"
 import { oversString, type LiveMatchState } from "@/lib/scoring"
-import { Radio, Wifi, WifiOff, ChevronRight } from "lucide-react"
+import { Radio, Wifi, WifiOff, ChevronRight, Trophy } from "lucide-react"
 
 /* Commentary kind → color mapping (matches the live blog view) */
 const KIND_STYLES: Record<string, { dot: string; label: string; text: string; bg: string }> = {
@@ -17,6 +17,9 @@ const KIND_STYLES: Record<string, { dot: string; label: string; text: string; bg
   extra: { dot: "bg-orange-400", label: "EXTRA", text: "text-orange-700 dark:text-orange-400", bg: "bg-orange-500/5" },
   dot: { dot: "bg-slate-200", label: "", text: "text-slate-500", bg: "" },
 }
+
+/** Kinds that qualify as "key moments" — shown in the right column. */
+const KEY_MOMENT_KINDS = new Set(["wicket", "six", "boundary", "manual", "info"])
 
 /**
  * LiveMatchSection — embeds the live commentary feed directly on the SSR
@@ -44,7 +47,13 @@ export function LiveMatchSection({ matchId }: { matchId: string }) {
   const bowler = currentInnings?.bowlers.find((b) => b.id === liveState?.bowlerId)
 
   const recentCommentary = useMemo(
-    () => commentary.slice(0, 30), // show the 30 most recent entries
+    () => commentary.slice(0, 40), // show the 40 most recent entries
+    [commentary],
+  )
+  // Key moments = wickets, sixes, fours, milestones, manual commentary.
+  // Shown in the right column so a viewer who joins late can catch up fast.
+  const keyMoments = useMemo(
+    () => commentary.filter((c) => KEY_MOMENT_KINDS.has(c.kind)).slice(0, 30),
     [commentary],
   )
 
@@ -118,45 +127,103 @@ export function LiveMatchSection({ matchId }: { matchId: string }) {
         </div>
       )}
 
-      {/* Commentary feed */}
-      {recentCommentary.length > 0 ? (
-        <div className="max-h-96 overflow-y-auto">
-          {recentCommentary.map((entry) => {
-            const style = KIND_STYLES[entry.kind] ?? KIND_STYLES.dot
-            const isAudio = entry.text.startsWith("[audio:")
-            const audioUrl = isAudio ? entry.text.slice(7, -1) : null
-            return (
-              <div
-                key={entry.id}
-                className={`flex gap-2.5 border-b border-border/40 px-4 py-2 last:border-0 ${style.bg}`}
-              >
-                <span className="w-10 shrink-0 pt-0.5 text-right text-[11px] font-bold tabular-nums text-muted-foreground">
-                  {entry.over}
-                </span>
-                <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
-                <div className="min-w-0 flex-1">
-                  {style.label && (
-                    <span className={`mr-1.5 text-[10px] font-bold uppercase tracking-wide ${style.text}`}>
-                      {style.label}
+      {/* Two-column split: commentary feed (left) + key moments (right).
+          Stacks vertically on mobile (< lg), side-by-side on desktop. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2">
+        {/* LEFT: Live commentary feed (ball-by-ball) */}
+        <div className="border-b border-border lg:border-b-0 lg:border-r">
+          <div className="flex items-center justify-between border-b border-border/60 bg-muted/20 px-3 py-2">
+            <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Ball-by-Ball
+            </span>
+            <span className="text-[10px] text-muted-foreground">
+              {recentCommentary.length} entries
+            </span>
+          </div>
+          {recentCommentary.length > 0 ? (
+            <div className="max-h-80 overflow-y-auto">
+              {recentCommentary.map((entry) => {
+                const style = KIND_STYLES[entry.kind] ?? KIND_STYLES.dot
+                const isAudio = entry.text.startsWith("[audio:")
+                const audioUrl = isAudio ? entry.text.slice(7, -1) : null
+                return (
+                  <div
+                    key={entry.id}
+                    className={`flex gap-2.5 border-b border-border/40 px-3 py-2 last:border-0 ${style.bg}`}
+                  >
+                    <span className="w-10 shrink-0 pt-0.5 text-right text-[11px] font-bold tabular-nums text-muted-foreground">
+                      {entry.over}
                     </span>
-                  )}
-                  {isAudio && audioUrl ? (
-                    <audio controls src={audioUrl} className="h-8 w-full max-w-xs" preload="none" />
-                  ) : (
-                    <span className="text-[13px] leading-relaxed text-foreground">
-                      {entry.text}
-                    </span>
-                  )}
-                </div>
-              </div>
-            )
-          })}
+                    <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
+                    <div className="min-w-0 flex-1">
+                      {style.label && (
+                        <span className={`mr-1.5 text-[10px] font-bold uppercase tracking-wide ${style.text}`}>
+                          {style.label}
+                        </span>
+                      )}
+                      {isAudio && audioUrl ? (
+                        <audio controls src={audioUrl} className="h-8 w-full max-w-xs" preload="none" />
+                      ) : (
+                        <span className="text-[13px] leading-relaxed text-foreground">
+                          {entry.text}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="px-4 py-8 text-center text-[13px] text-muted-foreground">
+              No commentary yet — the feed appears here as balls are scored.
+            </div>
+          )}
         </div>
-      ) : (
-        <div className="px-4 py-6 text-center text-[13px] text-muted-foreground">
-          No commentary yet — the feed will appear here as balls are scored.
+
+        {/* RIGHT: Key moments (wickets, sixes, milestones) */}
+        <div>
+          <div className="flex items-center gap-1.5 border-b border-border/60 bg-muted/20 px-3 py-2">
+            <Trophy className="h-3.5 w-3.5 text-amber-500" />
+            <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Key Moments
+            </span>
+          </div>
+          {keyMoments.length > 0 ? (
+            <div className="max-h-80 overflow-y-auto">
+              {keyMoments.map((entry) => {
+                const style = KIND_STYLES[entry.kind] ?? KIND_STYLES.dot
+                return (
+                  <div
+                    key={entry.id}
+                    className="flex gap-2.5 border-b border-border/40 px-3 py-2 last:border-0"
+                  >
+                    <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        {style.label && (
+                          <span className={`text-[10px] font-bold uppercase tracking-wide ${style.text}`}>
+                            {style.label}
+                          </span>
+                        )}
+                        <span className="text-[10px] text-muted-foreground">{entry.over}</span>
+                      </div>
+                      <p className="mt-0.5 text-[12px] leading-snug text-foreground">
+                        {entry.text.startsWith("[audio:")
+                          ? "🎙 Voice clip"
+                          : entry.text}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="px-4 py-8 text-center text-[13px] text-muted-foreground">
+              Wickets, sixes and milestones appear here.
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Footer link to the full immersive live blog */}
       <a

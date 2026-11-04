@@ -63,6 +63,7 @@ import {
   Zap,
   Send,
   Mic,
+  Loader2,
 } from "lucide-react"
 import type { Player } from "@/lib/types"
 
@@ -114,7 +115,7 @@ export function LiveScorerView() {
   }, [scorerToken])
 
   const token = scorerToken ?? adminToken
-  const { liveState, connected, pushState } = useLiveScore(id, token)
+  const { liveState, connected, stateReceived, pushState } = useLiveScore(id, token)
 
   // Use the minimal ScorerShell (no admin sidebar) in scorer mode, AdminShell otherwise.
   const Shell = mode === "scorer" ? ScorerShell : AdminShell
@@ -626,7 +627,15 @@ export function LiveScorerView() {
     toast.success("Super Over started")
   }
 
-  const showSetup = !liveState || liveState.innings.length === 0
+  // Don't show the setup screen while reconnecting — the cached live state
+  // arrives moments after the WebSocket connects. Without this guard, the
+  // scorer sees a flash of the setup screen every time they navigate away
+  // (e.g. to view the scorecard) and come back, because liveState is null
+  // during the brief window between mount + the first `state` event.
+  // Only show setup when we've actually received a state snapshot from the
+  // server AND it's null/empty (the match genuinely hasn't started).
+  const waitingForState = !stateReceived
+  const showSetup = stateReceived && (!liveState || liveState.innings.length === 0)
   const currentInnings = liveState?.innings[liveState.currentInnings]
   // Need a new batsman if either end is empty after a wicket (a run-out can
   // empty the non-striker slot while the striker stays in).
@@ -742,7 +751,24 @@ export function LiveScorerView() {
             )}
           </div>
 
-          {showSetup ? (
+          {waitingForState ? (
+            /* Reconnecting loading state — shown while the WebSocket is
+               connecting + we haven't received the first state snapshot.
+               Prevents the setup screen from flashing when the scorer
+               navigates away + comes back. */
+            <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm font-medium text-muted-foreground">
+                {connected
+                  ? "Loading live scoring state…"
+                  : "Reconnecting to live scoring…"}
+              </p>
+              <p className="max-w-xs text-xs text-muted-foreground/70">
+                If this takes more than a few seconds, the scoring session may
+                have ended. Refresh the page to start a new session.
+              </p>
+            </div>
+          ) : showSetup ? (
             <SetupPanel
               t1={t1}
               t2={t2}

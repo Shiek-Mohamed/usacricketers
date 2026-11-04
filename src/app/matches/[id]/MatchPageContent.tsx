@@ -26,6 +26,7 @@ import {
   User,
   Shield,
   Award,
+  Radio,
 } from "lucide-react"
 
 function MatchBreadcrumbs({ match }: { match: Match }) {
@@ -162,6 +163,28 @@ export function MatchPageContent({ match, recent }: { match: Match; recent: Matc
               <>
                 <MatchBreadcrumbs match={match} />
                 <MatchScorebox match={match} />
+                {/* Live Blog CTA — shown only when the match is live.
+                    Links to the SPA live-blog view (full page load to
+                    /?view=live-blog&id=..., consistent with the SSR page's
+                    other <a href> links). */}
+                {match.status === "live" && (
+                  <a
+                    href={`/?view=live-blog&id=${match.id}`}
+                    className="group flex items-center gap-3 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-red-800 transition-colors hover:bg-red-100 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-950/60"
+                  >
+                    <span className="relative flex h-2.5 w-2.5 shrink-0">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
+                      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-600" />
+                    </span>
+                    <span className="text-xs font-bold uppercase tracking-wide text-red-700 dark:text-red-400">
+                      Live scoring in progress
+                    </span>
+                    <span className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-red-600 px-3 py-1.5 text-xs font-bold text-white transition-colors group-hover:bg-red-700">
+                      <Radio className="h-3.5 w-3.5" />
+                      Live Blog
+                    </span>
+                  </a>
+                )}
               </>
             }
             sidebar={

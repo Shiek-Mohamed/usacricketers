@@ -78,7 +78,7 @@ function MatchScorebox({ match }: { match: Match }) {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <ShareButtons title={`${t1?.shortName ?? "?"} vs ${t2?.shortName ?? "?"} — ${match.matchNo}`} className="hidden sm:flex" />
+          <ShareButtons title={`${t1?.shortName ?? "?"} vs ${t2?.shortName ?? "?"} — ${match.matchNo}`} className="flex" />
           <StatusPill status={match.status} />
         </div>
       </div>

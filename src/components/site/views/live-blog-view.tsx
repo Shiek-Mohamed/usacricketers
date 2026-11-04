@@ -8,6 +8,7 @@ import { oversString, type LiveMatchState, type ScorerInnings } from "@/lib/scor
 import { TeamBadge, FormatPill, formatDate } from "@/components/cricket/ui"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { ShareButtons } from "@/components/site/share-buttons"
 import {
   Activity,
   Radio,
@@ -134,17 +135,25 @@ export function LiveBlogView() {
               {match.matchNo} · {match.series?.name ?? "Series"}
             </span>
           </div>
-          {/* Connection status */}
-          <div className="flex items-center gap-1.5 text-[11px] font-medium">
-            {connected ? (
-              <span className="inline-flex items-center gap-1 text-emerald-300">
-                <Wifi className="h-3 w-3" /> Connected
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 text-white/50">
-                <WifiOff className="h-3 w-3" /> Reconnecting…
-              </span>
-            )}
+          {/* Connection status + share buttons */}
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1.5 text-[11px] font-medium">
+              {connected ? (
+                <span className="inline-flex items-center gap-1 text-emerald-300">
+                  <Wifi className="h-3 w-3" /> Connected
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-white/50">
+                  <WifiOff className="h-3 w-3" /> Reconnecting…
+                </span>
+              )}
+            </span>
+            {/* Share buttons — styled for the dark navy header.
+                Uses window.location.href (the live blog URL) by default. */}
+            <ShareButtons
+              title={`${team1?.shortName ?? "?"} vs ${team2?.shortName ?? "?"} — Live Blog | USACricketers`}
+              className="[&_button]:border-white/20 [&_button]:bg-white/10 [&_button]:text-white [&_button:hover]:bg-white/20 [&_span]:text-white/60"
+            />
           </div>
         </div>
 

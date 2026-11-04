@@ -27,6 +27,7 @@ const BannerSlot = dynamic(() => import("@/components/site/banner-slot").then(m 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { NewsletterSignup } from "@/components/site/newsletter-signup"
 import {
   ChevronRight,
   Radio,
@@ -470,6 +471,11 @@ export function HomeView() {
           </Card>
         )}
       </section>
+
+      {/* Newsletter signup — prominent placement right after Latest News,
+          where readers are most likely to subscribe after seeing fresh
+          content. Inline variant = light card style. */}
+      <NewsletterSignup variant="inline" />
 
       {/* Interviews — styled per the provided sample design */}
       <InterviewsSection articles={interviewData?.items ?? []} />

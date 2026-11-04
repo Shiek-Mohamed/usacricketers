@@ -16,6 +16,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  // metadataBase tells Next.js the canonical origin to use when resolving
+  // relative URLs in metadata (og:image, twitter:image, canonical, etc.).
+  // Without it, Next.js falls back to the request's origin — which in dev
+  // is http://localhost:3000, producing broken og:image URLs in production.
+  // Falls back to the env var if set (for future domain changes), otherwise
+  // the known production URL.
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_BASE_URL || "https://usacricketers.fly.dev",
+  ),
   title: "usacricketers — Live Cricket Scores, News, Stats & Series",
   description:
     "The definitive home of USA cricket. Live scores, match scorecards, news, series, team & player stats, schedules and records — all in one place.",
@@ -35,17 +44,52 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
   },
   manifest: "/manifest.json",
+  // Default social-share image. Every page now has an og:image — article
+  // pages override this with their own hero image via generateMetadata.
+  // Without this, links shared on Twitter/WhatsApp/iMessage showed a
+  // text-only preview with no image (bad for click-through on a news site).
   openGraph: {
     title: "usacricketers — Live Cricket Scores, News, Stats & Series",
     description:
       "The definitive home of USA cricket. Live scores, scorecards, news, player stats and records.",
     siteName: "usacricketers",
     type: "website",
+    images: [
+      {
+        url: "/og-default.png",
+        width: 1344,
+        height: 768,
+        alt: "usacricketers — USA cricket live scores, news and stats",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "usacricketers — Live Cricket Scores & News",
     description: "The definitive home of USA cricket.",
+    images: ["/og-default.png"],
+  },
+};
+
+// WebSite structured data — rendered server-side in the root layout so
+// Google sees it on EVERY page (including the SPA homepage, which can't
+// use generateMetadata because it's a client component). Tells Google
+// this is a website with a search action, enabling sitelinks search box
+// + richer homepage indexing.
+const WEBSITE_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "usacricketers",
+  url: "https://usacricketers.fly.dev",
+  description:
+    "The definitive home of USA cricket. Live scores, match scorecards, news, series, team & player stats, schedules and records.",
+  potentialAction: {
+    "@type": "SearchAction",
+    target: {
+      "@type": "EntryPoint",
+      urlTemplate: "https://usacricketers.fly.dev/?view=search",
+    },
+    "query-input": "required name=search_term_string",
   },
 };
 
@@ -88,6 +132,12 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          {/* WebSite JSON-LD — server-rendered so Google sees it on every
+              page including the SPA homepage. */}
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(WEBSITE_JSON_LD) }}
+          />
           {children}
           <Toaster />
         </ThemeProvider>

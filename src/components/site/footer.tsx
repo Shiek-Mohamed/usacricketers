@@ -3,6 +3,7 @@
 import { useAppStore } from "@/lib/store"
 import { Trophy, Users, CalendarDays, Newspaper, BarChart3, Activity, Mic, Images, Play, MessageSquare } from "lucide-react"
 import type { ViewKey } from "@/lib/types"
+import { NewsletterSignup } from "@/components/site/newsletter-signup"
 
 const footerNav: { title: string; links: { label: string; view: ViewKey }[] }[] = [
   {
@@ -76,6 +77,10 @@ export function Footer() {
               <MessageSquare className="h-3.5 w-3.5" />
               Feedback
             </button>
+            {/* Newsletter signup — footer variant (dark, compact) */}
+            <div className="mt-5">
+              <NewsletterSignup variant="footer" />
+            </div>
           </div>
           {footerNav.map((section) => (
             <div key={section.title}>

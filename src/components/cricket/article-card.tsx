@@ -4,6 +4,7 @@ import type { Article } from "@/lib/types"
 import { formatDate, timeAgo } from "@/components/cricket/ui"
 import { Card } from "@/components/ui/card"
 import { Newspaper, User, Clock, Timer } from "lucide-react"
+import { SmartImage } from "@/components/site/smart-image"
 
 /**
  * Article card — used across the site (home, news listing, article sidebars,
@@ -147,14 +148,18 @@ export function ArticleCard({
         className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
         aria-label={`${article.categories[0] ?? "Article"}: ${article.title}`}
       >
-        {/* Thumbnail: 16:9 with real image when available, Newspaper icon fallback */}
+        {/* Thumbnail: 16:9 with real image when available, Newspaper icon fallback.
+            Uses next/image (via SmartImage) for automatic WebP/AVIF conversion,
+            responsive srcset, + lazy-loading. Falls back to the Newspaper icon
+            when imageUrl is missing OR when the image fails to load. */}
         <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
           {article.imageUrl ? (
-            <img
+            <SmartImage
               src={article.imageUrl}
               alt={article.imageCaption || article.title}
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-              loading="lazy"
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              className="object-cover transition-transform duration-300 group-hover:scale-105"
             />
           ) : (
             <div className="grid h-full w-full place-items-center text-muted-foreground">

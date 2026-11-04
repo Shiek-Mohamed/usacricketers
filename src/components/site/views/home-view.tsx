@@ -28,6 +28,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { NewsletterSignup } from "@/components/site/newsletter-signup"
+import { SmartImage } from "@/components/site/smart-image"
 import {
   ChevronRight,
   Radio,
@@ -216,13 +217,17 @@ function FeaturedHero({ article }: { article: Article }) {
           <ArrowRight className="h-4 w-4" />
         </span>
       </div>
-      {/* Image — right, the large hero visual */}
+      {/* Image — right, the large hero visual. next/image via SmartImage
+          for automatic WebP/AVIF + responsive srcset. */}
       <div className="relative order-1 min-h-[260px] overflow-hidden bg-muted lg:order-2 lg:col-span-7 lg:min-h-[440px]">
         {article.imageUrl ? (
-          <img
+          <SmartImage
             src={article.imageUrl}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            fill
+            priority
+            sizes="(max-width: 1024px) 100vw, 58vw"
+            className="absolute inset-0 object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
           <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-slate-700 to-slate-900 text-slate-400">
@@ -246,10 +251,12 @@ function SecondaryStoryCard({ article }: { article: Article }) {
     >
       <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
         {article.imageUrl ? (
-          <img
+          <SmartImage
             src={article.imageUrl}
             alt=""
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            fill
+            sizes="(max-width: 640px) 50vw, 25vw"
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
           <div className="grid h-full place-items-center bg-gradient-to-br from-slate-700 to-slate-900 text-slate-400">

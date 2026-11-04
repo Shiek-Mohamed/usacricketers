@@ -26,7 +26,17 @@ export async function generateMetadata({
 }) {
   const { slug } = await params
   if (RESERVED_SLUGS.has(slug)) return {}
-  const data = await getLeagueHomepageData(slug)
+  // Wrap in try/catch — the Series table has a known Prisma 6.x DateTime
+  // bug (integer timestamps) that makes findUnique throw instead of
+  // returning null. A throw here would trigger the error boundary instead
+  // of the 404 page. Catching → returning empty metadata lets the page
+  // component call notFound() properly.
+  let data: Awaited<ReturnType<typeof getLeagueHomepageData>> = null
+  try {
+    data = await getLeagueHomepageData(slug)
+  } catch {
+    return {}
+  }
   if (!data) return {}
   return {
     title: `${data.league.name} — League Hub | USACricketers`,
@@ -44,6 +54,11 @@ export async function generateMetadata({
  * rather than a prefixed path (/league/LeagueName).
  *
  * Backwards compat: /league/<slug> still works (redirects here).
+ *
+ * NOTE: The data fetch is wrapped in try/catch because the Series table
+ * has a known Prisma 6.x DateTime bug (integer timestamps instead of ISO
+ * strings) that makes findUnique throw. Without the catch, a non-existent
+ * slug would trigger the error boundary (500) instead of the 404 page.
  */
 export default async function RootSlugPage({
   params,
@@ -57,7 +72,15 @@ export default async function RootSlugPage({
     notFound()
   }
 
-  const data = await getLeagueHomepageData(slug)
+  // Catch Prisma errors → notFound() so the branded 404 page renders
+  // instead of the error boundary.
+  let data: Awaited<ReturnType<typeof getLeagueHomepageData>> = null
+  try {
+    data = await getLeagueHomepageData(slug)
+  } catch (err) {
+    console.warn(`[/${slug}] league lookup threw (likely DateTime bug), serving 404:`, err)
+    notFound()
+  }
   if (!data) {
     notFound()
   }

@@ -1,0 +1,1842 @@
+     1→"use client"
+     2→
+     3→import { useEffect, useMemo, useRef, useState } from "react"
+     4→import { useAppStore } from "@/lib/store"
+     5→import { useScorerSession } from "@/lib/scorer-session"
+     6→import { useMatch, usePlayers, useMatches } from "@/lib/use-data"
+     7→import { api } from "@/lib/api"
+     8→import { useLiveScore } from "@/lib/use-live-score"
+     9→import {
+    10→  initState,
+    11→  addBatsman,
+    12→  addSquadMember,
+    13→  setBatsmen,
+    14→  setBowler,
+    15→  applyBall,
+    16→  stateToScorecard,
+    17→  oversString,
+    18→  declareInnings,
+    19→  enforceFollowOn,
+    20→  startSuperOver,
+    21→  BOWLER_CREDITED_WICKETS,
+    22→  type LiveMatchState,
+    23→  type BallEvent,
+    24→  type WicketType,
+    25→} from "@/lib/scoring"
+    26→import { ScorecardView } from "@/components/cricket/scorecard"
+    27→import { AdminShell } from "@/components/admin/admin-shell"
+    28→import { ScorerShell } from "@/components/admin/scorer-shell"
+    29→import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+    30→import { Button } from "@/components/ui/button"
+    31→import { Skeleton } from "@/components/ui/skeleton"
+    32→import { Badge } from "@/components/ui/badge"
+    33→import {
+    34→  Select,
+    35→  SelectContent,
+    36→  SelectItem,
+    37→  SelectTrigger,
+    38→  SelectValue,
+    39→} from "@/components/ui/select"
+    40→import {
+    41→  Dialog,
+    42→  DialogContent,
+    43→  DialogHeader,
+    44→  DialogTitle,
+    45→  DialogDescription,
+    46→  DialogFooter,
+    47→} from "@/components/ui/dialog"
+    48→import { Label } from "@/components/ui/label"
+    49→import { toast } from "sonner"
+    50→import { cn } from "@/lib/utils"
+    51→import {
+    52→  ArrowLeft,
+    53→  Radio,
+    54→  Activity,
+    55→  Undo2,
+    56→  RotateCcw,
+    57→  Save,
+    58→  CircleDot,
+    59→  Plus,
+    60→  ArrowLeftRight,
+    61→  Flag,
+    62→  Repeat,
+    63→  Zap,
+    64→  Send,
+    65→  Mic,
+    66→} from "lucide-react"
+    67→import type { Player } from "@/lib/types"
+    68→
+    69→const RUN_BUTTONS = [0, 1, 2, 3, 4, 6] as const
+    70→
+    71→export function LiveScorerView() {
+    72→  const id = useAppStore((s) => s.id)
+    73→  const navigate = useAppStore((s) => s.navigate)
+    74→  const mode = useAppStore((s) => s.mode)
+    75→  const { data: match, loading } = useMatch(id)
+    76→  const { data: t1Players } = usePlayers(match?.team1Id ?? null)
+    77→  const { data: t2Players } = usePlayers(match?.team2Id ?? null)
+    78→  const { refetch } = useMatches()
+    79→  const scorerToken = useScorerSession((s) => s.session?.token ?? null)
+    80→
+    81→  // Site admins don't have a scorer session — they only have the sa-session
+    82→  // httpOnly cookie the score-service can't read. Fall back to fetching a
+    83→  // god-mode scorer token (POST /api/admin/scorer-token), which the
+    84→  // score-service accepts as `tournamentIds: ["*"]` god-mode.
+    85→  //
+    86→  // NOTE: We don't gate on `mode === "admin"` because navigating directly to
+    87→  // ?view=live-scorer&id=... bypasses the admin-login flow that sets the mode.
+    88→  // Instead, we try fetching the scorer token unconditionally (if scorerToken
+    89→  // isn't already set). If the admin cookie isn't there, the API returns 401
+    90→  // and adminToken stays null — the shell shows "Not authenticated".
+    91→  const [adminToken, setAdminToken] = useState<string | null>(null)
+    92→  useEffect(() => {
+    93→    if (scorerToken) return // already have a real scorer session — prefer it
+    94→    let cancelled = false
+    95→    fetch("/api/admin/scorer-token", {
+    96→      method: "POST",
+    97→      credentials: "include",
+    98→      headers: {
+    99→        "X-CSRF-Token": typeof document !== "undefined" ? document.cookie.match(/csrf-token=([^;]+)/)?.[1] || "" : ""
+   100→      }
+   101→    })
+   102→      .then((r) => (r.ok ? r.json() : null))
+   103→      .then((body) => {
+   104→        if (cancelled) return
+   105→        if (body?.token) setAdminToken(body.token)
+   106→      })
+   107→      .catch(() => {
+   108→        // 401 means the admin cookie expired or isn't there — the shell
+   109→        // below will show the "Not authenticated" gate instead.
+   110→      })
+   111→    return () => {
+   112→      cancelled = true
+   113→    }
+   114→  }, [scorerToken])
+   115→
+   116→  const token = scorerToken ?? adminToken
+   117→  const { liveState, connected, pushState } = useLiveScore(id, token)
+   118→
+   119→  // Use the minimal ScorerShell (no admin sidebar) in scorer mode, AdminShell otherwise.
+   120→  const Shell = mode === "scorer" ? ScorerShell : AdminShell
+   121→
+   122→  // History stack for undo
+   123→  const [history, setHistory] = useState<LiveMatchState[]>([])
+   124→  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+   125→  // Wicket-dialog open state — the Wicket button opens a modal that lets the
+   126→  // admin pick dismissal type + fielder(s) involved, then sends the structured
+   127→  // wicket BallEvent to applyBall via handleBall.
+   128→  const [wicketOpen, setWicketOpen] = useState(false)
+   129→  // Free-text commentary input — the scorer types a note ("DRS review taken",
+   130→  // "Rain stops play", etc.) and presses Enter / clicks Send. The entry is
+   131→  // added to liveState.commentary with kind="manual" and broadcast via the
+   132→  // socket so the public match-detail Live tab shows it instantly (rendered
+   133→  // with a blue accent + "Commentator" label so it's distinguishable from
+   134→  // the auto-generated ball-by-ball feed).
+   135→  const [commentaryText, setCommentaryText] = useState("")
+   136→
+   137→  /* ------------------ Voice clip (🎙 mic) recording ------------------
+   138→   * The scorer clicks "Record voice clip", the browser captures audio from
+   139→   * `getUserMedia`, MediaRecorder collects chunks, and on stop the blob is
+   140→   * POSTed to /api/voice-clip. The returned URL is inserted into the
+   141→   * commentary feed as `[audio:/api/uploads/voice-xxx.webm]` — both the
+   142→   * live-scorer feed and the public match-detail feed detect this prefix
+   143→   * and render an inline <audio> player instead of the raw text.
+   144→   *
+   145→   * Refs hold the MediaRecorder + stream + chunk list (no re-render needed
+   146→   * while recording). `isRecording` / `isUploading` are state so the button
+   147→   * reflects what's happening. */
+   148→  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+   149→  const streamRef = useRef<MediaStream | null>(null)
+   150→  const chunksRef = useRef<Blob[]>([])
+   151→  const [isRecording, setIsRecording] = useState(false)
+   152→  const [isUploading, setIsUploading] = useState(false)
+   153→
+   154→  /** Begin a voice clip recording. Requests microphone permission — the
+   155→   *  browser shows a permission prompt the first time, then remembers the
+   156→   *  decision for subsequent recordings on this origin. */
+   157→  async function startRecording() {
+   158→    if (!liveState || !id) return
+   159→    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+   160→      toast.error("Voice recording is not supported in this browser")
+   161→      return
+   162→    }
+   163→    try {
+   164→      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+   165→      streamRef.current = stream
+   166→      chunksRef.current = []
+   167→      // Pick the most likely mime type the browser supports — Chrome/Firefox
+   168→      // emit audio/webm, Safari emits audio/mp4. We pass this through to the
+   169→      // upload so the API saves the file with the correct extension.
+   170→      const mimeType = MediaRecorder.isTypeSupported("audio/webm")
+   171→        ? "audio/webm"
+   172→        : MediaRecorder.isTypeSupported("audio/mp4")
+   173→          ? "audio/mp4"
+   174→          : ""
+   175→      const recorder = mimeType
+   176→        ? new MediaRecorder(stream, { mimeType })
+   177→        : new MediaRecorder(stream)
+   178→      recorder.ondataavailable = (e) => {
+   179→        if (e.data && e.data.size > 0) chunksRef.current.push(e.data)
+   180→      }
+   181→      recorder.onstop = async () => {
+   182→        // Tear down the mic stream first so the browser's red dot disappears.
+   183→        if (streamRef.current) {
+   184→          streamRef.current.getTracks().forEach((t) => t.stop())
+   185→          streamRef.current = null
+   186→        }
+   187→        const chunks = chunksRef.current
+   188→        chunksRef.current = []
+   189→        if (chunks.length === 0) return
+   190→        const blob = new Blob(chunks, {
+   191→          type: recorder.mimeType || "audio/webm",
+   192→        })
+   193→        // Upload the blob.
+   194→        setIsUploading(true)
+   195→        try {
+   196→          const formData = new FormData()
+   197→          const ext = (recorder.mimeType || "").includes("mp4")
+   198→            ? "mp4"
+   199→            : (recorder.mimeType || "").includes("ogg")
+   200→              ? "ogg"
+   201→              : "webm"
+   202→          formData.append("audio", blob, `voice-${Date.now()}.${ext}`)
+   203→          const headers: Record<string, string> = {}
+   204→          // Always send the bearer scorer token if we have one (real scorer
+   205→          // session OR the god-mode token minted for site admins). The API
+   206→          // also accepts site-admin cookie auth as a fallback.
+   207→          if (token) headers["Authorization"] = `Bearer ${token}`
+   208→          // CSRF double-submit for the cookie-auth path (site admin).
+   209→          if (typeof document !== "undefined") {
+   210→            const csrf = document.cookie.match(/csrf-token=([^;]+)/)?.[1] || ""
+   211→            if (csrf) headers["X-CSRF-Token"] = csrf
+   212→          }
+   213→          const res = await fetch(
+   214→            `/api/voice-clip?matchId=${encodeURIComponent(id)}`,
+   215→            {
+   216→              method: "POST",
+   217→              headers,
+   218→              credentials: "include",
+   219→              body: formData,
+   220→            }
+   221→          )
+   222→          if (!res.ok) {
+   223→            const err = await res.json().catch(() => ({ error: "upload failed" }))
+   224→            toast.error(`Voice clip upload failed: ${err.error || res.statusText}`)
+   225→            return
+   226→          }
+   227→          const body = (await res.json()) as { url?: string; id?: string }
+   228→          if (body?.url) {
+   229→            // Insert as a commentary entry — the feed renders an audio
+   230→            // player when the text starts with `[audio:`.
+   231→            addCommentary(`[audio:${body.url}]`)
+   232→            toast.success("Voice clip added to commentary")
+   233→          }
+   234→        } catch (e) {
+   235→          toast.error(`Voice clip upload failed: ${String(e).slice(0, 100)}`)
+   236→        } finally {
+   237→          setIsUploading(false)
+   238→        }
+   239→      }
+   240→      recorder.start()
+   241→      mediaRecorderRef.current = recorder
+   242→      setIsRecording(true)
+   243→    } catch (e) {
+   244→      // Most common: user denied the mic permission, or no mic attached.
+   245→      toast.error(
+   246→        `Microphone unavailable: ${String(e).slice(0, 120)}. Allow microphone access in your browser and try again.`
+   247→      )
+   248→      setIsRecording(false)
+   249→    }
+   250→  }
+   251→
+   252→  /** Stop the active recording (triggers `onstop` → upload → commentary). */
+   253→  function stopRecording() {
+   254→    const recorder = mediaRecorderRef.current
+   255→    if (!recorder || recorder.state === "inactive") {
+   256→      // Already stopped — just make sure the stream is released.
+   257→      if (streamRef.current) {
+   258→        streamRef.current.getTracks().forEach((t) => t.stop())
+   259→        streamRef.current = null
+   260→      }
+   261→      mediaRecorderRef.current = null
+   262→      setIsRecording(false)
+   263→      return
+   264→    }
+   265→    recorder.stop() // fires onstop → uploads + inserts commentary entry
+   266→    setIsRecording(false)
+   267→  }
+   268→
+   269→  /* ------------------ Keyboard shortcuts (power-user scorers) ------------------
+   270→   * 0,1,2,3,4,6 → score N runs | . / - → dot | w → wicket dialog |
+   271→   * e → swap ends | u → undo | d → declare (Test) | s → save.
+   272→   * No deps array → re-subscribes on every render with the latest closures.
+   273→   * The function declarations (handleBall, swapEnds, etc.) are hoisted by
+   274→   * JS so they're in scope at call-time even though defined later in the
+   275→   * component body. The lint rule below is overly cautious about this
+   276→   * pattern — it's safe because the effect re-runs every render. */
+   277→  /* eslint-disable react-hooks/immutability */
+   278→  useEffect(() => {
+   279→    function isTyping(el: Element | null): boolean {
+   280→      if (!el) return false
+   281→      const tag = el.tagName?.toLowerCase()
+   282→      return tag === "input" || tag === "textarea" || tag === "select" ||
+   283→        el.getAttribute("role") === "combobox" ||
+   284→        (el as HTMLElement)?.isContentEditable === true
+   285→    }
+   286→    function onKey(e: KeyboardEvent) {
+   287→      if (e.metaKey || e.ctrlKey || e.altKey) return
+   288→      if (isTyping(document.activeElement)) return
+   289→      if (wicketOpen) return
+   290→      if (!liveState || liveState.status !== "live") return
+   291→      if (!liveState.strikerId || !liveState.nonStrikerId || !liveState.bowlerId) return
+   292→      const k = e.key.toLowerCase()
+   293→      if (["0", "1", "2", "3", "4", "6"].includes(k)) {
+   294→        e.preventDefault()
+   295→        handleBall({ kind: "run", runs: Number(k) })
+   296→      } else if (k === "." || k === "-") {
+   297→        e.preventDefault()
+   298→        handleBall({ kind: "run", runs: 0 })
+   299→      } else if (k === "w") {
+   300→        e.preventDefault()
+   301→        setWicketOpen(true)
+   302→      } else if (k === "e") {
+   303→        e.preventDefault()
+   304→        swapEnds()
+   305→      } else if (k === "u") {
+   306→        e.preventDefault()
+   307→        handleUndo()
+   308→      } else if (k === "d") {
+   309→        e.preventDefault()
+   310→        handleDeclare()
+   311→      } else if (k === "s") {
+   312→        e.preventDefault()
+   313→        if (liveState) {
+   314→          persist(liveState)
+   315→          toast.success("Scorecard saved")
+   316→        }
+   317→      }
+   318→    }
+   319→    window.addEventListener("keydown", onKey)
+   320→    return () => window.removeEventListener("keydown", onKey)
+   321→  })
+   322→  /* eslint-enable react-hooks/immutability */
+   323→
+   324→  const playersByTeam: Record<string, Player[]> = useMemo(() => {
+   325→    const m: Record<string, Player[]> = {}
+   326→    if (match) {
+   327→      m[match.team1Id] = t1Players ?? []
+   328→      m[match.team2Id] = t2Players ?? []
+   329→    }
+   330→    return m
+   331→  }, [match, t1Players, t2Players])
+   332→
+   333→  if (loading) {
+   334→    return (
+   335→      <Shell title="Live Scorer">
+   336→        <Skeleton className="h-72 w-full rounded-xl" />
+   337→      </Shell>
+   338→    )
+   339→  }
+   340→
+   341→  if (!match) {
+   342→    return (
+   343→      <Shell title="Live Scorer">
+   344→        <Card>
+   345→          <CardContent className="py-12 text-center text-sm text-muted-foreground">
+   346→            No match selected.{" "}
+   347→            <Button
+   348→              variant="link"
+   349→              className="h-auto p-0"
+   350→              onClick={() => navigate("admin-matches")}
+   351→            >
+   352→              Choose a match
+   353→            </Button>
+   354→          </CardContent>
+   355→        </Card>
+   356→      </Shell>
+   357→    )
+   358→  }
+   359→
+   360→  const t1 = match.team1
+   361→  const t2 = match.team2
+   362→
+   363→  function persist(state: LiveMatchState) {
+   364→    if (saveTimer.current) clearTimeout(saveTimer.current)
+   365→    saveTimer.current = setTimeout(async () => {
+   366→      try {
+   367→        await api.matches.update(match!.id, {
+   368→          scorecard: stateToScorecard(state),
+   369→          status: state.status,
+   370→          result: state.result,
+   371→        })
+   372→        refetch()
+   373→      } catch (e) {
+   374→        // Surface persistence errors so the operator knows the DB write failed
+   375→        // (was previously silent — caused confusion when "Innings started"
+   376→        // toast showed but the match status didn't actually update).
+   377→        // The live socket broadcast is still the priority — this toast
+   378→        // doesn't block scoring, just informs the operator something's wrong.
+   379→        const msg = e instanceof Error ? e.message : String(e).slice(0, 200)
+   380→        toast.error("Persist failed — match state not saved", {
+   381→          description: msg,
+   382→        })
+   383→      }
+   384→    }, 800)
+   385→  }
+   386→
+   387→  /** Add a manual / commentator note to the live commentary feed.
+   388→   *  Pushes the updated state through the socket (so subscribers like the
+   389→   *  public match-detail view see it instantly) and schedules a DB persist.
+   390→   *  Manual entries get kind="manual" + a blue accent in the feed so they're
+   391→   *  visually distinct from the auto-generated ball-by-ball commentary. */
+   392→  function addCommentary(text: string) {
+   393→    const trimmed = text.trim()
+   394→    if (!trimmed || !liveState) return
+   395→    const inn = liveState.innings[liveState.currentInnings]
+   396→    const overLabel = inn ? oversString(inn.balls) : "0.0"
+   397→    const entry = {
+   398→      id: Math.random().toString(36).slice(2),
+   399→      ballNo: liveState.ballNo,
+   400→      over: overLabel,
+   401→      text: trimmed,
+   402→      kind: "manual" as const,
+   403→    }
+   404→    const next: LiveMatchState = {
+   405→      ...liveState,
+   406→      // Newest-first (matches the engine's pushCommentary pattern).
+   407→      commentary: [entry, ...liveState.commentary].slice(0, 120),
+   408→    }
+   409→    setHistory((h) => [...h, liveState].slice(-50))
+   410→    pushState(next)
+   411→    persist(next)
+   412→    setCommentaryText("")
+   413→  }
+   414→
+   415→  function handleBall(event: BallEvent) {
+   416→    if (!liveState) return
+   417→    setHistory((h) => [...h, liveState].slice(-50))
+   418→    const next = applyBall(liveState, event)
+   419→    pushState(next)
+   420→    persist(next)
+   421→  }
+   422→
+   423→  function handleUndo() {
+   424→    if (history.length === 0) {
+   425→      toast.info("Nothing to undo")
+   426→      return
+   427→    }
+   428→    const prev = history[history.length - 1]
+   429→    setHistory((h) => h.slice(0, -1))
+   430→    pushState(prev)
+   431→    persist(prev)
+   432→    toast.success("Undid last action")
+   433→  }
+   434→
+   435→  function startInnings(
+   436→    battingFirstId: string,
+   437→    strikerId: string,
+   438→    nonStrikerId: string,
+   439→    bowlerId: string
+   440→  ) {
+   441→    const battingPlayers = playersByTeam[battingFirstId] ?? []
+   442→    const bowlingPlayers =
+   443→      playersByTeam[battingFirstId === match!.team1Id ? match!.team2Id : match!.team1Id] ?? []
+   444→    const striker = battingPlayers.find((p) => p.id === strikerId)
+   445→    const nonStriker = battingPlayers.find((p) => p.id === nonStrikerId)
+   446→    const bowler = bowlingPlayers.find((p) => p.id === bowlerId)
+   447→    if (!striker || !nonStriker || !bowler) {
+   448→      toast.error("Select striker, non-striker and bowler")
+   449→      return
+   450→    }
+   451→    let state = initState(match!, battingFirstId)
+   452→    // Pre-populate the squad with the full batting-team roster so the
+   453→    // "Did not bat" section of the public scorecard lists bench players.
+   454→    // Captain/keeper tags come from the explicit Player model fields
+   455→    // (was previously a brittle regex on the role string).
+   456→    for (const p of battingPlayers) {
+   457→      state = addSquadMember(state, p.id, p.name, {
+   458→        isCaptain: !!p.isCaptain,
+   459→        isKeeper: !!p.isKeeper,
+   460→      })
+   461→    }
+   462→    state = addBatsman(state, striker.id, striker.name, {
+   463→      isCaptain: !!striker.isCaptain,
+   464→      isKeeper: !!striker.isKeeper,
+   465→    })
+   466→    state = addBatsman(state, nonStriker.id, nonStriker.name, {
+   467→      isCaptain: !!nonStriker.isCaptain,
+   468→      isKeeper: !!nonStriker.isKeeper,
+   469→    })
+   470→    state = setBatsmen(state, striker.id, nonStriker.id)
+   471→    state = setBowler(state, bowler.id, bowler.name)
+   472→    setHistory([])
+   473→    pushState(state)
+   474→    persist(state)
+   475→    toast.success("Innings started — status set to LIVE")
+   476→  }
+   477→
+   478→  function bringInBatsman(playerId: string) {
+   479→    if (!liveState) return
+   480→    const battingPlayers = playersByTeam[liveState.innings[liveState.currentInnings].battingTeamId] ?? []
+   481→    const p = battingPlayers.find((x) => x.id === playerId)
+   482→    if (!p) return
+   483→    let state = addBatsman(liveState, p.id, p.name, {
+   484→      isCaptain: !!p.isCaptain,
+   485→      isKeeper: !!p.isKeeper,
+   486→    })
+   487→    // Fill whichever slot is currently empty — the striker's end if a normal
+   488→    // wicket fell (strikerId === null), or the non-striker's end if a run-out
+   489→    // happened at the non-striker's end (nonStrikerId === null). If both are
+   490→    // empty (innings restart, edge case), default to striker.
+   491→    const fillStriker = liveState.strikerId === null
+   492→    const fillNonStriker = !fillStriker && liveState.nonStrikerId === null
+   493→    state = {
+   494→      ...state,
+   495→      strikerId: fillStriker ? p.id : state.strikerId,
+   496→      nonStrikerId: fillNonStriker ? p.id : state.nonStrikerId,
+   497→    }
+   498→    setHistory((h) => [...h, liveState].slice(-50))
+   499→    pushState(state)
+   500→    persist(state)
+   501→    toast.success(`${p.name} in`)
+   502→  }
+   503→
+   504→  function pickNextBowler(playerId: string) {
+   505→    if (!liveState) return
+   506→    const bowlingPlayers = playersByTeam[liveState.innings[liveState.currentInnings].bowlingTeamId] ?? []
+   507→    const p = bowlingPlayers.find((x) => x.id === playerId)
+   508→    if (!p) return
+   509→    setHistory((h) => [...h, liveState].slice(-50))
+   510→    const state = setBowler(liveState, p.id, p.name)
+   511→    pushState(state)
+   512→    persist(state)
+   513→    toast.success(`${p.name} to bowl`)
+   514→  }
+   515→
+   516→  /** "I picked the wrong striker — let me re-pick." Pushes the current state
+   517→   *  to the history stack (so Undo can recover it), then clears the strikerId
+   518→   *  slot. The Picker re-shows automatically because `needStriker` becomes
+   519→   *  true when strikerId === null. */
+   520→  function changeStriker() {
+   521→    if (!liveState || !liveState.strikerId) return
+   522→    setHistory((h) => [...h, liveState].slice(-50))
+   523→    const next = { ...liveState, strikerId: null as string | null }
+   524→    pushState(next)
+   525→    persist(next)
+   526→    toast.info("Re-pick the striker")
+   527→  }
+   528→
+   529→  /** Same as changeStriker but for the non-striker slot. */
+   530→  function changeNonStriker() {
+   531→    if (!liveState || !liveState.nonStrikerId) return
+   532→    setHistory((h) => [...h, liveState].slice(-50))
+   533→    const next = { ...liveState, nonStrikerId: null as string | null }
+   534→    pushState(next)
+   535→    persist(next)
+   536→    toast.info("Re-pick the non-striker")
+   537→  }
+   538→
+   539→  /** Same as changeStriker but for the bowler slot. */
+   540→  function changeBowler() {
+   541→    if (!liveState || !liveState.bowlerId) return
+   542→    setHistory((h) => [...h, liveState].slice(-50))
+   543→    const next = { ...liveState, bowlerId: null as string | null }
+   544→    pushState(next)
+   545→    persist(next)
+   546→    toast.info("Re-pick the bowler")
+   547→  }
+   548→
+   549→  /** Swap the striker and non-striker ends. Used when the auto strike-rotation
+   550→   *  logic disagrees with reality (e.g. batsmen crossed on a caught-and-
+   551→   *  bowled, odd run on a wide, runner substituted, etc.). Allowed at any
+   552→   *  time — doesn't affect stats, just relabels who's on strike. */
+   553→  function swapEnds() {
+   554→    if (!liveState) return
+   555→    if (!liveState.strikerId || !liveState.nonStrikerId) {
+   556→      toast.error("Need both batsmen at the crease to swap ends")
+   557→      return
+   558→    }
+   559→    setHistory((h) => [...h, liveState].slice(-50))
+   560→    const next = {
+   561→      ...liveState,
+   562→      strikerId: liveState.nonStrikerId,
+   563→      nonStrikerId: liveState.strikerId,
+   564→    }
+   565→    pushState(next)
+   566→    persist(next)
+   567→    toast.success("Ends swapped")
+   568→  }
+   569→
+   570→  function reset() {
+   571→    setHistory([])
+   572→    // clear live cache
+   573→    // (clearState not destructured here; use pushState(null) approach via a clear)
+   574→    pushState({ ...liveState!, status: "live", result: "" })
+   575→  }
+   576→
+   577→  /** Test-match declaration: captain ends the current innings without being
+   578→   *  all out. No-op for limited-overs matches (those don't have declarations).
+   579→   *  Pushes the prev state to history (so Undo can recover) then runs the
+   580→   *  engine's declareInnings which marks `declared: true` + sets up the
+   581→   *  next innings / computes the result. */
+   582→  function handleDeclare() {
+   583→    if (!liveState) return
+   584→    if (liveState.maxOvers > 0) {
+   585→      toast.error("Declarations are only available in Test matches")
+   586→      return
+   587→    }
+   588→    if (liveState.status !== "live") {
+   589→      toast.error("Can't declare — innings already ended")
+   590→      return
+   591→    }
+   592→    setHistory((h) => [...h, liveState].slice(-50))
+   593→    const next = declareInnings(liveState)
+   594→    pushState(next)
+   595→    persist(next)
+   596→    toast.success("Innings declared")
+   597→  }
+   598→
+   599→  /** Enforce the follow-on in a Test match. Only valid when Team A leads by
+   600→   *  200+ runs after Team B's 1st innings. Team B bats again immediately. */
+   601→  function handleFollowOn() {
+   602→    if (!liveState) return
+   603→    setHistory((h) => [...h, liveState].slice(-50))
+   604→    const next = enforceFollowOn(liveState)
+   605→    if (next === liveState) {
+   606→      toast.error("Follow-on requires a 200+ run lead in a Test after innings 1")
+   607→      return
+   608→    }
+   609→    pushState(next)
+   610→    persist(next)
+   611→    toast.success("Follow-on enforced")
+   612→  }
+   613→
+   614→  /** Start a super-over after a tied limited-overs match. Creates 2 new
+   615→   *  1-over innings (one per team). */
+   616→  function handleSuperOver() {
+   617→    if (!liveState) return
+   618→    setHistory((h) => [...h, liveState].slice(-50))
+   619→    const next = startSuperOver(liveState)
+   620→    if (next === liveState) {
+   621→      toast.error("Super-over only available for tied limited-overs matches")
+   622→      return
+   623→    }
+   624→    pushState(next)
+   625→    persist(next)
+   626→    toast.success("Super Over started")
+   627→  }
+   628→
+   629→  const showSetup = !liveState || liveState.innings.length === 0
+   630→  const currentInnings = liveState?.innings[liveState.currentInnings]
+   631→  // Need a new batsman if either end is empty after a wicket (a run-out can
+   632→  // empty the non-striker slot while the striker stays in).
+   633→  const needStriker = !!liveState && liveState.strikerId === null && liveState.status === "live"
+   634→  const needNonStriker =
+   635→    !!liveState &&
+   636→    liveState.nonStrikerId === null &&
+   637→    liveState.status === "live" &&
+   638→    !!currentInnings &&
+   639→    currentInnings.batsmen.length > 0 // not the very first pickup of an innings
+   640→  const needBatsman = needStriker || needNonStriker
+   641→  const needBowler = !!liveState && liveState.bowlerId === null && liveState.status === "live"
+   642→  const isComplete = liveState?.status === "completed"
+   643→
+   644→  return (
+   645→    <Shell
+   646→      title="Live Scorer"
+   647→    >
+   648→      {/* Match header */}
+   649→      <Card className="overflow-hidden p-0">
+   650→        <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-4 py-3 sm:px-6">
+   651→          <div className="flex flex-wrap items-center gap-2 min-w-0">
+   652→            <FormatBadge format={match.format} />
+   653→            <span className="truncate text-sm font-semibold">{match.matchNo}</span>
+   654→            <span className="text-xs text-muted-foreground">
+   655→              {match.series?.shortName}
+   656→            </span>
+   657→          </div>
+   658→          <div className="flex items-center gap-2">
+   659→            <ConnectionPill connected={connected} />
+   660→            {liveState && (
+   661→              <Badge
+   662→                className={cn(
+   663→                  "gap-1 uppercase",
+   664→                  isComplete ? "bg-emerald-600" : "bg-red-600 animate-pulse"
+   665→                )}
+   666→              >
+   667→                {isComplete ? "Completed" : "Live"}
+   668→              </Badge>
+   669→            )}
+   670→          </div>
+   671→        </div>
+   672→        <CardContent className="p-4 sm:p-6">
+   673→          <div className="flex flex-wrap items-center justify-between gap-4">
+   674→            <div className="flex items-center gap-2">
+   675→              <Button variant="ghost" size="sm" onClick={() => navigate("admin-matches")} className="-ml-2 gap-1">
+   676→                <ArrowLeft className="h-4 w-4" /> Matches
+   677→              </Button>
+   678→              <span className="text-xs text-muted-foreground">
+   679→                {t1?.shortName} v {t2?.shortName} · {match.venue}
+   680→              </span>
+   681→            </div>
+   682→            {liveState && (
+   683→              <div className="flex items-center gap-2">
+   684→                <Button variant="outline" size="sm" onClick={handleUndo} className="gap-1" disabled={history.length === 0}>
+   685→                  <Undo2 className="h-3.5 w-3.5" /> Undo
+   686→                </Button>
+   687→                {/* Test-only: captain can declare the current innings closed
+   688→                    without being all out. Hidden for limited-overs matches. */}
+   689→                {liveState.maxOvers === 0 && liveState.status === "live" && (
+   690→                  <Button
+   691→                    variant="outline"
+   692→                    size="sm"
+   693→                    onClick={handleDeclare}
+   694→                    className="gap-1 border-amber-400 text-amber-700 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-950/40"
+   695→                    title="Declare innings — Test matches only"
+   696→                  >
+   697→                    <Flag className="h-3.5 w-3.5" /> Declare
+   698→                  </Button>
+   699→                )}
+   700→                {/* Follow-on: Test only, after innings 1 (innings.length === 2),
+   701→                    when Team A leads by 200+. */}
+   702→                {liveState.maxOvers === 0 &&
+   703→                  liveState.innings.length === 2 &&
+   704→                  liveState.status === "live" &&
+   705→                  liveState.innings[0].runs - liveState.innings[1].runs >= 200 && (
+   706→                    <Button
+   707→                      variant="outline"
+   708→                      size="sm"
+   709→                      onClick={handleFollowOn}
+   710→                      className="gap-1 border-blue-400 text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-950/40"
+   711→                      title="Enforce follow-on — Team B bats again (200+ run lead)"
+   712→                    >
+   713→                      <Repeat className="h-3.5 w-3.5" /> Follow-on
+   714→                    </Button>
+   715→                  )}
+   716→                {/* Super-over: limited-overs, match tied + completed. */}
+   717→                {liveState.maxOvers > 0 &&
+   718→                  liveState.status === "completed" &&
+   719→                  liveState.result === "Match tied" && (
+   720→                    <Button
+   721→                      variant="outline"
+   722→                      size="sm"
+   723→                      onClick={handleSuperOver}
+   724→                      className="gap-1 border-purple-500 text-purple-700 hover:bg-purple-50 dark:text-purple-300 dark:hover:bg-purple-950/40"
+   725→                      title="Play a super-over tiebreaker (1 over per team)"
+   726→                    >
+   727→                      <Zap className="h-3.5 w-3.5" /> Super Over
+   728→                    </Button>
+   729→                  )}
+   730→                <Button
+   731→                  variant="outline"
+   732→                  size="sm"
+   733→                  onClick={() => {
+   734→                    persist(liveState)
+   735→                    toast.success("Scorecard saved")
+   736→                  }}
+   737→                  className="gap-1"
+   738→                >
+   739→                  <Save className="h-3.5 w-3.5" /> Save
+   740→                </Button>
+   741→              </div>
+   742→            )}
+   743→          </div>
+   744→
+   745→          {showSetup ? (
+   746→            <SetupPanel
+   747→              t1={t1}
+   748→              t2={t2}
+   749→              t1Players={t1Players ?? []}
+   750→              t2Players={t2Players ?? []}
+   751→              onStart={startInnings}
+   752→              tokenReady={!!token}
+   753→              connected={connected}
+   754→            />
+   755→          ) : (
+   756→            <div className="mt-4 space-y-5">
+   757→              {/* Live scoreboard summary */}
+   758→              {currentInnings && (
+   759→                <LiveScoreboard
+   760→                  state={liveState!}
+   761→                  onChangeStriker={changeStriker}
+   762→                  onChangeNonStriker={changeNonStriker}
+   763→                  onChangeBowler={changeBowler}
+   764→                  onSwapEnds={swapEnds}
+   765→                />
+   766→              )}
+   767→
+   768→              {/* Action prompts */}
+   769→              {needBatsman && (
+   770→                <Picker
+   771→                  title={needStriker ? "New batsman (striker's end)" : "New batsman (non-striker's end)"}
+   772→                  players={(playersByTeam[currentInnings!.battingTeamId] ?? []).filter(
+   773→                    (p) => !currentInnings!.batsmen.some((b) => b.id === p.id)
+   774→                  )}
+   775→                  placeholder="Select new batsman"
+   776→                  confirmLabel="Add batsman"
+   777→                  onPick={bringInBatsman}
+   778→                />
+   779→              )}
+   780→              {needBowler && (
+   781→                <Picker
+   782→                  title="Next bowler"
+   783→                  players={playersByTeam[currentInnings!.bowlingTeamId] ?? []}
+   784→                  placeholder="Select bowler for next over"
+   785→                  confirmLabel="Set bowler"
+   786→                  onPick={pickNextBowler}
+   787→                />
+   788→              )}
+   789→
+   790→              {/* Ball entry buttons */}
+   791→              {!isComplete && !needBatsman && !needBowler && (
+   792→                <BallPad onBall={handleBall} disabled={!liveState} onWicket={() => setWicketOpen(true)} />
+   793→              )}
+   794→
+   795→              {/* Human / manual commentary input — only shown when there's an
+   796→                  active live innings (the setup phase has no live commentary
+   797→                  feed to attach the note to). Enter or the Send button
+   798→                  submits; Esc or empty input is a no-op. */}
+   799→              {!isComplete && !showSetup && liveState && (
+   800→                <CommentaryInput
+   801→                  value={commentaryText}
+   802→                  onChange={setCommentaryText}
+   803→                  onSubmit={() => addCommentary(commentaryText)}
+   804→                  disabled={!liveState}
+   805→                />
+   806→              )}
+   807→
+   808→              {/* Voice clip (🎙) recorder — captures mic audio via the
+   809→                  MediaRecorder API, uploads it to /api/voice-clip, and
+   810→                  inserts a `[audio:URL]` entry into the commentary feed.
+   811→                  The public match-detail Live tab renders an inline audio
+   812→                  player for those entries. */}
+   813→              {!isComplete && !showSetup && liveState && (
+   814→                <div className="rounded-xl border-2 border-emerald-200 bg-emerald-50/50 p-3 dark:border-emerald-900 dark:bg-emerald-950/30">
+   815→                  <div className="mb-2 flex items-center gap-2">
+   816→                    <div className="grid h-7 w-7 place-items-center rounded-lg bg-emerald-600 text-white">
+   817→                      <Mic className="h-4 w-4" />
+   818→                    </div>
+   819→                    <span className="text-sm font-extrabold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+   820→                      Record Voice Clip
+   821→                    </span>
+   822→                  </div>
+   823→                  <div className="flex items-center gap-2">
+   824→                    <Button
+   825→                      size="sm"
+   826→                      variant={isRecording ? "destructive" : "default"}
+   827→                      onClick={isRecording ? stopRecording : startRecording}
+   828→                      disabled={isUploading || !liveState}
+   829→                      className="gap-2 bg-emerald-600 text-sm font-bold text-white hover:bg-emerald-700"
+   830→                    >
+   831→                      {isRecording ? (
+   832→                        <>
+   833→                          <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-white" />
+   834→                          Stop Recording
+   835→                        </>
+   836→                      ) : isUploading ? (
+   837→                        <>
+   838→                          <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-white" />
+   839→                          Uploading Clip…
+   840→                        </>
+   841→                      ) : (
+   842→                        <>
+   843→                          <Mic className="h-4 w-4" />
+   844→                          Start Recording
+   845→                        </>
+   846→                      )}
+   847→                    </Button>
+   848→                    {isRecording && (
+   849→                      <span className="flex items-center gap-1 text-sm font-bold text-red-600">
+   850→                        <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
+   851→                        Recording live…
+   852→                      </span>
+   853→                    )}
+   854→                  </div>
+   855→                  <p className="mt-1.5 text-[11px] font-medium text-emerald-600/70 dark:text-emerald-400/70">
+   856→                    Click to record your voice → broadcasts to all viewers as a
+   857→                    playable audio clip. Browser will ask for mic permission
+   858→                    the first time.
+   859→                    play inline on the public match detail Live tab.
+   860→                  </p>
+   861→                </div>
+   862→              )}
+   863→
+   864→              {/* Wicket dialog — dismissal type + fielder picker */}
+   865→              {wicketOpen && liveState && currentInnings && (
+   866→                <WicketDialog
+   867→                  open={wicketOpen}
+   868→                  onOpenChange={setWicketOpen}
+   869→                  striker={{
+   870→                    id: liveState.strikerId!,
+   871→                    name: currentInnings.batsmen.find((b) => b.id === liveState.strikerId)?.name ?? "Striker",
+   872→                  }}
+   873→                  nonStriker={{
+   874→                    id: liveState.nonStrikerId!,
+   875→                    name: currentInnings.batsmen.find((b) => b.id === liveState.nonStrikerId)?.name ?? "Non-striker",
+   876→                  }}
+   877→                  bowler={{
+   878→                    id: liveState.bowlerId!,
+   879→                    name: currentInnings.bowlers.find((b) => b.id === liveState.bowlerId)?.name ?? "Bowler",
+   880→                  }}
+   881→                  fieldingPlayers={playersByTeam[currentInnings.bowlingTeamId] ?? []}
+   882→                  freeHit={currentInnings.freeHit}
+   883→                  onConfirm={(ev) => {
+   884→                    handleBall(ev)
+   885→                    setWicketOpen(false)
+   886→                  }}
+   887→                />
+   888→              )}
+   889→
+   890→              {isComplete && (
+   891→                <div className="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-4 text-center">
+   892→                  <p className="text-sm font-bold text-emerald-800">
+   893→                    Match Result
+   894→                  </p>
+   895→                  <p className="mt-1 text-lg font-extrabold text-emerald-900">
+   896→                    {liveState!.result}
+   897→                  </p>
+   898→                  <Button
+   899→                    variant="outline"
+   900→                    size="sm"
+   901→                    className="mt-3 gap-1"
+   902→                    onClick={() => navigate("match-detail", match.id)}
+   903→                  >
+   904→                    View public scorecard
+   905→                  </Button>
+   906→                </div>
+   907→              )}
+   908→
+   909→              {/* Commentary */}
+   910→              {liveState && liveState.commentary.length > 0 && (
+   911→                <CommentaryFeed state={liveState} />
+   912→              )}
+   913→
+   914→              {/* Public scorecard preview */}
+   915→              {liveState && (
+   916→                <div>
+   917→                  <div className="mb-3 flex items-center gap-2">
+   918→                    <span className="h-5 w-1 rounded-full bg-red-600" />
+   919→                    <h2 className="text-sm font-extrabold uppercase tracking-tight">
+   920→                      Live Scorecard (public view)
+   921→                    </h2>
+   922→                  </div>
+   923→                  <ScorecardView scorecard={stateToScorecard(liveState)} />
+   924→                </div>
+   925→              )}
+   926→            </div>
+   927→          )}
+   928→        </CardContent>
+   929→      </Card>
+   930→    </Shell>
+   931→  )
+   932→}
+   933→
+   934→/* --------------------------- sub-components --------------------------- */
+   935→
+   936→function FormatBadge({ format }: { format: string }) {
+   937→  return (
+   938→    <span className="inline-flex items-center rounded bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
+   939→      {format}
+   940→    </span>
+   941→  )
+   942→}
+   943→
+   944→function ConnectionPill({ connected }: { connected: boolean }) {
+   945→  return (
+   946→    <span
+   947→      className={cn(
+   948→        "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase",
+   949→        connected
+   950→          ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+   951→          : "border-amber-300 bg-amber-50 text-amber-700"
+   952→      )}
+   953→    >
+   954→      <span
+   955→        className={cn(
+   956→          "h-1.5 w-1.5 rounded-full",
+   957→          connected ? "bg-emerald-600" : "bg-amber-500 animate-pulse"
+   958→        )}
+   959→      />
+   960→      {connected ? "Connected" : "Connecting…"}
+   961→    </span>
+   962→  )
+   963→}
+   964→
+   965→function SetupPanel({
+   966→  t1,
+   967→  t2,
+   968→  t1Players,
+   969→  t2Players,
+   970→  onStart,
+   971→  tokenReady,
+   972→  connected,
+   973→}: {
+   974→  t1: Player["team"] | undefined
+   975→  t2: Player["team"] | undefined
+   976→  t1Players: Player[]
+   977→  t2Players: Player[]
+   978→  onStart: (battingFirstId: string, strikerId: string, nonStrikerId: string, bowlerId: string) => void
+   979→  tokenReady: boolean
+   980→  connected: boolean
+   981→}) {
+   982→  const [battingFirstId, setBattingFirstId] = useState(t1?.id ?? "")
+   983→  const [strikerId, setStrikerId] = useState("")
+   984→  const [nonStrikerId, setNonStrikerId] = useState("")
+   985→  const [bowlerId, setBowlerId] = useState("")
+   986→
+   987→  const battingPlayers =
+   988→    battingFirstId === t1?.id ? t1Players : battingFirstId === t2?.id ? t2Players : []
+   989→  const bowlingPlayers =
+   990→    battingFirstId === t1?.id
+   991→      ? t2Players
+   992→      : battingFirstId === t2?.id
+   993→        ? t1Players
+   994→        : []
+   995→
+   996→  return (
+   997→    <div className="mt-5 space-y-4">
+   998→      <div className="rounded-lg border bg-muted/30 p-4">
+   999→        <div className="mb-3 flex items-center gap-2">
+  1000→          <Radio className="h-4 w-4 text-red-600" />
+  1001→          <h3 className="text-sm font-bold uppercase tracking-wide">
+  1002→            Start live innings
+  1003→          </h3>
+  1004→        </div>
+  1005→        <div className="grid gap-4 sm:grid-cols-2">
+  1006→          <div className="space-y-1.5">
+  1007→            <label className="text-xs font-semibold text-muted-foreground">
+  1008→              Batting first
+  1009→            </label>
+  1010→            <Select
+  1011→              value={battingFirstId}
+  1012→              onValueChange={(v) => {
+  1013→                setBattingFirstId(v)
+  1014→                setStrikerId("")
+  1015→                setNonStrikerId("")
+  1016→                setBowlerId("")
+  1017→              }}
+  1018→            >
+  1019→              <SelectTrigger className="w-full">
+  1020→                <SelectValue placeholder="Select team" />
+  1021→              </SelectTrigger>
+  1022→              <SelectContent>
+  1023→                {t1 && <SelectItem value={t1.id}>{t1.name}</SelectItem>}
+  1024→                {t2 && <SelectItem value={t2.id}>{t2.name}</SelectItem>}
+  1025→              </SelectContent>
+  1026→            </Select>
+  1027→          </div>
+  1028→          <div className="space-y-1.5">
+  1029→            <label className="text-xs font-semibold text-muted-foreground">
+  1030→              Opening bowler
+  1031→            </label>
+  1032→            <Select
+  1033→              value={bowlerId}
+  1034→              onValueChange={setBowlerId}
+  1035→              disabled={!bowlingPlayers.length}
+  1036→            >
+  1037→              <SelectTrigger className="w-full">
+  1038→                <SelectValue placeholder="Select bowler" />
+  1039→              </SelectTrigger>
+  1040→              <SelectContent>
+  1041→                {bowlingPlayers.map((p) => (
+  1042→                  <SelectItem key={p.id} value={p.id}>
+  1043→                    {p.name}
+  1044→                  </SelectItem>
+  1045→                ))}
+  1046→              </SelectContent>
+  1047→            </Select>
+  1048→          </div>
+  1049→          <div className="space-y-1.5">
+  1050→            <label className="text-xs font-semibold text-muted-foreground">
+  1051→              Striker
+  1052→            </label>
+  1053→            <Select
+  1054→              value={strikerId}
+  1055→              onValueChange={setStrikerId}
+  1056→              disabled={!battingPlayers.length}
+  1057→            >
+  1058→              <SelectTrigger className="w-full">
+  1059→                <SelectValue placeholder="Select striker" />
+  1060→              </SelectTrigger>
+  1061→              <SelectContent>
+  1062→                {battingPlayers.map((p) => (
+  1063→                  <SelectItem key={p.id} value={p.id}>
+  1064→                    {p.name}
+  1065→                  </SelectItem>
+  1066→                ))}
+  1067→              </SelectContent>
+  1068→            </Select>
+  1069→          </div>
+  1070→          <div className="space-y-1.5">
+  1071→            <label className="text-xs font-semibold text-muted-foreground">
+  1072→              Non-striker
+  1073→            </label>
+  1074→            <Select
+  1075→              value={nonStrikerId}
+  1076→              onValueChange={setNonStrikerId}
+  1077→              disabled={!battingPlayers.length}
+  1078→            >
+  1079→              <SelectTrigger className="w-full">
+  1080→                <SelectValue placeholder="Select non-striker" />
+  1081→              </SelectTrigger>
+  1082→              <SelectContent>
+  1083→                {battingPlayers
+  1084→                  .filter((p) => p.id !== strikerId)
+  1085→                  .map((p) => (
+  1086→                    <SelectItem key={p.id} value={p.id}>
+  1087→                      {p.name}
+  1088→                    </SelectItem>
+  1089→                  ))}
+  1090→              </SelectContent>
+  1091→            </Select>
+  1092→          </div>
+  1093→        </div>
+  1094→        <Button
+  1095→          className="mt-4 w-full gap-1.5 bg-red-600 text-white hover:bg-red-700"
+  1096→          disabled={!battingFirstId || !strikerId || !nonStrikerId || !bowlerId || strikerId === nonStrikerId || !connected || !tokenReady}
+  1097→          onClick={() => {
+  1098→            if (!tokenReady) {
+  1099→              toast.error("Scorer token still loading — please wait a moment and try again.")
+  1100→              return
+  1101→            }
+  1102→            onStart(battingFirstId, strikerId, nonStrikerId, bowlerId)
+  1103→          }}
+  1104→        >
+  1105→          <Activity className="h-4 w-4" /> {!tokenReady ? "Loading scorer token…" : !connected ? "Connecting…" : "Start innings (set LIVE)"}
+  1106→        </Button>
+  1107→      </div>
+  1108→    </div>
+  1109→  )
+  1110→}
+  1111→
+  1112→function LiveScoreboard({
+  1113→  state,
+  1114→  onChangeStriker,
+  1115→  onChangeNonStriker,
+  1116→  onChangeBowler,
+  1117→  onSwapEnds,
+  1118→}: {
+  1119→  state: LiveMatchState
+  1120→  onChangeStriker?: () => void
+  1121→  onChangeNonStriker?: () => void
+  1122→  onChangeBowler?: () => void
+  1123→  /** Swap striker ↔ non-striker — override the auto strike-rotation logic
+  1124→   *  when it disagrees with reality (caught-and-bowled crossing, etc.).
+  1125→   *  Allowed at any time (not over-boundary-gated) — doesn't affect stats. */
+  1126→  onSwapEnds?: () => void
+  1127→}) {
+  1128→  const inn = state.innings[state.currentInnings]
+  1129→  const striker = inn.batsmen.find((b) => b.id === state.strikerId)
+  1130→  const nonStriker = inn.batsmen.find((b) => b.id === state.nonStrikerId)
+  1131→  const bowler = inn.bowlers.find((b) => b.id === state.bowlerId)
+  1132→  const overs = oversString(inn.balls)
+  1133→  const runRate = inn.balls > 0 ? (inn.runs / inn.balls * 6).toFixed(2) : "0.00"
+  1134→  const target = inn.target
+  1135→  const ballsLeft = state.maxOvers > 0 ? state.maxOvers * 6 - inn.balls : null
+  1136→  const runsNeeded = target ? target - inn.runs : null
+  1137→  const reqRate =
+  1138→    target && ballsLeft && ballsLeft > 0
+  1139→      ? ((runsNeeded! / ballsLeft) * 6).toFixed(2)
+  1140→      : null
+  1141→
+  1142→  // A slot can be safely "Changed" only at over-boundaries — mid-over swaps
+  1143→  // would mess up the bowler's figures + the batsman's balls-faced count.
+  1144→  // Disable the Change button once any ball of the current over has been
+  1145→  // bowled (i.e. balls % 6 !== 0). The exception is the bowler slot after a
+  1146→  // wicket (still mid-over) — the bowler can be subbed off due to injury in
+  1147→  // real cricket, but for our MVP we keep the rule simple: only at over
+  1148→  // boundaries. Undo is still available mid-over for fixing mistakes.
+  1149→  const atOverBoundary = inn.balls % 6 === 0
+  1150→  const canChangeBatsmen = atOverBoundary && state.status === "live"
+  1151→  const canChangeBowler = atOverBoundary && state.status === "live"
+  1152→
+  1153→  return (
+  1154→    <div className="rounded-lg border bg-gradient-to-br from-slate-900 to-slate-800 p-4 text-white sm:p-5">
+  1155→      <div className="flex flex-wrap items-end justify-between gap-3">
+  1156→        <div>
+  1157→          <div className="text-xs uppercase tracking-wide text-slate-400">
+  1158→            {inn.battingTeamShortName} · Innings {state.currentInnings + 1}
+  1159→            {target ? ` · need ${runsNeeded} runs` : ""}
+  1160→          </div>
+  1161→          <div className="mt-1 text-4xl font-extrabold tabular-nums">
+  1162→            {inn.runs}/{inn.wickets}
+  1163→            <span className="ml-2 text-lg font-normal text-slate-300">
+  1164→              ({overs} ov)
+  1165→            </span>
+  1166→            {inn.freeHit && (
+  1167→              <span className="ml-3 inline-flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-extrabold uppercase tracking-wide text-amber-950 animate-pulse">
+  1168→                <span className="h-1.5 w-1.5 rounded-full bg-amber-950" />
+  1169→                Free hit
+  1170→              </span>
+  1171→            )}
+  1172→          </div>
+  1173→          <div className="mt-1 text-xs text-slate-300">
+  1174→            CRR {runRate}
+  1175→            {reqRate && ` · RRR ${reqRate}`}
+  1176→            {ballsLeft !== null && ` · ${ballsLeft} balls left`}
+  1177→          </div>
+  1178→        </div>
+  1179→      </div>
+  1180→      <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+  1181→        <div className="rounded-md bg-white/10 p-2.5">
+  1182→          <div className="flex items-center justify-between">
+  1183→            <div className="text-[10px] uppercase text-slate-300">Striker</div>
+  1184→            {striker && onChangeStriker && (
+  1185→              <ChangeButton
+  1186→                onClick={onChangeStriker}
+  1187→                disabled={!canChangeBatsmen}
+  1188→                hint={
+  1189→                  canChangeBatsmen
+  1190→                    ? "Re-pick striker"
+  1191→                    : "Wait for end of over (or use Undo)"
+  1192→                }
+  1193→              />
+  1194→            )}
+  1195→          </div>
+  1196→          <div className="font-bold">{striker?.name ?? "—"}</div>
+  1197→          <div className="text-slate-300">
+  1198→            {striker ? `${striker.runs} (${striker.balls})` : "—"}
+  1199→          </div>
+  1200→        </div>
+  1201→        <div className="relative rounded-md bg-white/10 p-2.5">
+  1202→          <div className="flex items-center justify-between">
+  1203→            <div className="text-[10px] uppercase text-slate-300">Non-striker</div>
+  1204→            {nonStriker && onChangeNonStriker && (
+  1205→              <ChangeButton
+  1206→                onClick={onChangeNonStriker}
+  1207→                disabled={!canChangeBatsmen}
+  1208→                hint={
+  1209→                  canChangeBatsmen
+  1210→                    ? "Re-pick non-striker"
+  1211→                    : "Wait for end of over (or use Undo)"
+  1212→                }
+  1213→              />
+  1214→            )}
+  1215→          </div>
+  1216→          <div className="font-bold">{nonStriker?.name ?? "—"}</div>
+  1217→          <div className="text-slate-300">
+  1218→            {nonStriker ? `${nonStriker.runs} (${nonStriker.balls})` : "—"}
+  1219→          </div>
+  1220→          {/* Swap-ends button — pinned to the inner edge between the two
+  1221→              batsman cells. Visible only when both batsmen are at the crease.
+  1222→              Always enabled (not over-boundary-gated) because swapping ends
+  1223→              doesn't affect any stats — it's just a relabel. */}
+  1224→          {striker && nonStriker && onSwapEnds && (
+  1225→            <button
+  1226→              type="button"
+  1227→              onClick={onSwapEnds}
+  1228→              title="Swap striker ↔ non-striker (override the auto strike-rotation)"
+  1229→              aria-label="Swap striker and non-striker ends"
+  1230→              className="absolute -left-[14px] top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-slate-700 text-white shadow-md transition-colors hover:bg-slate-600"
+  1231→            >
+  1232→              <ArrowLeftRight className="h-3.5 w-3.5" />
+  1233→            </button>
+  1234→          )}
+  1235→        </div>
+  1236→        <div className="col-span-2 rounded-md bg-white/10 p-2.5">
+  1237→          <div className="flex items-center justify-between">
+  1238→            <div className="text-[10px] uppercase text-slate-300">Bowler</div>
+  1239→            {bowler && onChangeBowler && (
+  1240→              <ChangeButton
+  1241→                onClick={onChangeBowler}
+  1242→                disabled={!canChangeBowler}
+  1243→                hint={
+  1244→                  canChangeBowler
+  1245→                    ? "Re-pick bowler"
+  1246→                    : "Wait for end of over (or use Undo)"
+  1247→                }
+  1248→              />
+  1249→            )}
+  1250→          </div>
+  1251→          <div className="flex items-center justify-between">
+  1252→            <span className="font-bold">{bowler?.name ?? "—"}</span>
+  1253→            <span className="text-slate-300">
+  1254→              {bowler
+  1255→                ? `${oversString(bowler.balls)} - ${bowler.maidens} - ${bowler.runsConceded} - ${bowler.wickets}`
+  1256→                : "—"}
+  1257→            </span>
+  1258→          </div>
+  1259→        </div>
+  1260→      </div>
+  1261→    </div>
+  1262→  )
+  1263→}
+  1264→
+  1265→/** Tiny "Change" pill button rendered inline in the LiveScoreboard next to
+  1266→ *  each player's name. Click it to clear that slot → the picker re-shows →
+  1267→ *  the admin picks the correct person. Disabled mid-over (use Undo instead). */
+  1268→function ChangeButton({
+  1269→  onClick,
+  1270→  disabled,
+  1271→  hint,
+  1272→}: {
+  1273→  onClick: () => void
+  1274→  disabled?: boolean
+  1275→  hint?: string
+  1276→}) {
+  1277→  return (
+  1278→    <button
+  1279→      type="button"
+  1280→      onClick={onClick}
+  1281→      disabled={disabled}
+  1282→      title={hint}
+  1283→      aria-label={hint ?? "Change selection"}
+  1284→      className={cn(
+  1285→        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide transition-colors",
+  1286→        disabled
+  1287→          ? "cursor-not-allowed bg-white/5 text-slate-500"
+  1288→          : "bg-white/15 text-amber-300 hover:bg-amber-500/30 hover:text-amber-100"
+  1289→      )}
+  1290→    >
+  1291→      <RotateCcw className="h-2.5 w-2.5" />
+  1292→      Change
+  1293→    </button>
+  1294→  )
+  1295→}
+  1296→
+  1297→function BallPad({
+  1298→  onBall,
+  1299→  onWicket,
+  1300→  disabled,
+  1301→}: {
+  1302→  onBall: (e: BallEvent) => void
+  1303→  onWicket: () => void
+  1304→  disabled?: boolean
+  1305→}) {
+  1306→  return (
+  1307→    <div className="rounded-lg border p-3">
+  1308→      <div className="mb-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+  1309→        Score this ball
+  1310→      </div>
+  1311→      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+  1312→        {RUN_BUTTONS.map((r) => (
+  1313→          <Button
+  1314→            key={r}
+  1315→            variant={r === 4 || r === 6 ? "default" : "outline"}
+  1316→            className={cn(
+  1317→              "h-12 text-lg font-extrabold tabular-nums",
+  1318→              r === 4 && "bg-emerald-600 hover:bg-emerald-700",
+  1319→              r === 6 && "bg-purple-600 hover:bg-purple-700"
+  1320→            )}
+  1321→            disabled={disabled}
+  1322→            onClick={() => onBall({ kind: "run", runs: r })}
+  1323→          >
+  1324→            {r}
+  1325→          </Button>
+  1326→        ))}
+  1327→      </div>
+  1328→      <div className="mt-2 grid grid-cols-3 gap-2">
+  1329→        <Button variant="outline" className="h-10 gap-1" disabled={disabled} onClick={() => onBall({ kind: "wide" })}>
+  1330→          Wide
+  1331→        </Button>
+  1332→        <Button variant="outline" className="h-10 gap-1" disabled={disabled} onClick={() => onBall({ kind: "noball" })}>
+  1333→          No Ball
+  1334→        </Button>
+  1335→        <Button
+  1336→          variant="default"
+  1337→          className="h-10 gap-1 bg-red-600 hover:bg-red-700"
+  1338→          disabled={disabled}
+  1339→          onClick={onWicket}
+  1340→        >
+  1341→          Wicket
+  1342→        </Button>
+  1343→      </div>
+  1344→      <p className="mt-2 text-[11px] text-muted-foreground">
+  1345→        Tap a run number, an extra, or Wicket. The Wicket button opens a
+  1346→        dialog to pick dismissal type + fielder(s) involved.
+  1347→        <br />
+  1348→        <span className="mt-1 inline-block">
+  1349→          Keyboard shortcuts:{" "}
+  1350→          <code className="rounded bg-muted px-1 py-0.5">0–6</code> runs ·{" "}
+  1351→          <code className="rounded bg-muted px-1 py-0.5">.</code> dot ·{" "}
+  1352→          <code className="rounded bg-muted px-1 py-0.5">w</code> wicket ·{" "}
+  1353→          <code className="rounded bg-muted px-1 py-0.5">e</code> swap ends ·{" "}
+  1354→          <code className="rounded bg-muted px-1 py-0.5">u</code> undo ·{" "}
+  1355→          <code className="rounded bg-muted px-1 py-0.5">d</code> declare ·{" "}
+  1356→          <code className="rounded bg-muted px-1 py-0.5">s</code> save
+  1357→        </span>
+  1358→      </p>
+  1359→    </div>
+  1360→  )
+  1361→}
+  1362→
+  1363→/* ---------- Wicket dialog: pick dismissal type + fielder(s) ---------- */
+  1364→
+  1365→const WICKET_TYPE_OPTIONS: { value: WicketType; label: string; hint: string }[] = [
+  1366→  { value: "bowled", label: "Bowled", hint: "b Bowler" },
+  1367→  { value: "caught", label: "Caught", hint: "c Fielder b Bowler" },
+  1368→  { value: "lbw", label: "LBW", hint: "lbw b Bowler" },
+  1369→  { value: "runout", label: "Run Out", hint: "run out (Fielder)" },
+  1370→  { value: "stumped", label: "Stumped", hint: "st Keeper b Bowler" },
+  1371→  { value: "hitwkt", label: "Hit Wicket", hint: "hit wkt b Bowler" },
+  1372→  { value: "retiredHurt", label: "Retired Hurt", hint: "not out — may return" },
+  1373→  { value: "retiredOut", label: "Retired Out", hint: "out — no ball" },
+  1374→]
+  1375→
+  1376→/** Build the dismissal summary string from the structured inputs (this is
+  1377→ *  what the public scorecard renders next to the batsman's name). */
+  1378→function buildDismissalText(args: {
+  1379→  wicketType: WicketType
+  1380→  bowlerName?: string
+  1381→  fielderName?: string
+  1382→}): string {
+  1383→  const bowler = args.bowlerName ?? "?"
+  1384→  const fielder = args.fielderName
+  1385→  switch (args.wicketType) {
+  1386→    case "bowled":
+  1387→      return `b ${bowler}`
+  1388→    case "caught":
+  1389→      // Caught & bowled when no fielder is selected OR the fielder is the bowler.
+  1390→      if (!fielder || fielder === bowler) return `c &b ${bowler}`
+  1391→      return `c ${fielder} b ${bowler}`
+  1392→    case "lbw":
+  1393→      return `lbw b ${bowler}`
+  1394→    case "stumped":
+  1395→      return fielder ? `st ${fielder} b ${bowler}` : `st ${bowler}`
+  1396→    case "runout":
+  1397→      return fielder ? `run out (${fielder})` : `run out`
+  1398→    case "hitwkt":
+  1399→      return `hit wkt b ${bowler}`
+  1400→    case "retiredHurt":
+  1401→      return `retired hurt`
+  1402→    case "retiredOut":
+  1403→      return `retired out`
+  1404→  }
+  1405→}
+  1406→
+  1407→function WicketDialog({
+  1408→  open,
+  1409→  onOpenChange,
+  1410→  striker,
+  1411→  nonStriker,
+  1412→  bowler,
+  1413→  fieldingPlayers,
+  1414→  freeHit,
+  1415→  onConfirm,
+  1416→}: {
+  1417→  open: boolean
+  1418→  onOpenChange: (v: boolean) => void
+  1419→  striker: { id: string; name: string }
+  1420→  nonStriker: { id: string; name: string }
+  1421→  bowler: { id: string; name: string }
+  1422→  fieldingPlayers: { id: string; name: string; role?: string }[]
+  1423→  /** True when the current ball is a free hit — bowler-credited dismissals
+  1424→   *  (bowled/caught/lbw/stumped/hit-wkt) will be REJECTED by the engine.
+  1425→   *  The dialog shows a hint banner so the admin knows to pick Run Out or
+  1426→   *  Retired Out instead. */
+  1427→  freeHit?: boolean
+  1428→  onConfirm: (ev: {
+  1429→    kind: "wicket"
+  1430→    wicketType: WicketType
+  1431→    outBatsmanId: string
+  1432→    fielderIds: string[]
+  1433→    dismissal: string
+  1434→  }) => void
+  1435→}) {
+  1436→  const [wicketType, setWicketType] = useState<WicketType>("bowled")
+  1437→  const [outBatsmanId, setOutBatsmanId] = useState<string>(striker.id)
+  1438→  const [fielderId, setFielderId] = useState<string>("")
+  1439→  // Note: this component is conditionally rendered by the parent only when
+  1440→  // `wicketOpen` is true, so it remounts fresh each time the user opens the
+  1441→  // dialog — useState initial values act as the "reset on open".
+  1442→
+  1443→  // The wicket-keeper on the fielding side (auto-prefilled for stumped).
+  1444→  // Uses the explicit `isKeeper` flag on the Player model — was previously
+  1445→  // a brittle regex on the role string.
+  1446→  const keeperId = useMemo(() => {
+  1447→    const k = fieldingPlayers.find((p) => p.isKeeper)
+  1448→    return k?.id ?? ""
+  1449→  }, [fieldingPlayers])
+  1450→
+  1451→  // Derived state — avoid setState-in-effect by computing the effective
+  1452→  // selections during render. The picker's `value` reads from these, so the
+  1453→  // UI stays in sync without needing an effect to "correct" the user's
+  1454→  // last selection when the dismissal type changes.
+  1455→  // • For any dismissal type other than run-out, the batsman out is always
+  1456→  //   the striker (run-out can happen at the non-striker's end).
+  1457→  // • For stumped with no fielder selected, auto-prefill the keeper.
+  1458→  const effectiveOutBatsmanId =
+  1459→    wicketType === "runout" ? outBatsmanId : striker.id
+  1460→  const effectiveFielderId =
+  1461→    wicketType === "stumped" && !fielderId && keeperId ? keeperId : fielderId
+  1462→
+  1463→  const needsFielder =
+  1464→    wicketType === "caught" ||
+  1465→    wicketType === "stumped" ||
+  1466→    wicketType === "runout"
+  1467→  const showBatsmanSelect = wicketType === "runout"
+  1468→
+  1469→  const fielderName = fieldingPlayers.find(
+  1470→    (p) => p.id === effectiveFielderId
+  1471→  )?.name
+  1472→  const dismissal = buildDismissalText({
+  1473→    wicketType,
+  1474→    bowlerName: bowler.name,
+  1475→    fielderName,
+  1476→  })
+  1477→
+  1478→  const outBatsmanName =
+  1479→    effectiveOutBatsmanId === striker.id
+  1480→      ? striker.name
+  1481→      : effectiveOutBatsmanId === nonStriker.id
+  1482→        ? nonStriker.name
+  1483→        : "?"
+  1484→
+  1485→  // Free-hit-derived warning: when the current ball is a free hit AND the
+  1486→  // selected dismissal type is bowler-credited, the engine will REJECT the
+  1487→  // wicket (batsman survives). Show a warning so the admin knows.
+  1488→  const freeHitWillReject =
+  1489→    !!freeHit &&
+  1490→    BOWLER_CREDITED_WICKETS.has(wicketType) &&
+  1491→    wicketType !== "retired"
+  1492→
+  1493→  function handleConfirm() {
+  1494→    onConfirm({
+  1495→      kind: "wicket",
+  1496→      wicketType,
+  1497→      outBatsmanId: effectiveOutBatsmanId,
+  1498→      fielderIds: effectiveFielderId ? [effectiveFielderId] : [],
+  1499→      dismissal,
+  1500→    })
+  1501→  }
+  1502→
+  1503→  return (
+  1504→    <Dialog open={open} onOpenChange={onOpenChange}>
+  1505→      <DialogContent className="sm:max-w-lg">
+  1506→        <DialogHeader>
+  1507→          <DialogTitle className="flex items-center gap-2">
+  1508→            <span className="grid h-7 w-7 place-items-center rounded-md bg-red-600 text-white">
+  1509→              <Activity className="h-4 w-4" />
+  1510→            </span>
+  1511→            Dismiss {outBatsmanName}
+  1512→          </DialogTitle>
+  1513→          <DialogDescription>
+  1514→            Pick the dismissal type. If caught, stumped or run out, choose the
+  1515→            fielder(s) involved. The dismissal text updates live in the preview.
+  1516→          </DialogDescription>
+  1517→        </DialogHeader>
+  1518→
+  1519→        {/* Free-hit banner — appears when the current ball is a free hit. */}
+  1520→        {freeHit && (
+  1521→          <div className="rounded-md border border-amber-400 bg-amber-50 px-3 py-2 text-xs dark:bg-amber-950/40">
+  1522→            <div className="flex items-center gap-1.5 font-bold uppercase tracking-wide text-amber-800 dark:text-amber-300">
+  1523→              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-600" />
+  1524→              Free hit in effect
+  1525→            </div>
+  1526→            <p className="mt-1 text-amber-700 dark:text-amber-400">
+  1527→              Bowler-credited dismissals (bowled, caught, lbw, stumped, hit
+  1528→              wicket) are <strong>not allowed</strong> on a free hit — the
+  1529→              batsman survives and only run-out / retired-out stand.
+  1530→              {freeHitWillReject
+  1531→                ? " Picking this dismissal will be rejected by the engine — pick Run Out instead."
+  1532→                : ""}
+  1533→            </p>
+  1534→          </div>
+  1535→        )}
+  1536→
+  1537→        <div className="grid gap-3 py-2">
+  1538→          {/* Dismissal type */}
+  1539→          <div className="grid gap-1.5">
+  1540→            <Label>Dismissal type</Label>
+  1541→            <Select value={wicketType} onValueChange={(v) => setWicketType(v as WicketType)}>
+  1542→              <SelectTrigger className="w-full">
+  1543→                <SelectValue />
+  1544→              </SelectTrigger>
+  1545→              <SelectContent>
+  1546→                {WICKET_TYPE_OPTIONS.map((opt) => (
+  1547→                  <SelectItem key={opt.value} value={opt.value}>
+  1548→                    <span className="font-medium">{opt.label}</span>
+  1549→                    <span className="ml-2 text-[10px] text-muted-foreground">{opt.hint}</span>
+  1550→                  </SelectItem>
+  1551→                ))}
+  1552→              </SelectContent>
+  1553→            </Select>
+  1554→          </div>
+  1555→
+  1556→          {/* Batsman out — only shown for run-out */}
+  1557→          {showBatsmanSelect && (
+  1558→            <div className="grid gap-1.5">
+  1559→              <Label>Which batsman is out?</Label>
+  1560→              <Select
+  1561→                value={effectiveOutBatsmanId}
+  1562→                onValueChange={setOutBatsmanId}
+  1563→              >
+  1564→                <SelectTrigger className="w-full">
+  1565→                  <SelectValue />
+  1566→                </SelectTrigger>
+  1567→                <SelectContent>
+  1568→                  <SelectItem value={striker.id}>
+  1569→                    Striker — {striker.name}
+  1570→                  </SelectItem>
+  1571→                  <SelectItem value={nonStriker.id}>
+  1572→                    Non-striker — {nonStriker.name}
+  1573→                  </SelectItem>
+  1574→                </SelectContent>
+  1575→              </Select>
+  1576→            </div>
+  1577→          )}
+  1578→
+  1579→          {/* Fielder(s) involved — for caught, stumped, run out */}
+  1580→          {needsFielder && (
+  1581→            <div className="grid gap-1.5">
+  1582→              <Label>
+  1583→                {wicketType === "caught"
+  1584→                  ? "Catcher"
+  1585→                  : wicketType === "stumped"
+  1586→                    ? "Wicket-keeper"
+  1587→                    : "Run-out fielder"}
+  1588→              </Label>
+  1589→              <Select value={effectiveFielderId} onValueChange={setFielderId}>
+  1590→                <SelectTrigger className="w-full">
+  1591→                  <SelectValue placeholder="(direct hit / no fielder)" />
+  1592→                </SelectTrigger>
+  1593→                <SelectContent>
+  1594→                  <SelectItem value="(direct-hit)">(direct hit / no fielder)</SelectItem>
+  1595→                  {fieldingPlayers.map((p) => (
+  1596→                    <SelectItem key={p.id} value={p.id}>
+  1597→                      {p.name}
+  1598→                      {p.isKeeper && " †"}
+  1599→                      {p.isCaptain && " (c)"}
+  1600→                    </SelectItem>
+  1601→                  ))}
+  1602→                </SelectContent>
+  1603→              </Select>
+  1604→              {wicketType === "stumped" && keeperId && !fielderId && (
+  1605→                <p className="text-[11px] text-muted-foreground">
+  1606→                  Wicket-keeper auto-prefilled (you can change it).
+  1607→                </p>
+  1608→              )}
+  1609→            </div>
+  1610→          )}
+  1611→
+  1612→          {/* Live dismissal-text preview */}
+  1613→          <div className="rounded-md border bg-muted/40 p-3 text-sm">
+  1614→            <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+  1615→              Dismissal preview
+  1616→            </div>
+  1617→            <div className="mt-1 font-mono text-sm">
+  1618→              <span className="font-semibold">{outBatsmanName}</span>{" "}
+  1619→              <span className="text-muted-foreground">{dismissal}</span>
+  1620→            </div>
+  1621→          </div>
+  1622→        </div>
+  1623→
+  1624→        <DialogFooter>
+  1625→          <Button variant="outline" onClick={() => onOpenChange(false)}>
+  1626→            Cancel
+  1627→          </Button>
+  1628→          <Button
+  1629→            onClick={handleConfirm}
+  1630→            className="gap-1.5 bg-red-600 hover:bg-red-700"
+  1631→          >
+  1632→            <Activity className="h-4 w-4" />
+  1633→            Confirm wicket
+  1634→          </Button>
+  1635→        </DialogFooter>
+  1636→      </DialogContent>
+  1637→    </Dialog>
+  1638→  )
+  1639→}
+  1640→
+  1641→function Picker({
+  1642→  title,
+  1643→  players,
+  1644→  placeholder,
+  1645→  onPick,
+  1646→  confirmLabel = "Confirm",
+  1647→}: {
+  1648→  title: string
+  1649→  players: { id: string; name: string }[]
+  1650→  placeholder: string
+  1651→  onPick: (id: string) => void
+  1652→  /** Label for the commit button. Use "Add batsman" / "Set bowler" etc.
+  1653→   *  Defaults to "Confirm". */
+  1654→  confirmLabel?: string
+  1655→}) {
+  1656→  const [val, setVal] = useState("")
+  1657→  const selected = players.find((p) => p.id === val)
+  1658→  // Decouple selection from commit: changing the dropdown only updates the
+  1659→  // local `val` state. The commit (calling onPick) requires an explicit
+  1660→  // button click — so a misclick in the dropdown doesn't write to the live
+  1661→  // state. If the user picks the wrong name in the dropdown, they can just
+  1662→  // pick a different one before pressing Confirm.
+  1663→  return (
+  1664→    <div className="rounded-lg border-2 border-amber-400 bg-amber-50 p-4 dark:bg-amber-950/40">
+  1665→      <div className="mb-2 flex items-center gap-2 text-amber-800 dark:text-amber-300">
+  1666→        <Plus className="h-4 w-4" />
+  1667→        <h3 className="text-sm font-bold uppercase tracking-wide">{title}</h3>
+  1668→      </div>
+  1669→      {players.length === 0 ? (
+  1670→        // Empty-state — the team has no bench players available (rare, but
+  1671→        // happens if a team was created without enough players seeded, or
+  1672→        // everyone has already batted). Tell the admin how to fix it instead
+  1673→        // of opening a broken dropdown.
+  1674→        <div className="rounded-md border border-dashed bg-amber-100/60 px-3 py-4 text-center text-xs text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+  1675→          No eligible players left in the squad.
+  1676→          <br />
+  1677→          Add more players to the team via{" "}
+  1678→          <span className="font-semibold">Admin → Teams → bulk-add players</span>{" "}
+  1679→          (the green Users icon on the team row), then come back here.
+  1680→        </div>
+  1681→      ) : (
+  1682→        <>
+  1683→          <Select value={val} onValueChange={setVal}>
+  1684→            <SelectTrigger className="w-full">
+  1685→              <SelectValue placeholder={placeholder} />
+  1686→            </SelectTrigger>
+  1687→            <SelectContent>
+  1688→              {players.map((p) => (
+  1689→                <SelectItem key={p.id} value={p.id}>
+  1690→                  {p.name}
+  1691→                </SelectItem>
+  1692→              ))}
+  1693→            </SelectContent>
+  1694→          </Select>
+  1695→          <div className="mt-2 flex items-center justify-between gap-2">
+  1696→            <span className="text-xs text-amber-700 dark:text-amber-400">
+  1697→              {selected ? (
+  1698→                <>
+  1699→                  Selected: <span className="font-semibold">{selected.name}</span>
+  1700→                </>
+  1701→              ) : (
+  1702→                "Pick a player above, then confirm."
+  1703→              )}
+  1704→            </span>
+  1705→            <Button
+  1706→              size="sm"
+  1707→              disabled={!val}
+  1708→              onClick={() => val && onPick(val)}
+  1709→              className="gap-1.5"
+  1710→            >
+  1711→              <Plus className="h-3.5 w-3.5" />
+  1712→              {confirmLabel}
+  1713→            </Button>
+  1714→          </div>
+  1715→        </>
+  1716→      )}
+  1717→    </div>
+  1718→  )
+  1719→}
+  1720→
+  1721→function CommentaryFeed({ state }: { state: LiveMatchState }) {
+  1722→  return (
+  1723→    <div className="rounded-lg border bg-card">
+  1724→      <div className="flex items-center gap-2 border-b bg-muted/40 px-3 py-2">
+  1725→        <CircleDot className="h-3.5 w-3.5 text-red-600" />
+  1726→        <h3 className="text-[11px] font-extrabold uppercase tracking-wide">
+  1727→          Live Commentary
+  1728→        </h3>
+  1729→      </div>
+  1730→      <div className="max-h-64 space-y-1.5 overflow-y-auto p-3 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
+  1731→        {state.commentary.map((c) => {
+  1732→          const isManual = c.kind === "manual"
+  1733→          return (
+  1734→            <div
+  1735→              key={c.id}
+  1736→              className={cn(
+  1737→                "flex gap-2 text-xs",
+  1738→                isManual && "border-l-2 border-blue-500 bg-blue-50/40 pl-2 dark:bg-blue-950/20"
+  1739→              )}
+  1740→            >
+  1741→              <span className="w-10 shrink-0 font-mono tabular-nums text-muted-foreground">
+  1742→                {c.over}
+  1743→              </span>
+  1744→              <span
+  1745→                className={cn(
+  1746→                  "min-w-0 flex-1",
+  1747→                  c.kind === "wicket" && "font-bold text-red-700",
+  1748→                  c.kind === "six" && "font-bold text-purple-700",
+  1749→                  c.kind === "boundary" && "font-bold text-emerald-700",
+  1750→                  c.kind === "extra" && "text-amber-700 dark:text-amber-300",
+  1751→                  c.kind === "run" && "text-emerald-700 dark:text-emerald-300",
+  1752→                  c.kind === "over" && "font-semibold text-foreground",
+  1753→                  c.kind === "info" && "italic text-muted-foreground",
+  1754→                  c.kind === "dot" && "text-muted-foreground/70 tabular-nums",
+  1755→                  isManual && "text-foreground"
+  1756→                )}
+  1757→              >
+  1758→                {isManual && (
+  1759→                  <span className="mr-1 inline-block rounded bg-blue-600 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white align-middle">
+  1760→                    Commentator
+  1761→                  </span>
+  1762→                )}
+  1763→                {c.text.startsWith("[audio:") ? (
+  1764→                  <span className="flex items-center gap-2">
+  1765→                    <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400">
+  1766→                      <Mic className="h-3 w-3" />
+  1767→                      Voice commentary
+  1768→                    </span>
+  1769→                    <audio
+  1770→                      src={c.text.match(/\[audio:(.+?)\]/)?.[1]}
+  1771→                      controls
+  1772→                      className="h-7"
+  1773→                    />
+  1774→                  </span>
+  1775→                ) : (
+  1776→                  c.text
+  1777→                )}
+  1778→              </span>
+  1779→            </div>
+  1780→          )
+  1781→        })}
+  1782→      </div>
+  1783→    </div>
+  1784→  )
+  1785→}
+  1786→
+  1787→/* ------------------ Human / manual commentary input ------------------ */
+  1788→
+  1789→function CommentaryInput({
+  1790→  value,
+  1791→  onChange,
+  1792→  onSubmit,
+  1793→  disabled,
+  1794→}: {
+  1795→  value: string
+  1796→  onChange: (v: string) => void
+  1797→  onSubmit: () => void
+  1798→  disabled?: boolean
+  1799→}) {
+  1800→  return (
+  1801→    <div className="rounded-xl border-2 border-blue-200 bg-blue-50/50 p-3 dark:border-blue-900 dark:bg-blue-950/30">
+  1802→      <div className="mb-2 flex items-center gap-2">
+  1803→        <div className="grid h-7 w-7 place-items-center rounded-lg bg-blue-600 text-white">
+  1804→          <CircleDot className="h-4 w-4" />
+  1805→        </div>
+  1806→        <span className="text-sm font-extrabold uppercase tracking-wide text-blue-700 dark:text-blue-300">
+  1807→          Add Text Commentary
+  1808→        </span>
+  1809→      </div>
+  1810→      <div className="flex items-center gap-2">
+  1811→        <input
+  1812→          type="text"
+  1813→          value={value}
+  1814→          disabled={disabled}
+  1815→          onChange={(e) => onChange(e.target.value)}
+  1816→          onKeyDown={(e) => {
+  1817→            if (e.key === "Enter") {
+  1818→              e.preventDefault()
+  1819→              onSubmit()
+  1820→            }
+  1821→          }}
+  1822→          placeholder="Type your commentary here… (e.g. ‘DRS review taken', ‘Rain stops play')"
+  1823→          className="flex h-10 w-full min-w-0 rounded-lg border-2 border-blue-300 bg-white px-3 py-1.5 text-sm font-medium shadow-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-card dark:border-blue-800"
+  1824→        />
+  1825→        <Button
+  1826→          size="sm"
+  1827→          disabled={disabled || !value.trim()}
+  1828→          onClick={onSubmit}
+  1829→          className="gap-1.5 bg-blue-600 text-sm font-bold text-white hover:bg-blue-700"
+  1830→        >
+  1831→          <Send className="h-4 w-4" />
+  1832→          Send
+  1833→        </Button>
+  1834→      </div>
+  1835→      <p className="mt-1.5 text-[11px] font-medium text-blue-600/70 dark:text-blue-400/70">
+  1836→        Broadcasts instantly to all viewers on the Live tab. Press{" "}
+  1837→        <code className="rounded bg-blue-100 px-1 py-0.5 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Enter</code> to send.
+  1838→      </p>
+  1839→    </div>
+  1840→  )
+  1841→}
+  1842→

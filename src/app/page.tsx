@@ -6,6 +6,7 @@ import { Footer } from "@/components/site/footer"
 import { HomeView } from "@/components/site/views/home-view"
 import { MatchesView } from "@/components/site/views/matches-view"
 import { MatchDetailView } from "@/components/site/views/match-detail-view"
+import { LiveBlogView } from "@/components/site/views/live-blog-view"
 import { NewsView } from "@/components/site/views/news-view"
 import { InterviewsView } from "@/components/site/views/interviews-view"
 import { ArticleDetailView } from "@/components/site/views/article-detail-view"
@@ -101,6 +102,8 @@ export default function Home() {
         return <MatchesView />
       case "match-detail":
         return <MatchDetailView />
+      case "live-blog":
+        return <LiveBlogView />
       case "news":
         return <NewsView />
       case "interviews":

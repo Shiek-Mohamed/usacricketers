@@ -184,6 +184,7 @@ export type ViewKey =
   | "home"
   | "matches"
   | "match-detail"
+  | "live-blog"
   | "news"
   | "article-detail"
   | "interviews"

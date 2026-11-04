@@ -753,7 +753,7 @@ export function MatchDetailView() {
         <MatchHeaderCard match={match_} />
 
         {isLive && (
-          <div className="flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-4 py-2.5 text-red-800">
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-4 py-2.5 text-red-800">
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-red-600" />
@@ -764,8 +764,19 @@ export function MatchDetailView() {
             {connected && (
               <span className="text-[11px] text-red-600/80">· connected</span>
             )}
-            <span className="ml-auto text-[11px] text-muted-foreground">
-              Updates in real time as balls are scored
+            <span className="ml-auto flex items-center gap-2">
+              <span className="hidden text-[11px] text-muted-foreground sm:inline">
+                Updates in real time as balls are scored
+              </span>
+              {/* Live Blog button — opens the immersive ball-by-ball feed */}
+              <Button
+                size="sm"
+                onClick={() => navigate("live-blog", match_.id)}
+                className="gap-1.5 bg-red-600 text-xs font-bold text-white hover:bg-red-700"
+              >
+                <Radio className="h-3.5 w-3.5" />
+                Live Blog
+              </Button>
             </span>
           </div>
         )}

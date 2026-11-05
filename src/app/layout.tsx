@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Rajdhani, Playfair_Display } from "next/font/google";
+import { Geist, Geist_Mono, Rajdhani, Montserrat } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
@@ -27,14 +27,13 @@ const displayFont = Rajdhani({
   weight: ["300", "400", "500", "600", "700"],
 });
 
-// Playfair Display — an elegant high-contrast serif used for article
-// headlines on the home + news pages. Gives the site a premium editorial
-// feel (like a sports magazine). Loaded alongside Rajdhani (scores/stats)
-// + Geist (body text).
-const headlineFont = Playfair_Display({
+// Montserrat — a geometric sans-serif used for article headlines on the
+// home + news pages. Bold, modern, and highly readable at any size. Pairs
+// beautifully with Rajdhani (scores/stats) + Geist (body text).
+const headlineFont = Montserrat({
   variable: "--font-headline",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800", "900"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {

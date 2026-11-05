@@ -326,21 +326,21 @@ function BattingTotalRow({
   const label = row?.name ?? "Total"
   return (
     <tr className="bg-[#1e2a5e]/5 border-t-2 border-border/40">
-      {/* Batsman cell: "Total" + "RR 5.68" on ONE line (inline, not stacked) */}
+      {/* Batsman cell: just the "Total" label */}
       <td className="px-4 py-3 align-middle">
-        <div className="flex items-baseline gap-x-3 min-w-0">
-          <span className="font-display text-base font-bold tracking-tight whitespace-nowrap">{label}</span>
-          {runRate && (
-            <span className="font-display text-sm font-semibold tabular-nums whitespace-nowrap">
-              RR {runRate}
-            </span>
-          )}
-        </div>
+        <span className="font-display text-base font-bold tracking-tight whitespace-nowrap">{label}</span>
       </td>
-      {/* Score — bigger + heavier */}
-      <td className="px-2 py-3 text-right align-middle font-display text-lg font-black tabular-nums tracking-tight">
-        {innings.totalRuns}<span className="text-foreground">/{innings.totalWickets}</span>
-        {innings.declared && <span className="text-sm">d</span>}
+      {/* R column: score + RR on one line (RR comes AFTER the total score) */}
+      <td className="px-2 py-3 text-right align-middle whitespace-nowrap">
+        <span className="font-display text-lg font-black tabular-nums tracking-tight">
+          {innings.totalRuns}<span className="text-foreground">/{innings.totalWickets}</span>
+          {innings.declared && <span className="text-sm">d</span>}
+        </span>
+        {runRate && (
+          <span className="ml-2 font-display text-sm font-semibold tabular-nums">
+            RR {runRate}
+          </span>
+        )}
       </td>
       <td className="px-2 py-3" />
       <td className="px-2 py-3" />

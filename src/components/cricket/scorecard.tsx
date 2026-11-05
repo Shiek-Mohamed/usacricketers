@@ -330,19 +330,17 @@ function BattingTotalRow({
       <td className="px-4 py-3 align-middle">
         <span className="font-display text-base font-bold tracking-tight whitespace-nowrap">{label}</span>
       </td>
-      {/* R column: score + RR on one line (RR comes AFTER the total score) */}
-      <td className="px-2 py-3 text-right align-middle whitespace-nowrap">
-        <span className="font-display text-lg font-black tabular-nums tracking-tight">
-          {innings.totalRuns}<span className="text-foreground">/{innings.totalWickets}</span>
-          {innings.declared && <span className="text-sm">d</span>}
-        </span>
-        {runRate && (
-          <span className="ml-2 font-display text-sm font-semibold tabular-nums">
-            RR {runRate}
-          </span>
-        )}
+      {/* R column: score only — right-aligned so it lines up under the
+          batsmen's runs column above. */}
+      <td className="px-2 py-3 text-right align-middle font-display text-lg font-black tabular-nums tracking-tight whitespace-nowrap">
+        {innings.totalRuns}<span className="text-foreground">/{innings.totalWickets}</span>
+        {innings.declared && <span className="text-sm">d</span>}
       </td>
-      <td className="px-2 py-3" />
+      {/* B column: RR (run rate) — sits right after the score, in the
+          next column so the score stays aligned under the runs column. */}
+      <td className="px-2 py-3 text-right align-middle font-display text-sm font-semibold tabular-nums whitespace-nowrap">
+        {runRate ? `RR ${runRate}` : ""}
+      </td>
       <td className="px-2 py-3" />
       <td className="px-2 py-3" />
       {/* Overs — bigger + heavier */}

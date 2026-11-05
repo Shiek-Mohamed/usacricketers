@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Barlow_Condensed } from "next/font/google";
+import { Geist, Geist_Mono, Oswald } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
@@ -15,14 +15,15 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Barlow Condensed — a bold, condensed sports font used for scores,
-// team names, and section headings. Gives the site a "sports broadcast"
-// feel (similar to cricket.com.au / ESPN) instead of a generic tech
-// dashboard. Loaded alongside Geist (which stays for body text).
-const barlowCondensed = Barlow_Condensed({
-  variable: "--font-barlow",
+// Oswald — a bold, condensed sports font used for scores, team names,
+// and section headings. Gives the site a "sports broadcast" feel (ESPN
+// Cricinfo style). Loaded alongside Geist (which stays for body text).
+// To swap fonts later, only this import + the variable name need to change —
+// components use the generic `font-display` Tailwind class.
+const displayFont = Oswald({
+  variable: "--font-display",
   subsets: ["latin"],
-  weight: ["500", "600", "700", "800", "900"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -134,7 +135,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${barlowCondensed.variable} antialiased bg-background text-foreground`}
+        className={`${geistSans.variable} ${geistMono.variable} ${displayFont.variable} antialiased bg-background text-foreground`}
       >
         <ThemeProvider
           attribute="class"

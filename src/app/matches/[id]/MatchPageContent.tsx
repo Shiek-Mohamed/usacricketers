@@ -72,9 +72,9 @@ function MatchScorebox({ match }: { match: Match }) {
       <div className="flex items-center justify-between gap-2 bg-gradient-to-r from-[#1e2a5e] to-[#2d3b7a] px-4 py-2 sm:px-6">
         <div className="flex items-center gap-2 min-w-0">
           <FormatPill format={match.format} />
-          <span className="truncate font-barlow text-sm font-bold uppercase tracking-wide text-white">{match.matchNo}</span>
+          <span className="truncate font-display text-sm font-bold uppercase tracking-wide text-white">{match.matchNo}</span>
           {match.series?.shortName && (
-            <span className="hidden font-barlow text-xs font-medium uppercase tracking-wide text-white/70 sm:inline">· {match.series.shortName}</span>
+            <span className="hidden font-display text-xs font-medium uppercase tracking-wide text-white/70 sm:inline">· {match.series.shortName}</span>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -102,8 +102,8 @@ function MatchScorebox({ match }: { match: Match }) {
                   <TeamBadge team={team} size="lg" />
                   <div className="min-w-0">
                     {/* Team name — Barlow Condensed, bold, tighter tracking */}
-                    <div className="truncate font-barlow text-lg font-bold leading-tight tracking-tight sm:text-xl">{team.name}</div>
-                    <div className="font-barlow text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{team.shortName}</div>
+                    <div className="truncate font-display text-lg font-bold leading-tight tracking-tight sm:text-xl">{team.name}</div>
+                    <div className="font-display text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{team.shortName}</div>
                   </div>
                 </div>
                 <div className="shrink-0 text-right">
@@ -111,13 +111,13 @@ function MatchScorebox({ match }: { match: Match }) {
                     innings.map((inn, i) => (
                       // Score — Barlow Condensed, 900 weight, large. This is
                       // the #1 thing a fan looks at, so it dominates.
-                      <div key={i} className="font-barlow text-3xl font-black leading-none tabular-nums tracking-tight sm:text-4xl">
+                      <div key={i} className="font-display text-3xl font-black leading-none tabular-nums tracking-tight sm:text-4xl">
                         {inn.totalRuns}<span className="text-muted-foreground">/{inn.totalWickets}</span>
-                        <span className="ml-2 font-barlow text-xs font-medium normal-case text-muted-foreground">({inn.totalOvers} ov)</span>
+                        <span className="ml-2 font-display text-xs font-medium normal-case text-muted-foreground">({inn.totalOvers} ov)</span>
                       </div>
                     ))
                   ) : (
-                    <div className="font-barlow text-sm font-medium uppercase tracking-wide text-muted-foreground">Yet to bat</div>
+                    <div className="font-display text-sm font-medium uppercase tracking-wide text-muted-foreground">Yet to bat</div>
                   )}
                 </div>
               </a>
@@ -137,7 +137,7 @@ function MatchScorebox({ match }: { match: Match }) {
 
         {/* RIGHT: Match Details panel */}
         <div className="border-t border-border/40 bg-muted/20 px-4 py-3 lg:border-l lg:border-t-0 sm:px-6">
-          <h3 className="mb-2 flex items-center gap-1.5 font-barlow text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          <h3 className="mb-2 flex items-center gap-1.5 font-display text-xs font-bold uppercase tracking-widest text-muted-foreground">
             <Shield className="h-3.5 w-3.5" /> Match Details
           </h3>
           <div className="space-y-0.5">

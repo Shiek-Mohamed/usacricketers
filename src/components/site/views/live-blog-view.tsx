@@ -131,7 +131,7 @@ export function LiveBlogView() {
             ) : (
               <FormatPill format={match.format} />
             )}
-            <span className="font-barlow text-sm font-semibold uppercase tracking-wide sm:text-base">
+            <span className="font-display text-sm font-semibold uppercase tracking-wide sm:text-base">
               {match.matchNo} · {match.series?.name ?? "Series"}
             </span>
           </div>
@@ -270,13 +270,13 @@ function ScoreTicker({
       <div className="flex items-center gap-3">
         {battingTeam && <TeamBadge team={battingTeam} size="lg" />}
         <div>
-          <div className="font-barlow text-2xl font-black leading-none tracking-tight text-foreground sm:text-4xl">
+          <div className="font-display text-2xl font-black leading-none tracking-tight text-foreground sm:text-4xl">
             {innings.battingTeamShortName}{" "}
             <span className="text-red-600">
               {innings.runs}/{innings.wickets}
             </span>
           </div>
-          <div className="mt-1 font-barlow text-[12px] font-medium tracking-wide text-muted-foreground">
+          <div className="mt-1 font-display text-[12px] font-medium tracking-wide text-muted-foreground">
             ({overs} ov · CRR {crr})
           </div>
         </div>
@@ -336,7 +336,7 @@ function CommentaryFeed({
   return (
     <div className="rounded-lg border border-border bg-card">
       <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-        <h2 className="font-barlow text-sm font-bold uppercase tracking-widest text-foreground">
+        <h2 className="font-display text-sm font-bold uppercase tracking-widest text-foreground">
           Live Commentary
         </h2>
         <span className="text-[11px] text-muted-foreground">
@@ -416,7 +416,7 @@ function KeyMomentsSidebar({
     <div className="sticky top-16 rounded-lg border border-border bg-card">
       <div className="flex items-center gap-2 border-b border-border px-4 py-2.5">
         <Trophy className="h-4 w-4 text-amber-500" />
-        <h2 className="font-barlow text-sm font-bold uppercase tracking-widest text-foreground">
+        <h2 className="font-display text-sm font-bold uppercase tracking-widest text-foreground">
           Key Moments
         </h2>
       </div>

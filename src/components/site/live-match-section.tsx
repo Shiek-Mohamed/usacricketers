@@ -66,7 +66,7 @@ export function LiveMatchSection({ matchId }: { matchId: string }) {
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
             <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
           </span>
-          <h2 className="font-barlow text-sm font-bold uppercase tracking-widest text-white">
+          <h2 className="font-display text-sm font-bold uppercase tracking-widest text-white">
             Live Commentary
           </h2>
         </div>
@@ -88,13 +88,13 @@ export function LiveMatchSection({ matchId }: { matchId: string }) {
       {currentInnings ? (
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/30 px-4 py-3">
           <div>
-            <span className="font-barlow text-2xl font-black leading-none tracking-tight text-foreground sm:text-3xl">
+            <span className="font-display text-2xl font-black leading-none tracking-tight text-foreground sm:text-3xl">
               {currentInnings.battingTeamShortName}{" "}
               <span className="text-red-600">
                 {currentInnings.runs}/{currentInnings.wickets}
               </span>
             </span>
-            <span className="ml-2 font-barlow text-[12px] font-medium tracking-wide text-muted-foreground">
+            <span className="ml-2 font-display text-[12px] font-medium tracking-wide text-muted-foreground">
               ({oversString(currentInnings.balls)} ov · CRR{" "}
               {currentInnings.balls > 0
                 ? ((currentInnings.runs / currentInnings.balls) * 6).toFixed(2)
@@ -102,7 +102,7 @@ export function LiveMatchSection({ matchId }: { matchId: string }) {
               )
             </span>
           </div>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 font-barlow text-[12px] font-medium">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 font-display text-[12px] font-medium">
             {striker && (
               <span className="font-bold text-red-600">
                 {striker.name}{" "}
@@ -133,7 +133,7 @@ export function LiveMatchSection({ matchId }: { matchId: string }) {
         {/* LEFT: Live commentary feed (ball-by-ball) */}
         <div className="border-b border-border lg:border-b-0 lg:border-r">
           <div className="flex items-center justify-between border-b border-border/60 bg-muted/20 px-3 py-2">
-            <span className="font-barlow text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+            <span className="font-display text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
               Ball-by-Ball
             </span>
             <span className="text-[10px] text-muted-foreground">
@@ -184,7 +184,7 @@ export function LiveMatchSection({ matchId }: { matchId: string }) {
         <div>
           <div className="flex items-center gap-1.5 border-b border-border/60 bg-muted/20 px-3 py-2">
             <Trophy className="h-3.5 w-3.5 text-amber-500" />
-            <span className="font-barlow text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+            <span className="font-display text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
               Key Moments
             </span>
           </div>

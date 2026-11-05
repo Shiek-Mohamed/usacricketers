@@ -238,17 +238,17 @@ function BattingTableRow({ b, index }: { b: BattingLine; index?: number }) {
             italic style. Truncates if the column is too narrow. */}
         <div className="flex items-baseline gap-x-2 min-w-0">
           {b.isBatting && (
-            <span className="h-1.5 w-1.5 shrink-0 self-center rounded-full bg-red-600 animate-pulse" />
+            <span className="h-2 w-2 shrink-0 self-center rounded-full bg-red-600 animate-pulse" />
           )}
           <PlayerName
             name={b.name}
             playerId={b.playerId}
             isCaptain={b.isCaptain}
             isKeeper={b.isKeeper}
-            className="font-barlow font-semibold tracking-tight whitespace-nowrap"
+            className="font-barlow text-base font-bold tracking-tight whitespace-nowrap"
           />
           {b.dismissal && (
-            <span className="text-xs italic text-muted-foreground truncate">
+            <span className="text-sm italic text-muted-foreground truncate">
               {b.dismissal}
             </span>
           )}

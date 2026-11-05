@@ -50,7 +50,7 @@ function InningsCard({
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-white">
       {/* Innings header — red-to-sky gradient (darker). White text for contrast. */}
-      <div className="flex items-center justify-between bg-gradient-to-r from-red-500 to-sky-500 px-4 py-3 text-white">
+      <div className="flex items-center justify-between bg-gradient-to-r from-red-700 to-sky-700 px-4 py-3 text-white">
         <div className="flex items-center gap-2">
           <TeamBadgeByName shortName={innings.teamShortName} size="sm" />
           <span className="font-display text-xl font-bold uppercase tracking-wide">

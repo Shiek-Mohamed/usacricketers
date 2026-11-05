@@ -233,23 +233,26 @@ function BattingTableRow({ b, index }: { b: BattingLine; index?: number }) {
   return (
     <tr className={cn("hover:bg-muted/30 transition-colors", index !== undefined && index % 2 === 1 && "bg-muted/15")}>
       <td className="px-4 py-2.5 align-top">
-        <div className="flex items-center gap-1.5">
+        {/* Name + dismissal on the SAME line — the dismissal (e.g.
+            "c Maxwell b Zampa") sits inline after the name in a lighter,
+            italic style. Truncates if the column is too narrow. */}
+        <div className="flex items-baseline gap-x-2 min-w-0">
           {b.isBatting && (
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-600 animate-pulse" />
+            <span className="h-1.5 w-1.5 shrink-0 self-center rounded-full bg-red-600 animate-pulse" />
           )}
           <PlayerName
             name={b.name}
             playerId={b.playerId}
             isCaptain={b.isCaptain}
             isKeeper={b.isKeeper}
-            className="font-barlow font-semibold tracking-tight"
+            className="font-barlow font-semibold tracking-tight whitespace-nowrap"
           />
+          {b.dismissal && (
+            <span className="text-xs italic text-muted-foreground truncate">
+              {b.dismissal}
+            </span>
+          )}
         </div>
-        {b.dismissal && (
-          <div className="mt-0.5 pl-3 text-xs italic text-muted-foreground">
-            {b.dismissal}
-          </div>
-        )}
       </td>
       <td className="px-2 py-2.5 text-right align-top font-barlow text-base font-extrabold tabular-nums tracking-tight">
         {b.runs}

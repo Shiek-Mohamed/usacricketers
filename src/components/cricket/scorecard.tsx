@@ -50,18 +50,18 @@ function InningsCard({
   return (
     <div className="overflow-hidden rounded-lg border bg-card">
       {/* Innings header — dark navy band (Cricinfo style) */}
-      <div className="flex items-center justify-between bg-[#1e2a5e] px-4 py-2.5 text-white">
+      <div className="flex items-center justify-between bg-[#1e2a5e] px-4 py-3 text-white">
         <div className="flex items-center gap-2">
           <TeamBadgeByName shortName={innings.teamShortName} size="sm" />
-          <span className="text-sm font-bold uppercase tracking-wide">
+          <span className="font-barlow text-sm font-bold uppercase tracking-wide">
             {innings.teamShortName}
           </span>
-          <span className="text-xs text-white/60">{ordinal} innings</span>
+          <span className="font-barlow text-xs font-medium uppercase tracking-wide text-white/60">{ordinal} innings</span>
         </div>
-        <span className="text-lg font-extrabold tabular-nums">
-          {innings.totalRuns}/{innings.totalWickets}
-          {innings.declared && "d"}
-          <span className="ml-1.5 text-xs font-normal text-white/60">
+        <span className="font-barlow text-2xl font-black leading-none tabular-nums tracking-tight sm:text-3xl">
+          {innings.totalRuns}<span className="text-white/60">/{innings.totalWickets}</span>
+          {innings.declared && <span className="text-sm font-bold">d</span>}
+          <span className="ml-2 font-barlow text-xs font-medium normal-case text-white/60">
             ({innings.totalOvers} ov{runRate !== null && ` · RR ${runRate}`})
           </span>
         </span>
@@ -205,18 +205,18 @@ function BattingTable({
   return (
     <table className="w-full border-collapse text-sm">
       <thead>
-        <tr className="bg-muted/40 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          <th className="px-4 py-2 text-left">Batsman</th>
-          <th className="px-2 py-2 text-right tabular-nums">R</th>
-          <th className="px-2 py-2 text-right tabular-nums">B</th>
-          <th className="px-2 py-2 text-right tabular-nums">4s</th>
-          <th className="px-2 py-2 text-right tabular-nums">6s</th>
-          <th className="px-4 py-2 text-right tabular-nums">SR</th>
+        <tr className="bg-[#1e2a5e] text-white">
+          <th className="px-4 py-2.5 text-left font-barlow text-[11px] font-bold uppercase tracking-widest">Batsman</th>
+          <th className="px-2 py-2.5 text-right font-barlow text-[11px] font-bold uppercase tracking-widest tabular-nums">R</th>
+          <th className="px-2 py-2.5 text-right font-barlow text-[11px] font-bold uppercase tracking-widest tabular-nums">B</th>
+          <th className="px-2 py-2.5 text-right font-barlow text-[11px] font-bold uppercase tracking-widest tabular-nums">4s</th>
+          <th className="px-2 py-2.5 text-right font-barlow text-[11px] font-bold uppercase tracking-widest tabular-nums">6s</th>
+          <th className="px-4 py-2.5 text-right font-barlow text-[11px] font-bold uppercase tracking-widest tabular-nums">SR</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-border/40">
         {batsmen.map((b, i) => (
-          <BattingTableRow key={i} b={b} />
+          <BattingTableRow key={i} b={b} index={i} />
         ))}
         {extrasRow && <BattingExtrasRow row={extrasRow} innings={innings} />}
         <BattingTotalRow
@@ -229,9 +229,9 @@ function BattingTable({
   )
 }
 
-function BattingTableRow({ b }: { b: BattingLine }) {
+function BattingTableRow({ b, index }: { b: BattingLine; index?: number }) {
   return (
-    <tr className="hover:bg-muted/20">
+    <tr className={cn("hover:bg-muted/30 transition-colors", index !== undefined && index % 2 === 1 && "bg-muted/15")}>
       <td className="px-4 py-2.5 align-top">
         <div className="flex items-center gap-1.5">
           {b.isBatting && (
@@ -242,7 +242,7 @@ function BattingTableRow({ b }: { b: BattingLine }) {
             playerId={b.playerId}
             isCaptain={b.isCaptain}
             isKeeper={b.isKeeper}
-            className="font-semibold"
+            className="font-barlow font-semibold tracking-tight"
           />
         </div>
         {b.dismissal && (
@@ -251,19 +251,19 @@ function BattingTableRow({ b }: { b: BattingLine }) {
           </div>
         )}
       </td>
-      <td className="px-2 py-2.5 text-right align-top text-base font-extrabold tabular-nums">
+      <td className="px-2 py-2.5 text-right align-top font-barlow text-base font-extrabold tabular-nums tracking-tight">
         {b.runs}
       </td>
-      <td className="px-2 py-2.5 text-right align-top tabular-nums text-muted-foreground">
+      <td className="px-2 py-2.5 text-right align-top font-barlow tabular-nums text-muted-foreground">
         {b.balls}
       </td>
-      <td className="px-2 py-2.5 text-right align-top tabular-nums text-muted-foreground">
+      <td className="px-2 py-2.5 text-right align-top font-barlow tabular-nums text-muted-foreground">
         {b.fours}
       </td>
-      <td className="px-2 py-2.5 text-right align-top tabular-nums text-muted-foreground">
+      <td className="px-2 py-2.5 text-right align-top font-barlow tabular-nums text-muted-foreground">
         {b.sixes}
       </td>
-      <td className="px-4 py-2.5 text-right align-top tabular-nums text-muted-foreground">
+      <td className="px-4 py-2.5 text-right align-top font-barlow tabular-nums text-muted-foreground">
         {b.strikeRate > 0 ? b.strikeRate.toFixed(1) : "—"}
       </td>
     </tr>
@@ -322,18 +322,18 @@ function BattingTotalRow({
   const runRate = computeRunRate(innings)
   const label = row?.name ?? "Total"
   return (
-    <tr className="bg-muted/30 font-bold">
+    <tr className="bg-[#1e2a5e]/5 font-bold border-t-2 border-border/40">
       <td className="px-4 py-2.5 align-top">
-        <div>{label}</div>
+        <div className="font-barlow font-bold tracking-tight">{label}</div>
         {runRate && (
-          <div className="mt-0.5 text-xs font-normal text-muted-foreground">
+          <div className="mt-0.5 font-barlow text-xs font-normal text-muted-foreground">
             RR {runRate}
           </div>
         )}
       </td>
-      <td className="px-2 py-2.5 text-right align-top tabular-nums">
-        {innings.totalRuns}/{innings.totalWickets}
-        {innings.declared && "d"}
+      <td className="px-2 py-2.5 text-right align-top font-barlow text-base font-black tabular-nums tracking-tight">
+        {innings.totalRuns}<span className="text-muted-foreground">/{innings.totalWickets}</span>
+        {innings.declared && <span className="text-sm">d</span>}
       </td>
       <td className="px-2 py-2.5" />
       <td className="px-2 py-2.5" />
@@ -536,16 +536,16 @@ function BowlingTable({ bowling }: { bowling: BowlingLine[] }) {
   return (
     <table className="w-full border-collapse text-sm">
       <thead>
-        <tr className="bg-muted/40 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          <th className="px-4 py-2 text-left">Bowler</th>
-          <th className="px-2 py-2 text-right tabular-nums">O</th>
-          <th className="px-2 py-2 text-right tabular-nums">M</th>
-          <th className="px-2 py-2 text-right tabular-nums">R</th>
-          <th className="px-2 py-2 text-right tabular-nums">W</th>
-          <th className="px-2 py-2 text-right tabular-nums">Econ</th>
-          <th className="px-2 py-2 text-right tabular-nums">0s</th>
-          <th className="px-2 py-2 text-right tabular-nums">4s</th>
-          <th className="px-4 py-2 text-right tabular-nums">6s</th>
+        <tr className="bg-[#1e2a5e] text-white">
+          <th className="px-4 py-2.5 text-left font-barlow text-[11px] font-bold uppercase tracking-widest">Bowler</th>
+          <th className="px-2 py-2.5 text-right font-barlow text-[11px] font-bold uppercase tracking-widest tabular-nums">O</th>
+          <th className="px-2 py-2.5 text-right font-barlow text-[11px] font-bold uppercase tracking-widest tabular-nums">M</th>
+          <th className="px-2 py-2.5 text-right font-barlow text-[11px] font-bold uppercase tracking-widest tabular-nums">R</th>
+          <th className="px-2 py-2.5 text-right font-barlow text-[11px] font-bold uppercase tracking-widest tabular-nums">W</th>
+          <th className="px-2 py-2.5 text-right font-barlow text-[11px] font-bold uppercase tracking-widest tabular-nums">Econ</th>
+          <th className="px-2 py-2.5 text-right font-barlow text-[11px] font-bold uppercase tracking-widest tabular-nums">0s</th>
+          <th className="px-2 py-2.5 text-right font-barlow text-[11px] font-bold uppercase tracking-widest tabular-nums">4s</th>
+          <th className="px-4 py-2.5 text-right font-barlow text-[11px] font-bold uppercase tracking-widest tabular-nums">6s</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-border/40">
@@ -559,23 +559,23 @@ function BowlingTable({ bowling }: { bowling: BowlingLine[] }) {
 
 function BowlingTableRow({ b, zebra }: { b: BowlingLine; zebra: boolean }) {
   return (
-    <tr className={cn("hover:bg-muted/20", zebra && "bg-muted/10")}>
+    <tr className={cn("hover:bg-muted/30 transition-colors", zebra && "bg-muted/15")}>
       <td className="px-4 py-2.5 align-top">
         <div className="flex items-center gap-1.5">
           {b.isBowling && (
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-600 animate-pulse" />
           )}
-          <PlayerName name={b.name} playerId={b.playerId} className="font-semibold" />
+          <PlayerName name={b.name} playerId={b.playerId} className="font-barlow font-semibold tracking-tight" />
         </div>
       </td>
-      <td className="px-2 py-2.5 text-right align-top tabular-nums">{b.overs}</td>
-      <td className="px-2 py-2.5 text-right align-top tabular-nums text-muted-foreground">
+      <td className="px-2 py-2.5 text-right align-top font-barlow tabular-nums">{b.overs}</td>
+      <td className="px-2 py-2.5 text-right align-top font-barlow tabular-nums text-muted-foreground">
         {b.maidens}
       </td>
-      <td className="px-2 py-2.5 text-right align-top tabular-nums">
+      <td className="px-2 py-2.5 text-right align-top font-barlow tabular-nums">
         {b.runs}
       </td>
-      <td className="px-2 py-2.5 text-right align-top font-extrabold tabular-nums">
+      <td className="px-2 py-2.5 text-right align-top font-barlow text-base font-extrabold tabular-nums tracking-tight">
         {b.wickets}
       </td>
       <td className="px-2 py-2.5 text-right align-top tabular-nums text-muted-foreground">

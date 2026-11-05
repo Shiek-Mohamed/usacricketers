@@ -207,11 +207,11 @@ function BattingTable({
       <thead>
         <tr className="bg-[#1e2a5e] text-white">
           <th className="px-4 py-2.5 text-left font-display text-sm font-bold uppercase tracking-widest">Batsman</th>
-          <th className="px-2 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">R</th>
-          <th className="px-2 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">B</th>
-          <th className="px-2 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">4s</th>
-          <th className="px-2 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">6s</th>
-          <th className="px-2 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">SR</th>
+          <th className="px-3 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">R</th>
+          <th className="px-3 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">B</th>
+          <th className="px-3 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">4s</th>
+          <th className="px-3 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">6s</th>
+          <th className="px-3 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">SR</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-border/40">
@@ -256,19 +256,19 @@ function BattingTableRow({ b, index }: { b: BattingLine; index?: number }) {
       {/* All stat columns: SAME size (text-base), SAME weight (font-bold),
           SAME padding (px-2), SAME alignment (text-right align-middle).
           Consistent spacing + sizing across the entire row. */}
-      <td className="px-2 py-3 text-right align-middle font-display text-base font-bold tabular-nums">
+      <td className="px-3 py-3 text-right align-middle font-display text-base font-bold tabular-nums">
         {b.runs}
       </td>
-      <td className="px-2 py-3 text-right align-middle font-display text-base font-bold tabular-nums">
+      <td className="px-3 py-3 text-right align-middle font-display text-base font-bold tabular-nums">
         {b.balls}
       </td>
-      <td className="px-2 py-3 text-right align-middle font-display text-base font-bold tabular-nums">
+      <td className="px-3 py-3 text-right align-middle font-display text-base font-bold tabular-nums">
         {b.fours}
       </td>
-      <td className="px-2 py-3 text-right align-middle font-display text-base font-bold tabular-nums">
+      <td className="px-3 py-3 text-right align-middle font-display text-base font-bold tabular-nums">
         {b.sixes}
       </td>
-      <td className="px-2 py-3 text-right align-middle font-display text-base font-bold tabular-nums">
+      <td className="px-3 py-3 text-right align-middle font-display text-base font-bold tabular-nums">
         {b.strikeRate > 0 ? b.strikeRate.toFixed(1) : "—"}
       </td>
     </tr>
@@ -546,14 +546,14 @@ function BowlingTable({ bowling }: { bowling: BowlingLine[] }) {
       <thead>
         <tr className="bg-[#1e2a5e] text-white">
           <th className="px-4 py-2.5 text-left font-display text-sm font-bold uppercase tracking-widest">Bowler</th>
-          <th className="px-2 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">O</th>
-          <th className="px-2 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">M</th>
-          <th className="px-2 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">R</th>
-          <th className="px-2 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">W</th>
-          <th className="px-2 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">Econ</th>
-          <th className="px-2 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">0s</th>
-          <th className="px-2 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">4s</th>
-          <th className="px-2 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">6s</th>
+          <th className="px-3 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">O</th>
+          <th className="px-3 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">M</th>
+          <th className="px-3 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">R</th>
+          <th className="px-3 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">W</th>
+          <th className="px-3 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">Econ</th>
+          <th className="px-3 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">0s</th>
+          <th className="px-3 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">4s</th>
+          <th className="px-3 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">6s</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-border/40">
@@ -578,26 +578,26 @@ function BowlingTableRow({ b, zebra }: { b: BowlingLine; zebra: boolean }) {
       </td>
       {/* All stat columns: SAME size (text-base), SAME weight (font-bold),
           SAME padding (px-2 py-3), SAME alignment. Matches the batting row. */}
-      <td className="px-2 py-3 text-right align-middle font-display text-base font-bold tabular-nums">{b.overs}</td>
-      <td className="px-2 py-3 text-right align-middle font-display text-base font-bold tabular-nums">
+      <td className="px-3 py-3 text-right align-middle font-display text-base font-bold tabular-nums">{b.overs}</td>
+      <td className="px-3 py-3 text-right align-middle font-display text-base font-bold tabular-nums">
         {b.maidens}
       </td>
-      <td className="px-2 py-3 text-right align-middle font-display text-base font-bold tabular-nums">
+      <td className="px-3 py-3 text-right align-middle font-display text-base font-bold tabular-nums">
         {b.runs}
       </td>
-      <td className="px-2 py-3 text-right align-middle font-display text-base font-bold tabular-nums">
+      <td className="px-3 py-3 text-right align-middle font-display text-base font-bold tabular-nums">
         {b.wickets}
       </td>
-      <td className="px-2 py-3 text-right align-middle font-display text-base font-bold tabular-nums">
+      <td className="px-3 py-3 text-right align-middle font-display text-base font-bold tabular-nums">
         {b.economy > 0 ? b.economy.toFixed(2) : "—"}
       </td>
-      <td className="px-2 py-3 text-right align-middle font-display text-base font-bold tabular-nums">
+      <td className="px-3 py-3 text-right align-middle font-display text-base font-bold tabular-nums">
         {b.dots ?? 0}
       </td>
-      <td className="px-2 py-3 text-right align-middle font-display text-base font-bold tabular-nums">
+      <td className="px-3 py-3 text-right align-middle font-display text-base font-bold tabular-nums">
         {b.foursConceded ?? 0}
       </td>
-      <td className="px-2 py-3 text-right align-middle font-display text-base font-bold tabular-nums">
+      <td className="px-3 py-3 text-right align-middle font-display text-base font-bold tabular-nums">
         {b.sixesConceded ?? 0}
       </td>
     </tr>

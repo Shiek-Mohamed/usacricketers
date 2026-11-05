@@ -49,9 +49,9 @@ function InningsCard({
 
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-white">
-      {/* Innings header — pale blue band (ESPN Cricinfo style) with the
-          team name + score in black. Clean, light, airy. */}
-      <div className="flex items-center justify-between bg-[#cfe8fb] px-4 py-3 text-black">
+      {/* Innings header — pale red-to-blue gradient. Distinctive look that
+          doesn't copy any major cricket site. Text stays black for readability. */}
+      <div className="flex items-center justify-between bg-gradient-to-r from-red-100 to-blue-100 px-4 py-3 text-black">
         <div className="flex items-center gap-2">
           <TeamBadgeByName shortName={innings.teamShortName} size="sm" />
           <span className="font-display text-xl font-bold uppercase tracking-wide">

@@ -178,8 +178,19 @@ function BattingBlock({ innings }: { innings: Innings }) {
         />
       </div>
 
-      {/* Mobile: stacked rows */}
-      <div className="md:hidden divide-y divide-gray-100">
+      {/* Mobile: stacked rows with column headers matching the stat columns */}
+      <div className="md:hidden">
+        {/* Column header row — matches the stat column widths in BattingStackedRow */}
+        <div className="flex items-baseline gap-2 border-b border-gray-200 bg-[#f8f8f8] px-4 py-1.5">
+          <span className="flex-1 font-display text-xs font-bold uppercase tracking-widest text-gray-500">Batsman</span>
+          <div className="flex shrink-0 items-baseline font-display text-xs font-bold uppercase tracking-widest text-gray-500">
+            <span className="w-8 text-right">R</span>
+            <span className="w-8 text-right">B</span>
+            <span className="w-6 text-right">4s</span>
+            <span className="w-6 text-right">6s</span>
+            <span className="w-14 text-right">SR</span>
+          </div>
+        </div>
         {innings.batting.map((b, i) => (
           <BattingStackedRow key={i} b={b} innings={innings} />
         ))}
@@ -385,14 +396,14 @@ function BattingStackedRow({ b, innings }: { b: BattingLine; innings: Innings })
     )
   }
 
-  // Normal batsman row — two-line layout for mobile:
-  // Line 1: name (left) + runs (right, big)
-  // Line 2: dismissal (left, gray) + balls/4s/6s/SR (right, smaller)
+  // Normal batsman row — matches the reference mobile design:
+  // Line 1: name (left, bold) + ALL stats (R B 4s 6s SR) right-aligned in columns
+  // Line 2: dismissal only (gray, below name)
   return (
     <div className={cn("border-b border-gray-100 px-4 py-3", b.isBatting && "border-l-[3px] border-l-sky-500")}>
-      {/* Line 1: name + runs */}
-      <div className="flex items-baseline justify-between gap-3">
-        <div className="flex items-baseline gap-x-2 min-w-0">
+      {/* Line 1: name + all stats in right-aligned columns */}
+      <div className="flex items-baseline gap-2">
+        <div className="flex items-baseline gap-x-2 min-w-0 flex-1">
           {b.isBatting && (
             <span className="h-2 w-2 shrink-0 self-center rounded-full bg-red-600 animate-pulse" />
           )}
@@ -404,22 +415,20 @@ function BattingStackedRow({ b, innings }: { b: BattingLine; innings: Innings })
             className="font-display text-base font-bold text-black truncate"
           />
         </div>
-        <span className="font-display text-lg font-bold tabular-nums text-black shrink-0">{b.runs}</span>
-      </div>
-      {/* Line 2: dismissal + secondary stats */}
-      <div className="mt-1 flex items-baseline justify-between gap-3">
-        {b.dismissal ? (
-          <span className="text-sm text-gray-500 truncate">{b.dismissal}</span>
-        ) : (
-          <span />
-        )}
-        <div className="flex items-center gap-2 text-xs text-gray-700 shrink-0 font-display font-semibold tabular-nums">
-          <span>({b.balls})</span>
-          <span>{b.fours}×4</span>
-          <span>{b.sixes}×6</span>
-          <span>SR {b.strikeRate > 0 ? b.strikeRate.toFixed(1) : "—"}</span>
+        {/* Stats — fixed-width columns, right-aligned, regular weight (not bold).
+            The widths keep them aligned across all batsmen. */}
+        <div className="flex shrink-0 items-baseline font-display tabular-nums text-sm text-gray-900">
+          <span className="w-8 text-right">{b.runs}</span>
+          <span className="w-8 text-right">{b.balls}</span>
+          <span className="w-6 text-right">{b.fours}</span>
+          <span className="w-6 text-right">{b.sixes}</span>
+          <span className="w-14 text-right">{b.strikeRate > 0 ? b.strikeRate.toFixed(1) : "—"}</span>
         </div>
       </div>
+      {/* Line 2: dismissal only (gray, below name) */}
+      {b.dismissal && (
+        <div className="mt-1 text-sm text-gray-500 truncate pl-4">{b.dismissal}</div>
+      )}
     </div>
   )
 }

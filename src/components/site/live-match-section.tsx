@@ -4,6 +4,7 @@ import { useMemo } from "react"
 import { useLiveScore } from "@/lib/use-live-score"
 import { oversString, type LiveMatchState } from "@/lib/scoring"
 import { Radio, Wifi, WifiOff, ChevronRight, Trophy } from "lucide-react"
+import { CommentaryFeedRow } from "@/components/cricket/ball-chip"
 
 /* Commentary kind → color mapping (matches the live blog view) */
 const KIND_STYLES: Record<string, { dot: string; label: string; text: string; bg: string }> = {
@@ -142,36 +143,9 @@ export function LiveMatchSection({ matchId }: { matchId: string }) {
           </div>
           {recentCommentary.length > 0 ? (
             <div className="max-h-80 overflow-y-auto">
-              {recentCommentary.map((entry) => {
-                const style = KIND_STYLES[entry.kind] ?? KIND_STYLES.dot
-                const isAudio = entry.text.startsWith("[audio:")
-                const audioUrl = isAudio ? entry.text.slice(7, -1) : null
-                return (
-                  <div
-                    key={entry.id}
-                    className={`flex gap-2.5 border-b border-border/40 px-3 py-2 last:border-0 ${style.bg}`}
-                  >
-                    <span className="w-10 shrink-0 pt-0.5 text-right text-[11px] font-bold tabular-nums text-muted-foreground">
-                      {entry.over}
-                    </span>
-                    <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
-                    <div className="min-w-0 flex-1">
-                      {style.label && (
-                        <span className={`mr-1.5 text-[10px] font-bold uppercase tracking-wide ${style.text}`}>
-                          {style.label}
-                        </span>
-                      )}
-                      {isAudio && audioUrl ? (
-                        <audio controls src={audioUrl} className="h-8 w-full max-w-xs" preload="none" />
-                      ) : (
-                        <span className="text-[13px] leading-relaxed text-foreground">
-                          {entry.text}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
+              {recentCommentary.map((entry) => (
+                <CommentaryFeedRow key={entry.id} entry={entry} />
+              ))}
             </div>
           ) : (
             <div className="px-4 py-8 text-center text-[13px] text-muted-foreground">

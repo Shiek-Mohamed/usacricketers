@@ -9,6 +9,7 @@ import { TeamBadge, FormatPill, formatDate } from "@/components/cricket/ui"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ShareButtons } from "@/components/site/share-buttons"
+import { CommentaryFeedRow } from "@/components/cricket/ball-chip"
 import {
   Activity,
   Radio,
@@ -347,7 +348,7 @@ function CommentaryFeed({
       {/* Scrollable feed — max height with custom scrollbar */}
       <div className="max-h-[70vh] overflow-y-auto">
         {commentary.map((entry) => (
-          <CommentaryRow key={entry.id} entry={entry} />
+          <CommentaryFeedRow key={entry.id} entry={entry} />
         ))}
       </div>
     </div>

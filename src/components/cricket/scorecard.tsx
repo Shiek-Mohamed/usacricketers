@@ -51,7 +51,7 @@ function InningsCard({
     <div className="overflow-hidden rounded-lg border border-border bg-white">
       {/* Innings header — pale red-to-blue gradient. Distinctive look that
           doesn't copy any major cricket site. Text stays black for readability. */}
-      <div className="flex items-center justify-between bg-gradient-to-r from-red-100 to-blue-100 px-4 py-3 text-black">
+      <div className="flex items-center justify-between bg-gradient-to-r from-red-100 to-sky-100 px-4 py-3 text-black">
         <div className="flex items-center gap-2">
           <TeamBadgeByName shortName={innings.teamShortName} size="sm" />
           <span className="font-display text-xl font-bold uppercase tracking-wide">
@@ -239,7 +239,7 @@ function BattingTable({
 function BattingTableRow({ b }: { b: BattingLine }) {
   return (
     // No alternating colors. Current batsman gets a blue left border.
-    <tr className={cn("border-b border-gray-100", b.isBatting && "border-l-[3px] border-l-blue-500")}>
+    <tr className={cn("border-b border-gray-100", b.isBatting && "border-l-[3px] border-l-sky-500")}>
       <td className="px-4 py-3 align-middle">
         {/* Name on the left (bold black), dismissal positioned to the RIGHT
             with a gap — looks like a separate column. Dismissal in gray. */}

@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils"
 const KIND_STYLES: Record<string, { dot: string; text: string; label: string; bg: string }> = {
   wicket: { dot: "bg-red-500", text: "text-red-700 dark:text-red-400", label: "WICKET", bg: "bg-red-500/5" },
   six: { dot: "bg-purple-500", text: "text-purple-700 dark:text-purple-400", label: "SIX", bg: "bg-purple-500/5" },
-  boundary: { dot: "bg-blue-500", text: "text-blue-700 dark:text-blue-400", label: "FOUR", bg: "bg-blue-500/5" },
+  boundary: { dot: "bg-sky-500", text: "text-sky-700 dark:text-sky-400", label: "FOUR", bg: "bg-sky-500/5" },
   manual: { dot: "bg-emerald-500", text: "text-emerald-700 dark:text-emerald-400", label: "COMMENTARY", bg: "bg-emerald-500/5" },
   info: { dot: "bg-amber-500", text: "text-amber-700 dark:text-amber-400", label: "INFO", bg: "bg-amber-500/5" },
   over: { dot: "bg-slate-400", text: "text-slate-600 dark:text-slate-400", label: "OVER", bg: "bg-slate-500/5" },

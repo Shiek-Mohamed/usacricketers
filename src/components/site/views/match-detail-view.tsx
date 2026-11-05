@@ -202,7 +202,7 @@ function ballPillStyle(entry: CommentaryItem): {
   const k = entry.kind
   if (k === "wicket") return { cls: "bg-red-600 text-white", label: "W" }
   if (k === "six") return { cls: "bg-purple-600 text-white", label: "6" }
-  if (k === "boundary") return { cls: "bg-blue-600 text-white", label: "4" }
+  if (k === "boundary") return { cls: "bg-sky-600 text-white", label: "4" }
   if (k === "extra") {
     // Distinguish wide vs noball from the text when possible.
     const t = entry.text.toLowerCase()
@@ -468,7 +468,7 @@ function commentaryColors(kind: string): {
     case "six":
       return { badge: "bg-purple-600 text-white", text: "font-semibold text-purple-700 dark:text-purple-300" }
     case "boundary":
-      return { badge: "bg-blue-600 text-white", text: "font-semibold text-blue-700 dark:text-blue-300" }
+      return { badge: "bg-sky-600 text-white", text: "font-semibold text-sky-700 dark:text-sky-300" }
     case "extra":
       return { badge: "bg-amber-500 text-amber-950", text: "text-amber-700 dark:text-amber-300" }
     case "run":
@@ -482,9 +482,9 @@ function commentaryColors(kind: string): {
     case "manual":
       // Commentator entry — blue accent + left border to distinguish
       return {
-        badge: "bg-blue-600 text-white",
+        badge: "bg-sky-600 text-white",
         text: "text-foreground",
-        border: "border-l-2 border-blue-500 pl-2",
+        border: "border-l-2 border-sky-500 pl-2",
       }
     default:
       return { badge: "bg-muted text-muted-foreground", text: "text-foreground" }
@@ -602,13 +602,13 @@ function CommentaryFeed({
                     </span>
                     <span className={cn("min-w-0 flex-1 leading-snug", colors.text)}>
                       {isManual && (
-                        <span className="mr-1 inline-block rounded bg-blue-600 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white align-middle">
+                        <span className="mr-1 inline-block rounded bg-sky-600 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white align-middle">
                           Commentator
                         </span>
                       )}
                       {entry.text.startsWith("[audio:") ? (
                         <span className="flex flex-wrap items-center gap-2">
-                          <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400">
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-sky-600 dark:text-sky-400">
                             <Mic className="h-3 w-3" />
                             Voice commentary
                           </span>

@@ -541,8 +541,19 @@ function BowlingBlock({ innings }: { innings: Innings }) {
       <div className="hidden md:block">
         <BowlingTable bowling={innings.bowling} />
       </div>
-      {/* Mobile: stacked rows */}
-      <div className="md:hidden divide-y divide-border/40 border-t">
+      {/* Mobile: stacked rows with column headers matching the stat columns */}
+      <div className="md:hidden">
+        {/* Column header row — O M R W ECON */}
+        <div className="flex items-baseline gap-2 border-b border-gray-200 bg-[#f8f8f8] px-4 py-1.5">
+          <span className="flex-1 font-display text-xs font-bold uppercase tracking-widest text-gray-500">Bowler</span>
+          <div className="flex shrink-0 items-baseline font-display text-xs font-bold uppercase tracking-widest text-gray-500">
+            <span className="w-10 text-right">O</span>
+            <span className="w-6 text-right">M</span>
+            <span className="w-8 text-right">R</span>
+            <span className="w-6 text-right">W</span>
+            <span className="w-12 text-right">Econ</span>
+          </div>
+        </div>
         {innings.bowling.map((b, i) => (
           <BowlingStackedRow key={i} b={b} zebra={i % 2 === 1} />
         ))}
@@ -617,10 +628,12 @@ function BowlingTableRow({ b, zebra }: { b: BowlingLine; zebra: boolean }) {
 
 function BowlingStackedRow({ b, zebra }: { b: BowlingLine; zebra: boolean }) {
   return (
+    // Single line: name (left, bold) + O M R W ECON (right, fixed columns).
+    // Wickets is bold (the key stat); others regular weight. Matches the
+    // reference mobile bowling design.
     <div className={cn("border-b border-gray-100 px-4 py-3", b.isBowling && "border-l-[3px] border-l-sky-500")}>
-      {/* Line 1: name (left) + wickets/runs (right) */}
-      <div className="flex items-baseline justify-between gap-3">
-        <div className="flex items-baseline gap-x-2 min-w-0">
+      <div className="flex items-baseline gap-2">
+        <div className="flex items-baseline gap-x-2 min-w-0 flex-1">
           {b.isBowling && (
             <span className="h-2 w-2 shrink-0 self-center rounded-full bg-red-600 animate-pulse" />
           )}
@@ -630,21 +643,14 @@ function BowlingStackedRow({ b, zebra }: { b: BowlingLine; zebra: boolean }) {
             className="font-display text-base font-bold text-black truncate"
           />
         </div>
-        <div className="shrink-0 font-display tabular-nums">
-          <span className="text-lg font-bold text-black">{b.wickets}</span>
-          <span className="text-sm text-gray-500">/{b.runs}</span>
-        </div>
-      </div>
-      {/* Line 2: overs/maidens (left) + econ/dots (right) */}
-      <div className="mt-1 flex items-baseline justify-between gap-3">
-        <span className="text-sm text-gray-500 font-display font-semibold tabular-nums">
-          {b.overs} ov{b.maidens > 0 && ` · ${b.maidens}m`}
-        </span>
-        <div className="flex items-center gap-2 text-xs text-gray-700 shrink-0 font-display font-semibold tabular-nums">
-          <span>Econ {b.economy > 0 ? b.economy.toFixed(2) : "—"}</span>
-          {b.dots !== undefined && b.dots > 0 && <span>{b.dots} 0s</span>}
-          {b.foursConceded !== undefined && b.foursConceded > 0 && <span>{b.foursConceded}×4</span>}
-          {b.sixesConceded !== undefined && b.sixesConceded > 0 && <span>{b.sixesConceded}×6</span>}
+        {/* Stats — fixed-width columns matching the header row.
+            Wickets is bold; others regular weight. */}
+        <div className="flex shrink-0 items-baseline font-display tabular-nums text-sm text-gray-900">
+          <span className="w-10 text-right">{b.overs}</span>
+          <span className="w-6 text-right">{b.maidens}</span>
+          <span className="w-8 text-right">{b.runs}</span>
+          <span className="w-6 text-right font-bold text-black">{b.wickets}</span>
+          <span className="w-12 text-right">{b.economy > 0 ? b.economy.toFixed(2) : "—"}</span>
         </div>
       </div>
     </div>

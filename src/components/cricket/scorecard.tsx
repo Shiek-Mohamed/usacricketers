@@ -53,10 +53,10 @@ function InningsCard({
       <div className="flex items-center justify-between bg-[#1e2a5e] px-4 py-3 text-white">
         <div className="flex items-center gap-2">
           <TeamBadgeByName shortName={innings.teamShortName} size="sm" />
-          <span className="font-display text-sm font-bold uppercase tracking-wide">
+          <span className="font-display text-xl font-bold uppercase tracking-wide">
             {innings.teamShortName}
           </span>
-          <span className="font-display text-xs font-medium uppercase tracking-wide text-white/60">{ordinal} innings</span>
+          <span className="font-display text-sm font-semibold uppercase tracking-wide text-white/60">{ordinal} innings</span>
         </div>
         <span className="font-display text-2xl font-black leading-none tabular-nums tracking-tight sm:text-3xl">
           {innings.totalRuns}<span className="text-white/60">/{innings.totalWickets}</span>

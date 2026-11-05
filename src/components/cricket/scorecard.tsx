@@ -357,70 +357,69 @@ function BattingTotalRow({
 function BattingStackedRow({ b, innings }: { b: BattingLine; innings: Innings }) {
   const extras = isExtrasRow(b.name)
   const total = isTotalRow(b.name)
-  const notOut = b.dismissal?.toLowerCase().includes("not out")
 
+  // Extras + Total rows — styled to match the desktop clean look
+  if (extras || total) {
+    return (
+      <div className={cn("px-4 py-3", total ? "bg-[#f1f1f1] border-t border-gray-200" : "border-b border-gray-100")}>
+        <div className="flex items-baseline justify-between gap-3">
+          <div className="flex items-baseline gap-x-3 min-w-0">
+            <span className="font-display text-base font-bold text-black">{b.name}</span>
+            {extras && innings.extrasBreakdown && (
+              <span className="text-sm text-gray-500">({buildExtrasBreakdownString(innings.extrasBreakdown)})</span>
+            )}
+            {total && (() => {
+              const rr = computeRunRate(innings)
+              return rr && <span className="text-sm text-gray-600 font-medium">{innings.totalOvers} Ov (RR: {rr})</span>
+            })()}
+          </div>
+          {total ? (
+            <span className="font-display text-lg font-black tabular-nums text-black shrink-0">
+              {innings.totalRuns}/{innings.totalWickets}
+            </span>
+          ) : (
+            <span className="font-display text-base font-bold tabular-nums text-black shrink-0">{b.runs}</span>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // Normal batsman row — two-line layout for mobile:
+  // Line 1: name (left) + runs (right, big)
+  // Line 2: dismissal (left, gray) + balls/4s/6s/SR (right, smaller)
   return (
-    <div
-      className={cn(
-        "flex items-start justify-between gap-3 px-4 py-2.5",
-        extras && "bg-muted/20",
-        total && "bg-muted/30 font-bold"
-      )}
-    >
-      {/* Left: name + dismissal */}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          {b.isBatting && !extras && !total && (
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-600 animate-pulse" />
+    <div className={cn("border-b border-gray-100 px-4 py-3", b.isBatting && "border-l-[3px] border-l-sky-500")}>
+      {/* Line 1: name + runs */}
+      <div className="flex items-baseline justify-between gap-3">
+        <div className="flex items-baseline gap-x-2 min-w-0">
+          {b.isBatting && (
+            <span className="h-2 w-2 shrink-0 self-center rounded-full bg-red-600 animate-pulse" />
           )}
           <PlayerName
             name={b.name}
             playerId={b.playerId}
             isCaptain={b.isCaptain}
             isKeeper={b.isKeeper}
-            className={cn(!extras && !total && "font-semibold text-sm")}
+            className="font-display text-base font-bold text-black truncate"
           />
         </div>
-        {!extras && !total && b.dismissal && (
-          <div className="mt-0.5 pl-3 text-xs text-foreground">
-            {b.dismissal}
-          </div>
-        )}
-        {extras && innings.extrasBreakdown && (
-          <div className="mt-0.5 text-xs text-foreground">
-            ({buildExtrasBreakdownString(innings.extrasBreakdown)})
-          </div>
-        )}
+        <span className="font-display text-lg font-bold tabular-nums text-black shrink-0">{b.runs}</span>
       </div>
-
-      {/* Right: stats */}
-      {!extras && !total ? (
-        <div className="flex shrink-0 items-baseline gap-3">
-          <span className="text-lg font-extrabold tabular-nums">{b.runs}</span>
-          <span className="text-xs text-foreground tabular-nums">
-            ({b.balls})
-          </span>
-          <div className="flex items-center gap-2 text-sm text-foreground">
-            <span className="tabular-nums">{b.fours}×4</span>
-            <span className="tabular-nums">{b.sixes}×6</span>
-            <span className="tabular-nums">
-              SR {b.strikeRate > 0 ? b.strikeRate.toFixed(1) : "—"}
-            </span>
-          </div>
+      {/* Line 2: dismissal + secondary stats */}
+      <div className="mt-1 flex items-baseline justify-between gap-3">
+        {b.dismissal ? (
+          <span className="text-sm text-gray-500 truncate">{b.dismissal}</span>
+        ) : (
+          <span />
+        )}
+        <div className="flex items-center gap-2 text-xs text-gray-700 shrink-0 font-display font-semibold tabular-nums">
+          <span>({b.balls})</span>
+          <span>{b.fours}×4</span>
+          <span>{b.sixes}×6</span>
+          <span>SR {b.strikeRate > 0 ? b.strikeRate.toFixed(1) : "—"}</span>
         </div>
-      ) : (
-        <div className="shrink-0 text-right">
-          <span className="font-bold tabular-nums">{b.runs}</span>
-          {total && (
-            <span className="ml-1.5 text-xs font-normal text-foreground tabular-nums">
-              ({innings.totalOvers} ov, RR {(() => {
-                const overs = parseFloat(innings.totalOvers) || 0
-                return overs > 0 ? (innings.totalRuns / overs).toFixed(2) : "0.00"
-              })()})
-            </span>
-          )}
-        </div>
-      )}
+      </div>
     </div>
   )
 }
@@ -428,13 +427,13 @@ function BattingStackedRow({ b, innings }: { b: BattingLine; innings: Innings })
 function BattingStackedTotalRow({ innings }: { innings: Innings }) {
   const runRate = computeRunRate(innings)
   return (
-    <div className="flex items-center justify-between bg-muted/30 px-4 py-2.5 font-bold">
-      <span>Total</span>
-      <span className="tabular-nums">
+    <div className="flex items-baseline justify-between bg-[#f1f1f1] border-t border-gray-200 px-4 py-3">
+      <div className="flex items-baseline gap-x-3">
+        <span className="font-display text-base font-bold text-black">Total</span>
+        {runRate && <span className="text-sm text-gray-600 font-medium">{innings.totalOvers} Ov (RR: {runRate})</span>}
+      </div>
+      <span className="font-display text-lg font-black tabular-nums text-black">
         {innings.totalRuns}/{innings.totalWickets}
-        <span className="ml-1.5 text-xs font-normal text-foreground">
-          ({innings.totalOvers} ov{runRate && `, RR ${runRate}`})
-        </span>
       </span>
     </div>
   )
@@ -609,56 +608,34 @@ function BowlingTableRow({ b, zebra }: { b: BowlingLine; zebra: boolean }) {
 
 function BowlingStackedRow({ b, zebra }: { b: BowlingLine; zebra: boolean }) {
   return (
-    <div
-      className={cn(
-        "flex items-start justify-between gap-3 px-4 py-2.5",
-        zebra && "bg-muted/15"
-      )}
-    >
-      {/* Left: bowler name */}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
+    <div className={cn("border-b border-gray-100 px-4 py-3", b.isBowling && "border-l-[3px] border-l-sky-500")}>
+      {/* Line 1: name (left) + wickets/runs (right) */}
+      <div className="flex items-baseline justify-between gap-3">
+        <div className="flex items-baseline gap-x-2 min-w-0">
           {b.isBowling && (
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-600 animate-pulse" />
+            <span className="h-2 w-2 shrink-0 self-center rounded-full bg-red-600 animate-pulse" />
           )}
           <PlayerName
             name={b.name}
             playerId={b.playerId}
-            className="font-semibold text-sm"
+            className="font-display text-base font-bold text-black truncate"
           />
         </div>
-        <div className="mt-0.5 pl-3 text-xs text-foreground tabular-nums">
-          {b.overs} ov · {b.maidens} maidens
+        <div className="shrink-0 font-display tabular-nums">
+          <span className="text-lg font-bold text-black">{b.wickets}</span>
+          <span className="text-sm text-gray-500">/{b.runs}</span>
         </div>
       </div>
-
-      {/* Right: key figures */}
-      <div className="flex shrink-0 items-baseline gap-3">
-        <div className="text-right">
-          <span className="text-lg font-extrabold tabular-nums">{b.wickets}</span>
-          <span className="text-xs text-foreground">/</span>
-          <span className="text-sm font-semibold tabular-nums">{b.runs}</span>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-foreground">
-          <span className="tabular-nums">
-            Econ {b.economy > 0 ? b.economy.toFixed(2) : "—"}
-          </span>
-          {b.dots !== undefined && b.dots > 0 && (
-            <span className="tabular-nums">{b.dots} 0s</span>
-          )}
-          {b.foursConceded !== undefined && b.foursConceded > 0 && (
-            <span className="tabular-nums">{b.foursConceded}×4</span>
-          )}
-          {b.sixesConceded !== undefined && b.sixesConceded > 0 && (
-            <span className="tabular-nums">{b.sixesConceded}×6</span>
-          )}
-          {(b.wides > 0 || b.noballs > 0) && (
-            <span className="tabular-nums">
-              {b.wides > 0 && `${b.wides}wd`}
-              {b.wides > 0 && b.noballs > 0 && " "}
-              {b.noballs > 0 && `${b.noballs}nb`}
-            </span>
-          )}
+      {/* Line 2: overs/maidens (left) + econ/dots (right) */}
+      <div className="mt-1 flex items-baseline justify-between gap-3">
+        <span className="text-sm text-gray-500 font-display font-semibold tabular-nums">
+          {b.overs} ov{b.maidens > 0 && ` · ${b.maidens}m`}
+        </span>
+        <div className="flex items-center gap-2 text-xs text-gray-700 shrink-0 font-display font-semibold tabular-nums">
+          <span>Econ {b.economy > 0 ? b.economy.toFixed(2) : "—"}</span>
+          {b.dots !== undefined && b.dots > 0 && <span>{b.dots} 0s</span>}
+          {b.foursConceded !== undefined && b.foursConceded > 0 && <span>{b.foursConceded}×4</span>}
+          {b.sixesConceded !== undefined && b.sixesConceded > 0 && <span>{b.sixesConceded}×6</span>}
         </div>
       </div>
     </div>

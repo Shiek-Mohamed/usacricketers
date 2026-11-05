@@ -12,7 +12,7 @@ export function ScorecardView({ scorecard }: { scorecard: Scorecard }) {
   if (!scorecard.innings?.length) {
     return (
       <div className="rounded-lg border bg-card p-6 text-center">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-foreground">
           Scorecard not yet available.
         </p>
       </div>
@@ -113,8 +113,8 @@ function PlayerName({
   const decorated = (
     <>
       {name}
-      {isKeeper && <span className="ml-0.5 text-muted-foreground">†</span>}
-      {isCaptain && <span className="ml-0.5 text-muted-foreground">(c)</span>}
+      {isKeeper && <span className="ml-0.5 text-foreground">†</span>}
+      {isCaptain && <span className="ml-0.5 text-foreground">(c)</span>}
     </>
   )
   // Render as a real `<a href="/players/${id}">` so the link deep-links to the
@@ -206,12 +206,12 @@ function BattingTable({
     <table className="w-full border-collapse text-sm">
       <thead>
         <tr className="bg-[#1e2a5e] text-white">
-          <th className="px-4 py-2.5 text-left font-display text-base font-bold uppercase tracking-widest">Batsman</th>
-          <th className="px-2 py-2.5 text-right font-display text-base font-bold uppercase tracking-widest tabular-nums">R</th>
-          <th className="px-2 py-2.5 text-right font-display text-base font-bold uppercase tracking-widest tabular-nums">B</th>
-          <th className="px-2 py-2.5 text-right font-display text-base font-bold uppercase tracking-widest tabular-nums">4s</th>
-          <th className="px-2 py-2.5 text-right font-display text-base font-bold uppercase tracking-widest tabular-nums">6s</th>
-          <th className="px-4 py-2.5 text-right font-display text-base font-bold uppercase tracking-widest tabular-nums">SR</th>
+          <th className="px-4 py-2.5 text-left font-display text-sm font-bold uppercase tracking-widest">Batsman</th>
+          <th className="px-2 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">R</th>
+          <th className="px-2 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">B</th>
+          <th className="px-2 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">4s</th>
+          <th className="px-2 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">6s</th>
+          <th className="px-4 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">SR</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-border/40">
@@ -248,7 +248,7 @@ function BattingTableRow({ b, index }: { b: BattingLine; index?: number }) {
             className="font-display text-base font-bold tracking-tight whitespace-nowrap"
           />
           {b.dismissal && (
-            <span className="text-sm text-muted-foreground truncate">
+            <span className="text-sm text-foreground truncate">
               {b.dismissal}
             </span>
           )}
@@ -257,16 +257,16 @@ function BattingTableRow({ b, index }: { b: BattingLine; index?: number }) {
       <td className="px-2 py-2.5 text-right align-top font-display text-base font-extrabold tabular-nums tracking-tight">
         {b.runs}
       </td>
-      <td className="px-2 py-2.5 text-right align-top font-display tabular-nums text-muted-foreground">
+      <td className="px-2 py-2.5 text-right align-top font-display tabular-nums text-foreground">
         {b.balls}
       </td>
-      <td className="px-2 py-2.5 text-right align-top font-display tabular-nums text-muted-foreground">
+      <td className="px-2 py-2.5 text-right align-top font-display tabular-nums text-foreground">
         {b.fours}
       </td>
-      <td className="px-2 py-2.5 text-right align-top font-display tabular-nums text-muted-foreground">
+      <td className="px-2 py-2.5 text-right align-top font-display tabular-nums text-foreground">
         {b.sixes}
       </td>
-      <td className="px-4 py-2.5 text-right align-top font-display tabular-nums text-muted-foreground">
+      <td className="px-4 py-2.5 text-right align-top font-display tabular-nums text-foreground">
         {b.strikeRate > 0 ? b.strikeRate.toFixed(1) : "—"}
       </td>
     </tr>
@@ -297,7 +297,7 @@ function BattingExtrasRow({
       <td className="px-4 py-2.5 align-top">
         <div className="font-medium">Extras</div>
         {breakdown && (
-          <div className="mt-0.5 text-xs text-muted-foreground">
+          <div className="mt-0.5 text-xs text-foreground">
             ({breakdown})
           </div>
         )}
@@ -329,19 +329,19 @@ function BattingTotalRow({
       <td className="px-4 py-2.5 align-top">
         <div className="font-display font-bold tracking-tight">{label}</div>
         {runRate && (
-          <div className="mt-0.5 font-display text-xs font-normal text-muted-foreground">
+          <div className="mt-0.5 font-display text-xs font-normal text-foreground">
             RR {runRate}
           </div>
         )}
       </td>
       <td className="px-2 py-2.5 text-right align-top font-display text-base font-black tabular-nums tracking-tight">
-        {innings.totalRuns}<span className="text-muted-foreground">/{innings.totalWickets}</span>
+        {innings.totalRuns}<span className="text-foreground">/{innings.totalWickets}</span>
         {innings.declared && <span className="text-sm">d</span>}
       </td>
       <td className="px-2 py-2.5" />
       <td className="px-2 py-2.5" />
       <td className="px-2 py-2.5" />
-      <td className="px-4 py-2.5 text-right align-top text-xs font-normal text-muted-foreground tabular-nums">
+      <td className="px-4 py-2.5 text-right align-top text-xs font-normal text-foreground tabular-nums">
         ({innings.totalOvers} ov)
       </td>
     </tr>
@@ -378,12 +378,12 @@ function BattingStackedRow({ b, innings }: { b: BattingLine; innings: Innings })
           />
         </div>
         {!extras && !total && b.dismissal && (
-          <div className="mt-0.5 pl-3 text-xs text-muted-foreground">
+          <div className="mt-0.5 pl-3 text-xs text-foreground">
             {b.dismissal}
           </div>
         )}
         {extras && innings.extrasBreakdown && (
-          <div className="mt-0.5 text-xs text-muted-foreground">
+          <div className="mt-0.5 text-xs text-foreground">
             ({buildExtrasBreakdownString(innings.extrasBreakdown)})
           </div>
         )}
@@ -393,10 +393,10 @@ function BattingStackedRow({ b, innings }: { b: BattingLine; innings: Innings })
       {!extras && !total ? (
         <div className="flex shrink-0 items-baseline gap-3">
           <span className="text-lg font-extrabold tabular-nums">{b.runs}</span>
-          <span className="text-xs text-muted-foreground tabular-nums">
+          <span className="text-xs text-foreground tabular-nums">
             ({b.balls})
           </span>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm text-foreground">
             <span className="tabular-nums">{b.fours}×4</span>
             <span className="tabular-nums">{b.sixes}×6</span>
             <span className="tabular-nums">
@@ -408,7 +408,7 @@ function BattingStackedRow({ b, innings }: { b: BattingLine; innings: Innings })
         <div className="shrink-0 text-right">
           <span className="font-bold tabular-nums">{b.runs}</span>
           {total && (
-            <span className="ml-1.5 text-xs font-normal text-muted-foreground tabular-nums">
+            <span className="ml-1.5 text-xs font-normal text-foreground tabular-nums">
               ({innings.totalOvers} ov, RR {(() => {
                 const overs = parseFloat(innings.totalOvers) || 0
                 return overs > 0 ? (innings.totalRuns / overs).toFixed(2) : "0.00"
@@ -428,7 +428,7 @@ function BattingStackedTotalRow({ innings }: { innings: Innings }) {
       <span>Total</span>
       <span className="tabular-nums">
         {innings.totalRuns}/{innings.totalWickets}
-        <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+        <span className="ml-1.5 text-xs font-normal text-foreground">
           ({innings.totalOvers} ov{runRate && `, RR ${runRate}`})
         </span>
       </span>
@@ -454,10 +454,10 @@ function DidNotBat({
 }) {
   return (
     <div className="px-4 py-2.5 text-sm">
-      <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+      <span className="text-xs font-bold uppercase tracking-wide text-foreground">
         Did not bat:{" "}
       </span>
-      <span className="text-muted-foreground">
+      <span className="text-foreground">
         {didNotBat.map((p, i) => (
           <span key={i}>
             {i > 0 && ", "}
@@ -478,14 +478,14 @@ function DidNotBat({
 function FallOfWickets({ fow }: { fow: string[] }) {
   return (
     <div className="border-b border-border/60 px-4 py-2.5">
-      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-foreground">
         Fall of Wickets
       </div>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
         {fow.map((w, i) => (
           <span key={i} className="inline-flex items-center gap-2">
-            {i > 0 && <span className="text-muted-foreground/40">,</span>}
-            <span className="tabular-nums text-muted-foreground">{w}</span>
+            {i > 0 && <span className="text-foreground/40">,</span>}
+            <span className="tabular-nums text-foreground">{w}</span>
           </span>
         ))}
       </div>
@@ -498,14 +498,14 @@ function FallOfWickets({ fow }: { fow: string[] }) {
 function Partnerships({ partnerships }: { partnerships: string[] }) {
   return (
     <div className="border-b border-border/60 px-4 py-2.5">
-      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-foreground">
         Partnerships
       </div>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
         {partnerships.map((p, i) => (
           <span key={i} className="inline-flex items-center gap-2">
-            {i > 0 && <span className="text-muted-foreground/40">,</span>}
-            <span className="tabular-nums text-muted-foreground">{p}</span>
+            {i > 0 && <span className="text-foreground/40">,</span>}
+            <span className="tabular-nums text-foreground">{p}</span>
           </span>
         ))}
       </div>
@@ -540,15 +540,15 @@ function BowlingTable({ bowling }: { bowling: BowlingLine[] }) {
     <table className="w-full border-collapse text-sm">
       <thead>
         <tr className="bg-[#1e2a5e] text-white">
-          <th className="px-4 py-2.5 text-left font-display text-base font-bold uppercase tracking-widest">Bowler</th>
-          <th className="px-2 py-2.5 text-right font-display text-base font-bold uppercase tracking-widest tabular-nums">O</th>
-          <th className="px-2 py-2.5 text-right font-display text-base font-bold uppercase tracking-widest tabular-nums">M</th>
-          <th className="px-2 py-2.5 text-right font-display text-base font-bold uppercase tracking-widest tabular-nums">R</th>
-          <th className="px-2 py-2.5 text-right font-display text-base font-bold uppercase tracking-widest tabular-nums">W</th>
-          <th className="px-2 py-2.5 text-right font-display text-base font-bold uppercase tracking-widest tabular-nums">Econ</th>
-          <th className="px-2 py-2.5 text-right font-display text-base font-bold uppercase tracking-widest tabular-nums">0s</th>
-          <th className="px-2 py-2.5 text-right font-display text-base font-bold uppercase tracking-widest tabular-nums">4s</th>
-          <th className="px-4 py-2.5 text-right font-display text-base font-bold uppercase tracking-widest tabular-nums">6s</th>
+          <th className="px-4 py-2.5 text-left font-display text-sm font-bold uppercase tracking-widest">Bowler</th>
+          <th className="px-2 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">O</th>
+          <th className="px-2 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">M</th>
+          <th className="px-2 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">R</th>
+          <th className="px-2 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">W</th>
+          <th className="px-2 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">Econ</th>
+          <th className="px-2 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">0s</th>
+          <th className="px-2 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">4s</th>
+          <th className="px-4 py-2.5 text-right font-display text-sm font-bold uppercase tracking-widest tabular-nums">6s</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-border/40">
@@ -571,26 +571,26 @@ function BowlingTableRow({ b, zebra }: { b: BowlingLine; zebra: boolean }) {
           <PlayerName name={b.name} playerId={b.playerId} className="font-display text-base font-bold tracking-tight whitespace-nowrap" />
         </div>
       </td>
-      <td className="px-2 py-2.5 text-right align-top font-display tabular-nums text-muted-foreground">{b.overs}</td>
-      <td className="px-2 py-2.5 text-right align-top font-display tabular-nums text-muted-foreground">
+      <td className="px-2 py-2.5 text-right align-top font-display tabular-nums text-foreground">{b.overs}</td>
+      <td className="px-2 py-2.5 text-right align-top font-display tabular-nums text-foreground">
         {b.maidens}
       </td>
-      <td className="px-2 py-2.5 text-right align-top font-display tabular-nums text-muted-foreground">
+      <td className="px-2 py-2.5 text-right align-top font-display tabular-nums text-foreground">
         {b.runs}
       </td>
       <td className="px-2 py-2.5 text-right align-top font-display text-base font-extrabold tabular-nums tracking-tight">
         {b.wickets}
       </td>
-      <td className="px-2 py-2.5 text-right align-top font-display tabular-nums text-muted-foreground">
+      <td className="px-2 py-2.5 text-right align-top font-display tabular-nums text-foreground">
         {b.economy > 0 ? b.economy.toFixed(2) : "—"}
       </td>
-      <td className="px-2 py-2.5 text-right align-top font-display tabular-nums text-muted-foreground">
+      <td className="px-2 py-2.5 text-right align-top font-display tabular-nums text-foreground">
         {b.dots ?? 0}
       </td>
-      <td className="px-2 py-2.5 text-right align-top font-display tabular-nums text-muted-foreground">
+      <td className="px-2 py-2.5 text-right align-top font-display tabular-nums text-foreground">
         {b.foursConceded ?? 0}
       </td>
-      <td className="px-4 py-2.5 text-right align-top font-display tabular-nums text-muted-foreground">
+      <td className="px-4 py-2.5 text-right align-top font-display tabular-nums text-foreground">
         {b.sixesConceded ?? 0}
       </td>
     </tr>
@@ -617,7 +617,7 @@ function BowlingStackedRow({ b, zebra }: { b: BowlingLine; zebra: boolean }) {
             className="font-semibold text-sm"
           />
         </div>
-        <div className="mt-0.5 pl-3 text-xs text-muted-foreground tabular-nums">
+        <div className="mt-0.5 pl-3 text-xs text-foreground tabular-nums">
           {b.overs} ov · {b.maidens} maidens
         </div>
       </div>
@@ -626,10 +626,10 @@ function BowlingStackedRow({ b, zebra }: { b: BowlingLine; zebra: boolean }) {
       <div className="flex shrink-0 items-baseline gap-3">
         <div className="text-right">
           <span className="text-lg font-extrabold tabular-nums">{b.wickets}</span>
-          <span className="text-xs text-muted-foreground">/</span>
+          <span className="text-xs text-foreground">/</span>
           <span className="text-sm font-semibold tabular-nums">{b.runs}</span>
         </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm text-foreground">
           <span className="tabular-nums">
             Econ {b.economy > 0 ? b.economy.toFixed(2) : "—"}
           </span>

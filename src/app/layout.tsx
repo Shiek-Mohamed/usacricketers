@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Teko } from "next/font/google";
+import { Geist, Geist_Mono, Rajdhani } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
@@ -15,12 +15,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Teko — a condensed, technical font with a digital scoreboard feel.
-// Used for scores, team names, and section headings. Crisp numbers that
-// look like stadium LED scoreboards. Loaded alongside Geist (body text).
+// Rajdhani — a semi-condensed, technical/sporty font. Modern, slightly
+// squared letterforms — a middle ground between "tech dashboard" and
+// "sports broadcast". Less condensed than Barlow/Teko, so it reads cleaner
+// at small sizes while still feeling sporty. Loaded alongside Geist (body).
 // To swap fonts later, only this import needs to change — components use
 // the generic `font-display` Tailwind class.
-const displayFont = Teko({
+const displayFont = Rajdhani({
   variable: "--font-display",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],

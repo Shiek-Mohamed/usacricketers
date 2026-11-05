@@ -235,7 +235,7 @@ function BattingTableRow({ b, index }: { b: BattingLine; index?: number }) {
       <td className="px-4 py-2.5 align-top">
         {/* Name + dismissal on the SAME line — the dismissal (e.g.
             "c Maxwell b Zampa") sits inline after the name in a lighter,
-            italic style. Truncates if the column is too narrow. */}
+            muted style. Truncates if the column is too narrow. */}
         <div className="flex items-baseline gap-x-2 min-w-0">
           {b.isBatting && (
             <span className="h-2 w-2 shrink-0 self-center rounded-full bg-red-600 animate-pulse" />
@@ -248,7 +248,7 @@ function BattingTableRow({ b, index }: { b: BattingLine; index?: number }) {
             className="font-barlow text-base font-bold tracking-tight whitespace-nowrap"
           />
           {b.dismissal && (
-            <span className="text-sm italic text-muted-foreground truncate">
+            <span className="text-sm text-muted-foreground truncate">
               {b.dismissal}
             </span>
           )}
@@ -293,11 +293,11 @@ function BattingExtrasRow({
   const breakdown = parts.length > 0 ? parts.join(", ") : null
 
   return (
-    <tr className="bg-muted/15 italic">
+    <tr className="bg-muted/15">
       <td className="px-4 py-2.5 align-top">
         <div className="font-medium">Extras</div>
         {breakdown && (
-          <div className="mt-0.5 text-xs not-italic text-muted-foreground">
+          <div className="mt-0.5 text-xs text-muted-foreground">
             ({breakdown})
           </div>
         )}
@@ -359,7 +359,7 @@ function BattingStackedRow({ b, innings }: { b: BattingLine; innings: Innings })
     <div
       className={cn(
         "flex items-start justify-between gap-3 px-4 py-2.5",
-        extras && "bg-muted/20 italic",
+        extras && "bg-muted/20",
         total && "bg-muted/30 font-bold"
       )}
     >
@@ -378,12 +378,12 @@ function BattingStackedRow({ b, innings }: { b: BattingLine; innings: Innings })
           />
         </div>
         {!extras && !total && b.dismissal && (
-          <div className="mt-0.5 pl-3 text-xs italic text-muted-foreground">
+          <div className="mt-0.5 pl-3 text-xs text-muted-foreground">
             {b.dismissal}
           </div>
         )}
         {extras && innings.extrasBreakdown && (
-          <div className="mt-0.5 text-xs not-italic text-muted-foreground">
+          <div className="mt-0.5 text-xs text-muted-foreground">
             ({buildExtrasBreakdownString(innings.extrasBreakdown)})
           </div>
         )}
@@ -568,29 +568,29 @@ function BowlingTableRow({ b, zebra }: { b: BowlingLine; zebra: boolean }) {
           {b.isBowling && (
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-600 animate-pulse" />
           )}
-          <PlayerName name={b.name} playerId={b.playerId} className="font-barlow font-semibold tracking-tight" />
+          <PlayerName name={b.name} playerId={b.playerId} className="font-barlow text-base font-bold tracking-tight whitespace-nowrap" />
         </div>
       </td>
-      <td className="px-2 py-2.5 text-right align-top font-barlow tabular-nums">{b.overs}</td>
+      <td className="px-2 py-2.5 text-right align-top font-barlow tabular-nums text-muted-foreground">{b.overs}</td>
       <td className="px-2 py-2.5 text-right align-top font-barlow tabular-nums text-muted-foreground">
         {b.maidens}
       </td>
-      <td className="px-2 py-2.5 text-right align-top font-barlow tabular-nums">
+      <td className="px-2 py-2.5 text-right align-top font-barlow tabular-nums text-muted-foreground">
         {b.runs}
       </td>
       <td className="px-2 py-2.5 text-right align-top font-barlow text-base font-extrabold tabular-nums tracking-tight">
         {b.wickets}
       </td>
-      <td className="px-2 py-2.5 text-right align-top tabular-nums text-muted-foreground">
+      <td className="px-2 py-2.5 text-right align-top font-barlow tabular-nums text-muted-foreground">
         {b.economy > 0 ? b.economy.toFixed(2) : "—"}
       </td>
-      <td className="px-2 py-2.5 text-right align-top tabular-nums text-muted-foreground">
+      <td className="px-2 py-2.5 text-right align-top font-barlow tabular-nums text-muted-foreground">
         {b.dots ?? 0}
       </td>
-      <td className="px-2 py-2.5 text-right align-top tabular-nums text-muted-foreground">
+      <td className="px-2 py-2.5 text-right align-top font-barlow tabular-nums text-muted-foreground">
         {b.foursConceded ?? 0}
       </td>
-      <td className="px-4 py-2.5 text-right align-top tabular-nums text-muted-foreground">
+      <td className="px-4 py-2.5 text-right align-top font-barlow tabular-nums text-muted-foreground">
         {b.sixesConceded ?? 0}
       </td>
     </tr>

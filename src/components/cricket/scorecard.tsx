@@ -257,16 +257,16 @@ function BattingTableRow({ b, index }: { b: BattingLine; index?: number }) {
       <td className="px-2 py-2.5 text-right align-top font-display text-base font-extrabold tabular-nums tracking-tight">
         {b.runs}
       </td>
-      <td className="px-2 py-2.5 text-right align-top font-display tabular-nums text-foreground">
+      <td className="px-2 py-2.5 text-right align-top font-display font-semibold tabular-nums text-foreground">
         {b.balls}
       </td>
-      <td className="px-2 py-2.5 text-right align-top font-display tabular-nums text-foreground">
+      <td className="px-2 py-2.5 text-right align-top font-display font-semibold tabular-nums text-foreground">
         {b.fours}
       </td>
-      <td className="px-2 py-2.5 text-right align-top font-display tabular-nums text-foreground">
+      <td className="px-2 py-2.5 text-right align-top font-display font-semibold tabular-nums text-foreground">
         {b.sixes}
       </td>
-      <td className="px-4 py-2.5 text-right align-top font-display tabular-nums text-foreground">
+      <td className="px-4 py-2.5 text-right align-top font-display font-semibold tabular-nums text-foreground">
         {b.strikeRate > 0 ? b.strikeRate.toFixed(1) : "—"}
       </td>
     </tr>
@@ -571,26 +571,26 @@ function BowlingTableRow({ b, zebra }: { b: BowlingLine; zebra: boolean }) {
           <PlayerName name={b.name} playerId={b.playerId} className="font-display text-base font-bold tracking-tight whitespace-nowrap" />
         </div>
       </td>
-      <td className="px-2 py-2.5 text-right align-top font-display tabular-nums text-foreground">{b.overs}</td>
-      <td className="px-2 py-2.5 text-right align-top font-display tabular-nums text-foreground">
+      <td className="px-2 py-2.5 text-right align-top font-display font-semibold tabular-nums text-foreground">{b.overs}</td>
+      <td className="px-2 py-2.5 text-right align-top font-display font-semibold tabular-nums text-foreground">
         {b.maidens}
       </td>
-      <td className="px-2 py-2.5 text-right align-top font-display tabular-nums text-foreground">
+      <td className="px-2 py-2.5 text-right align-top font-display font-semibold tabular-nums text-foreground">
         {b.runs}
       </td>
       <td className="px-2 py-2.5 text-right align-top font-display text-base font-extrabold tabular-nums tracking-tight">
         {b.wickets}
       </td>
-      <td className="px-2 py-2.5 text-right align-top font-display tabular-nums text-foreground">
+      <td className="px-2 py-2.5 text-right align-top font-display font-semibold tabular-nums text-foreground">
         {b.economy > 0 ? b.economy.toFixed(2) : "—"}
       </td>
-      <td className="px-2 py-2.5 text-right align-top font-display tabular-nums text-foreground">
+      <td className="px-2 py-2.5 text-right align-top font-display font-semibold tabular-nums text-foreground">
         {b.dots ?? 0}
       </td>
-      <td className="px-2 py-2.5 text-right align-top font-display tabular-nums text-foreground">
+      <td className="px-2 py-2.5 text-right align-top font-display font-semibold tabular-nums text-foreground">
         {b.foursConceded ?? 0}
       </td>
-      <td className="px-4 py-2.5 text-right align-top font-display tabular-nums text-foreground">
+      <td className="px-4 py-2.5 text-right align-top font-display font-semibold tabular-nums text-foreground">
         {b.sixesConceded ?? 0}
       </td>
     </tr>

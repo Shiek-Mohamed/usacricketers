@@ -206,12 +206,12 @@ function BattingTable({
     <table className="w-full border-collapse text-sm">
       <thead>
         <tr className="bg-[#1e2a5e] text-white">
-          <th className="px-4 py-2.5 text-left font-display text-[11px] font-bold uppercase tracking-widest">Batsman</th>
-          <th className="px-2 py-2.5 text-right font-display text-[11px] font-bold uppercase tracking-widest tabular-nums">R</th>
-          <th className="px-2 py-2.5 text-right font-display text-[11px] font-bold uppercase tracking-widest tabular-nums">B</th>
-          <th className="px-2 py-2.5 text-right font-display text-[11px] font-bold uppercase tracking-widest tabular-nums">4s</th>
-          <th className="px-2 py-2.5 text-right font-display text-[11px] font-bold uppercase tracking-widest tabular-nums">6s</th>
-          <th className="px-4 py-2.5 text-right font-display text-[11px] font-bold uppercase tracking-widest tabular-nums">SR</th>
+          <th className="px-4 py-2.5 text-left font-display text-base font-bold uppercase tracking-widest">Batsman</th>
+          <th className="px-2 py-2.5 text-right font-display text-base font-bold uppercase tracking-widest tabular-nums">R</th>
+          <th className="px-2 py-2.5 text-right font-display text-base font-bold uppercase tracking-widest tabular-nums">B</th>
+          <th className="px-2 py-2.5 text-right font-display text-base font-bold uppercase tracking-widest tabular-nums">4s</th>
+          <th className="px-2 py-2.5 text-right font-display text-base font-bold uppercase tracking-widest tabular-nums">6s</th>
+          <th className="px-4 py-2.5 text-right font-display text-base font-bold uppercase tracking-widest tabular-nums">SR</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-border/40">
@@ -396,7 +396,7 @@ function BattingStackedRow({ b, innings }: { b: BattingLine; innings: Innings })
           <span className="text-xs text-muted-foreground tabular-nums">
             ({b.balls})
           </span>
-          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span className="tabular-nums">{b.fours}×4</span>
             <span className="tabular-nums">{b.sixes}×6</span>
             <span className="tabular-nums">
@@ -540,15 +540,15 @@ function BowlingTable({ bowling }: { bowling: BowlingLine[] }) {
     <table className="w-full border-collapse text-sm">
       <thead>
         <tr className="bg-[#1e2a5e] text-white">
-          <th className="px-4 py-2.5 text-left font-display text-[11px] font-bold uppercase tracking-widest">Bowler</th>
-          <th className="px-2 py-2.5 text-right font-display text-[11px] font-bold uppercase tracking-widest tabular-nums">O</th>
-          <th className="px-2 py-2.5 text-right font-display text-[11px] font-bold uppercase tracking-widest tabular-nums">M</th>
-          <th className="px-2 py-2.5 text-right font-display text-[11px] font-bold uppercase tracking-widest tabular-nums">R</th>
-          <th className="px-2 py-2.5 text-right font-display text-[11px] font-bold uppercase tracking-widest tabular-nums">W</th>
-          <th className="px-2 py-2.5 text-right font-display text-[11px] font-bold uppercase tracking-widest tabular-nums">Econ</th>
-          <th className="px-2 py-2.5 text-right font-display text-[11px] font-bold uppercase tracking-widest tabular-nums">0s</th>
-          <th className="px-2 py-2.5 text-right font-display text-[11px] font-bold uppercase tracking-widest tabular-nums">4s</th>
-          <th className="px-4 py-2.5 text-right font-display text-[11px] font-bold uppercase tracking-widest tabular-nums">6s</th>
+          <th className="px-4 py-2.5 text-left font-display text-base font-bold uppercase tracking-widest">Bowler</th>
+          <th className="px-2 py-2.5 text-right font-display text-base font-bold uppercase tracking-widest tabular-nums">O</th>
+          <th className="px-2 py-2.5 text-right font-display text-base font-bold uppercase tracking-widest tabular-nums">M</th>
+          <th className="px-2 py-2.5 text-right font-display text-base font-bold uppercase tracking-widest tabular-nums">R</th>
+          <th className="px-2 py-2.5 text-right font-display text-base font-bold uppercase tracking-widest tabular-nums">W</th>
+          <th className="px-2 py-2.5 text-right font-display text-base font-bold uppercase tracking-widest tabular-nums">Econ</th>
+          <th className="px-2 py-2.5 text-right font-display text-base font-bold uppercase tracking-widest tabular-nums">0s</th>
+          <th className="px-2 py-2.5 text-right font-display text-base font-bold uppercase tracking-widest tabular-nums">4s</th>
+          <th className="px-4 py-2.5 text-right font-display text-base font-bold uppercase tracking-widest tabular-nums">6s</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-border/40">
@@ -629,7 +629,7 @@ function BowlingStackedRow({ b, zebra }: { b: BowlingLine; zebra: boolean }) {
           <span className="text-xs text-muted-foreground">/</span>
           <span className="text-sm font-semibold tabular-nums">{b.runs}</span>
         </div>
-        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span className="tabular-nums">
             Econ {b.economy > 0 ? b.economy.toFixed(2) : "—"}
           </span>

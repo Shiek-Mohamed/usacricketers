@@ -49,20 +49,19 @@ function InningsCard({
 
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-white">
-      {/* Innings header — pale red-to-blue gradient. Distinctive look that
-          doesn't copy any major cricket site. Text stays black for readability. */}
-      <div className="flex items-center justify-between bg-gradient-to-r from-red-100 to-sky-100 px-4 py-3 text-black">
+      {/* Innings header — red-to-sky gradient (darker). White text for contrast. */}
+      <div className="flex items-center justify-between bg-gradient-to-r from-red-500 to-sky-500 px-4 py-3 text-white">
         <div className="flex items-center gap-2">
           <TeamBadgeByName shortName={innings.teamShortName} size="sm" />
           <span className="font-display text-xl font-bold uppercase tracking-wide">
             {innings.teamShortName}
           </span>
-          <span className="font-display text-sm font-semibold uppercase tracking-wide text-gray-600">{ordinal} innings</span>
+          <span className="font-display text-sm font-semibold uppercase tracking-wide text-white/70">{ordinal} innings</span>
         </div>
         <span className="font-display text-2xl font-black leading-none tabular-nums tracking-tight sm:text-3xl">
-          {innings.totalRuns}<span className="text-gray-500">/{innings.totalWickets}</span>
+          {innings.totalRuns}<span className="text-white/60">/{innings.totalWickets}</span>
           {innings.declared && <span className="text-sm font-bold">d</span>}
-          <span className="ml-2 font-display text-xs font-medium normal-case text-gray-600">
+          <span className="ml-2 font-display text-xs font-medium normal-case text-white/70">
             ({innings.totalOvers} ov{runRate !== null && ` · RR ${runRate}`})
           </span>
         </span>

@@ -325,23 +325,28 @@ function BattingTotalRow({
   const runRate = computeRunRate(innings)
   const label = row?.name ?? "Total"
   return (
-    <tr className="bg-[#1e2a5e]/5 font-bold border-t-2 border-border/40">
-      <td className="px-4 py-2.5 align-top">
-        <div className="font-display font-bold tracking-tight">{label}</div>
-        {runRate && (
-          <div className="mt-0.5 font-display text-xs font-normal text-foreground">
-            RR {runRate}
-          </div>
-        )}
+    <tr className="bg-[#1e2a5e]/5 border-t-2 border-border/40">
+      {/* Batsman cell: "Total" + "RR 5.68" on ONE line (inline, not stacked) */}
+      <td className="px-4 py-3 align-middle">
+        <div className="flex items-baseline gap-x-3 min-w-0">
+          <span className="font-display text-base font-bold tracking-tight whitespace-nowrap">{label}</span>
+          {runRate && (
+            <span className="font-display text-sm font-semibold tabular-nums whitespace-nowrap">
+              RR {runRate}
+            </span>
+          )}
+        </div>
       </td>
-      <td className="px-2 py-2.5 text-right align-top font-display text-base font-black tabular-nums tracking-tight">
+      {/* Score — bigger + heavier */}
+      <td className="px-2 py-3 text-right align-middle font-display text-lg font-black tabular-nums tracking-tight">
         {innings.totalRuns}<span className="text-foreground">/{innings.totalWickets}</span>
         {innings.declared && <span className="text-sm">d</span>}
       </td>
-      <td className="px-2 py-2.5" />
-      <td className="px-2 py-2.5" />
-      <td className="px-2 py-2.5" />
-      <td className="px-4 py-2.5 text-right align-top text-xs font-normal text-foreground tabular-nums">
+      <td className="px-2 py-3" />
+      <td className="px-2 py-3" />
+      <td className="px-2 py-3" />
+      {/* Overs — bigger + heavier */}
+      <td className="px-4 py-3 text-right align-middle font-display text-sm font-semibold tabular-nums whitespace-nowrap">
         ({innings.totalOvers} ov)
       </td>
     </tr>

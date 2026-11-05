@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Rajdhani } from "next/font/google";
+import { Geist, Geist_Mono, Rajdhani, Playfair_Display } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
@@ -25,6 +25,16 @@ const displayFont = Rajdhani({
   variable: "--font-display",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
+});
+
+// Playfair Display — an elegant high-contrast serif used for article
+// headlines on the home + news pages. Gives the site a premium editorial
+// feel (like a sports magazine). Loaded alongside Rajdhani (scores/stats)
+// + Geist (body text).
+const headlineFont = Playfair_Display({
+  variable: "--font-headline",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
 });
 
 export const metadata: Metadata = {
@@ -136,7 +146,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${displayFont.variable} antialiased bg-background text-foreground`}
+        className={`${geistSans.variable} ${geistMono.variable} ${displayFont.variable} ${headlineFont.variable} antialiased bg-background text-foreground`}
       >
         <ThemeProvider
           attribute="class"

@@ -84,7 +84,7 @@ function ArticleMarkdown({ content }: { content: string }) {
       <ReactMarkdown
         components={{
           h1: ({ children }) => (
-            <h1 className="mt-6 mb-3 text-2xl font-extrabold leading-tight sm:text-3xl">
+            <h1 className="font-headline mt-6 mb-3 text-2xl font-extrabold leading-tight sm:text-3xl">
               {children}
             </h1>
           ),
@@ -261,7 +261,7 @@ export function ArticlePageContent({
                     <Badge className="bg-primary text-primary-foreground">
                       {article.categories[0]}
                     </Badge>
-                    <h1 className="text-2xl font-bold leading-tight sm:text-3xl">
+                    <h1 className="font-headline text-2xl font-bold leading-tight sm:text-3xl">
                       {article.title}
                     </h1>
                     <p className="text-base text-muted-foreground sm:text-lg">

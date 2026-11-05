@@ -80,7 +80,7 @@ export function ArticleCard({
           <div className="text-[10px] font-bold uppercase text-primary">
             {article.categories[0]}
           </div>
-          <h3 className="line-clamp-2 text-sm font-semibold leading-snug group-hover:text-primary transition-colors">
+          <h3 className="font-headline line-clamp-2 text-sm font-semibold leading-snug group-hover:text-primary transition-colors">
             {article.title}
           </h3>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11px] text-muted-foreground">
@@ -116,7 +116,7 @@ export function ArticleCard({
             </span>
           </div>
         </div>
-        <h2 className="mt-2 line-clamp-3 text-lg font-bold leading-tight group-hover:text-primary transition-colors sm:text-xl">
+        <h2 className="font-headline mt-2 line-clamp-3 text-lg font-bold leading-tight group-hover:text-primary transition-colors sm:text-xl">
           {article.title}
         </h2>
         <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
@@ -178,7 +178,7 @@ export function ArticleCard({
 
         {/* Body: title + excerpt + meta + tags */}
         <div className="space-y-1.5 p-3">
-          <h3 className="line-clamp-2 text-base font-semibold leading-snug transition-colors group-hover:text-primary">
+          <h3 className="font-headline line-clamp-2 text-base font-semibold leading-snug transition-colors group-hover:text-primary">
             {article.title}
           </h3>
           {article.excerpt && (

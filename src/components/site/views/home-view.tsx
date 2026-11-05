@@ -196,7 +196,7 @@ function FeaturedHero({ article }: { article: Article }) {
         <span className="inline-flex w-fit items-center rounded-sm bg-amber-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
           {article.categories[0]}
         </span>
-        <h2 className="mt-3 text-2xl font-extrabold leading-tight tracking-tight transition-colors group-hover:text-red-600 sm:text-3xl lg:text-[2rem]">
+        <h2 className="font-headline mt-3 text-2xl font-extrabold leading-tight tracking-tight transition-colors group-hover:text-red-600 sm:text-3xl lg:text-[2rem]">
           {article.title}
         </h2>
         <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
@@ -268,7 +268,7 @@ function SecondaryStoryCard({ article }: { article: Article }) {
         </span>
       </div>
       <div className="p-4">
-        <h3 className="line-clamp-2 font-bold leading-snug transition-colors group-hover:text-red-600">
+        <h3 className="font-headline line-clamp-2 font-bold leading-snug transition-colors group-hover:text-red-600">
           {article.title}
         </h3>
         <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
@@ -712,7 +712,7 @@ function GalleryCard({
         <span className="text-[11px] font-extrabold uppercase tracking-wide text-foreground">
           {photoCount > 0 ? `Photos · ${photoCount}` : "Photos"}
         </span>
-        <h3 className="mt-1 line-clamp-2 text-base font-bold leading-snug text-foreground transition-colors group-hover:text-red-600">
+        <h3 className="font-headline mt-1 line-clamp-2 text-base font-bold leading-snug text-foreground transition-colors group-hover:text-red-600">
           {gallery.title}
         </h3>
         <time className="mt-1.5 block text-[13px] font-normal text-gray-500">
@@ -861,7 +861,7 @@ function SmallVideoCard({ video, onClick }: { video: Video; onClick: () => void 
         <span className="text-[10px] font-bold uppercase tracking-wide text-red-600">
           {video.category}
         </span>
-        <h3 className="mt-0.5 line-clamp-2 text-sm font-bold leading-snug transition-colors group-hover:text-red-600">
+        <h3 className="font-headline mt-0.5 line-clamp-2 text-sm font-bold leading-snug transition-colors group-hover:text-red-600">
           {video.title}
         </h3>
         <span className="mt-auto text-[11px] text-muted-foreground">

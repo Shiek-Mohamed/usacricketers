@@ -72,9 +72,9 @@ function MatchScorebox({ match }: { match: Match }) {
       <div className="flex items-center justify-between gap-2 bg-gradient-to-r from-[#1e2a5e] to-[#2d3b7a] px-4 py-2 sm:px-6">
         <div className="flex items-center gap-2 min-w-0">
           <FormatPill format={match.format} />
-          <span className="truncate text-sm font-bold text-white">{match.matchNo}</span>
+          <span className="truncate font-barlow text-sm font-bold uppercase tracking-wide text-white">{match.matchNo}</span>
           {match.series?.shortName && (
-            <span className="hidden text-xs text-white/70 sm:inline">· {match.series.shortName}</span>
+            <span className="hidden font-barlow text-xs font-medium uppercase tracking-wide text-white/70 sm:inline">· {match.series.shortName}</span>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -85,7 +85,8 @@ function MatchScorebox({ match }: { match: Match }) {
 
       {/* Two-column layout: scores on left, details on right */}
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr]">
-        {/* LEFT: Team scores */}
+        {/* LEFT: Team scores — each row has a team-colored accent bar +
+            big condensed scores for a sports-broadcast feel. */}
         <div className="divide-y divide-border/40">
           {[t1, t2].map((team, idx) => {
             if (!team) return null
@@ -94,25 +95,29 @@ function MatchScorebox({ match }: { match: Match }) {
               <a
                 key={team.id}
                 href={`/teams/${team.id}`}
-                className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-accent/30 sm:px-6"
+                className="group flex items-center justify-between gap-3 px-4 py-4 transition-colors hover:bg-accent/30 sm:px-6"
+                style={{ borderLeft: `4px solid ${team.primaryColor}` }}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <TeamBadge team={team} size="lg" />
                   <div className="min-w-0">
-                    <div className="truncate text-base font-bold sm:text-lg">{team.name}</div>
-                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{team.shortName}</div>
+                    {/* Team name — Barlow Condensed, bold, tighter tracking */}
+                    <div className="truncate font-barlow text-lg font-bold leading-tight tracking-tight sm:text-xl">{team.name}</div>
+                    <div className="font-barlow text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{team.shortName}</div>
                   </div>
                 </div>
                 <div className="shrink-0 text-right">
                   {innings.length > 0 ? (
                     innings.map((inn, i) => (
-                      <div key={i} className="text-xl font-extrabold tabular-nums sm:text-2xl">
-                        {inn.totalRuns}/{inn.totalWickets}
-                        <span className="ml-1.5 text-xs font-normal text-muted-foreground">({inn.totalOvers} ov)</span>
+                      // Score — Barlow Condensed, 900 weight, large. This is
+                      // the #1 thing a fan looks at, so it dominates.
+                      <div key={i} className="font-barlow text-3xl font-black leading-none tabular-nums tracking-tight sm:text-4xl">
+                        {inn.totalRuns}<span className="text-muted-foreground">/{inn.totalWickets}</span>
+                        <span className="ml-2 font-barlow text-xs font-medium normal-case text-muted-foreground">({inn.totalOvers} ov)</span>
                       </div>
                     ))
                   ) : (
-                    <div className="text-sm text-muted-foreground">Yet to bat</div>
+                    <div className="font-barlow text-sm font-medium uppercase tracking-wide text-muted-foreground">Yet to bat</div>
                   )}
                 </div>
               </a>
@@ -132,7 +137,7 @@ function MatchScorebox({ match }: { match: Match }) {
 
         {/* RIGHT: Match Details panel */}
         <div className="border-t border-border/40 bg-muted/20 px-4 py-3 lg:border-l lg:border-t-0 sm:px-6">
-          <h3 className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+          <h3 className="mb-2 flex items-center gap-1.5 font-barlow text-xs font-bold uppercase tracking-widest text-muted-foreground">
             <Shield className="h-3.5 w-3.5" /> Match Details
           </h3>
           <div className="space-y-0.5">

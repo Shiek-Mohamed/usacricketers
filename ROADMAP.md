@@ -588,7 +588,7 @@ The `deliveries` table from the DB redesign (Phase 3) is essential — can't sto
 
 The previous roadmap had scalability as a "future milestone." For a commercial product, it must be integrated into the main build sequence:
 
-1. **Database: SQLite → PostgreSQL** — ~2 days (BLOCKER — do this first)
+1. ~~**Database: SQLite → PostgreSQL** — ~2 days (BLOCKER — do this first)~~ ✅ **DONE (Nov 2026)** — Migrated to Neon PostgreSQL (free tier). Schema pushed, all data migrated (65 articles, 8 teams, 45 players, 9 matches, 46 videos). All 8 raw SQL queries replaced with Prisma create/update. Fly.io Managed Postgres ($38/mo) deleted. Production verified — all APIs HTTP 200.
 2. **Redis cache + socket.io adapter** — ~1 day (enables multi-instance)
 3. **DB redesign Phase 1: Organization layer** — ~1 week (multi-tenancy foundation)
 4. **DB redesign Phase 2: Cricket admin** — ~1 week

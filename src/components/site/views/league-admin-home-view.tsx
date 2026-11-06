@@ -18,6 +18,7 @@ import {
   Trophy,
   Pencil,
   ChevronRight,
+  Sparkles,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { FormatPill, StatusPill } from "@/components/cricket/ui"
@@ -143,6 +144,19 @@ export function LeagueAdminHomeView() {
             · {managedSeriesIds.length} managed ·{" "}
             {(matches ?? []).length} matches scheduled
           </p>
+          {/* Plan badge + upgrade */}
+          <div className="mt-2 flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Free Plan
+            </span>
+            <button
+              onClick={() => navigate("pricing")}
+              className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide text-amber-600 hover:text-amber-700"
+            >
+              <Sparkles className="h-3 w-3" />
+              Upgrade to Pro
+            </button>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button

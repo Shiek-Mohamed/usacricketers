@@ -202,6 +202,7 @@ export function LeagueAdminPlayersView() {
                 team={team}
                 onEdit={() => { setEditing(player); setShowForm(true) }}
                 onDelete={() => handleDelete(player.id)}
+                onViewStats={() => navigate("player-detail", player.id)}
               />
             )
           })}
@@ -248,11 +249,13 @@ function PlayerCard({
   team,
   onEdit,
   onDelete,
+  onViewStats,
 }: {
   player: Player
   team?: Team
   onEdit: () => void
   onDelete: () => void
+  onViewStats: () => void
 }) {
   const teamColor = team?.primaryColor ?? "#94a3b8"
   return (
@@ -263,37 +266,49 @@ function PlayerCard({
         style={{ background: teamColor }}
       />
       <div className="flex flex-1 items-center gap-2.5 py-2 pl-3 pr-2">
-        {/* Avatar — player photo if available, otherwise initials on a
-            team-colored gradient. The ring gives photos a clean border so
-            faces read well even at this small size. */}
-        {player.imageUrl ? (
-          <img
-            src={player.imageUrl}
-            alt={player.name}
-            className="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-background"
-            loading="lazy"
-          />
-        ) : (
-          <span
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-full font-display text-[11px] font-bold text-white ring-2 ring-background"
-            style={{ background: `linear-gradient(135deg, ${teamColor} 0%, ${teamColor}bb 100%)` }}
-          >
-            {player.name.slice(0, 2).toUpperCase()}
-          </span>
-        )}
-        {/* Info */}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1">
-            <span className="font-display text-xs font-bold leading-tight line-clamp-1">{player.name}</span>
-            {player.isCaptain && <span className="shrink-0 text-[10px] font-bold text-emerald-600">(c)</span>}
-            {player.isKeeper && <span className="shrink-0 text-[10px] font-bold text-amber-600">†</span>}
+        {/* Clickable avatar + info → navigates to the player's stats page */}
+        <button
+          type="button"
+          onClick={onViewStats}
+          className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+          aria-label={`View ${player.name} stats`}
+          title="View stats"
+        >
+          {/* Avatar — player photo if available, otherwise initials on a
+              team-colored gradient. The ring gives photos a clean border so
+              faces read well even at this small size. */}
+          {player.imageUrl ? (
+            <img
+              src={player.imageUrl}
+              alt={player.name}
+              className="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-background"
+              loading="lazy"
+            />
+          ) : (
+            <span
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-full font-display text-[11px] font-bold text-white ring-2 ring-background"
+              style={{ background: `linear-gradient(135deg, ${teamColor} 0%, ${teamColor}bb 100%)` }}
+            >
+              {player.name.slice(0, 2).toUpperCase()}
+            </span>
+          )}
+          {/* Info */}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1">
+              <span className="font-display text-xs font-bold leading-tight line-clamp-1">{player.name}</span>
+              {player.isCaptain && <span className="shrink-0 text-[10px] font-bold text-emerald-600">(c)</span>}
+              {player.isKeeper && <span className="shrink-0 text-[10px] font-bold text-amber-600">†</span>}
+            </div>
+            <div className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
+              {team && <span className="font-bold uppercase tracking-wide" style={{ color: teamColor }}>{team.shortName}</span>}
+              <span className="text-muted-foreground/50">·</span>
+              <span className="truncate">{player.role}</span>
+            </div>
+            <div className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-600 opacity-0 transition-opacity group-hover:opacity-100">
+              View Stats →
+            </div>
           </div>
-          <div className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
-            {team && <span className="font-bold uppercase tracking-wide" style={{ color: teamColor }}>{team.shortName}</span>}
-            <span className="text-muted-foreground/50">·</span>
-            <span className="truncate">{player.role}</span>
-          </div>
-        </div>
+        </button>
         {/* Actions */}
         <div className="flex shrink-0 items-center">
           <Button

@@ -35,7 +35,7 @@ const ADMIN_NAV: {
   { label: "Scorers", view: "league-admin-scorers", icon: UserCheck },
   { label: "Teams", view: "league-admin-teams", icon: Users },
   { label: "Players", view: "league-admin-players", icon: UserCheck },
-  { label: "Standings", view: "stats", icon: BarChart3, comingSoon: true },
+  { label: "Standings", view: "league-admin-standings", icon: BarChart3 },
   { label: "Stats & Reports", view: "stats", icon: Newspaper, comingSoon: true },
   { label: "Officials", view: "stats", icon: Shield, comingSoon: true },
   { label: "DLS Calculator", view: "dls", icon: CloudRain },

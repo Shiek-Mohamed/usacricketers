@@ -121,6 +121,9 @@ export interface LiveMatchState {
   note: string
   commentary: CommentaryEntry[]
   ballNo: number
+  // DLS — set when the scorer applies a DLS target after a rain interruption
+  dlsTarget?: number | null
+  dlsRevisedOvers?: number | null
 }
 
 export type WicketType =

@@ -64,9 +64,12 @@ import {
   Send,
   Mic,
   Loader2,
+  CloudRain,
+  Check,
 } from "lucide-react"
 import type { Player } from "@/lib/types"
 import { useLiveScoreBackup } from "@/lib/use-live-score-backup"
+import { calculateDLS, type DLSResult } from "@/lib/dls"
 
 const RUN_BUTTONS = [0, 1, 2, 3, 4, 6] as const
 
@@ -141,6 +144,66 @@ export function LiveScorerView() {
   // with a blue accent + "Commentator" label so it's distinguishable from
   // the auto-generated ball-by-ball feed).
   const [commentaryText, setCommentaryText] = useState("")
+
+  // DLS calculator state — shown when rain interrupts a limited-overs match
+  const [dlsOpen, setDlsOpen] = useState(false)
+  const [dlsRevisedOvers, setDlsRevisedOvers] = useState("")
+  const [dlsResult, setDlsResult] = useState<DLSResult | null>(null)
+
+  /** Calculate DLS target from the current match state (auto-filled). */
+  function handleDLSCalculate() {
+    if (!liveState || liveState.innings.length < 2) return
+    const t1 = liveState.innings[0]
+    const t2 = liveState.innings[liveState.currentInnings]
+    if (!t1 || !t2) return
+    const revised = Number(dlsRevisedOvers)
+    if (!revised || revised <= 0) {
+      toast.error("Enter the revised overs for Team 2")
+      return
+    }
+    const result = calculateDLS(
+      t1.runs,
+      Math.floor(t1.balls / 6), // balls → overs
+      t1.wickets,
+      t2.runs,
+      Math.floor(t2.balls / 6),
+      t2.wickets,
+      liveState.maxOvers,
+      revised,
+    )
+    setDlsResult(result)
+  }
+
+  /** Apply the DLS target to the match state — pushes it via WebSocket so
+   *  viewers see the revised target on the live scorecard. */
+  function handleDLSApply() {
+    if (!liveState || !dlsResult) return
+    const next = {
+      ...liveState,
+      dlsTarget: dlsResult.revisedTarget,
+      dlsRevisedOvers: Number(dlsRevisedOvers),
+    }
+    pushState(next)
+    persist(next)
+    // Add a commentary entry about the DLS revision
+    const entry = {
+      id: Math.random().toString(36).slice(2),
+      ballNo: liveState.ballNo,
+      over: oversString(liveState.innings[liveState.currentInnings]?.balls ?? 0),
+      text: `🌧️ DLS: Revised target is ${dlsResult.revisedTarget} from ${dlsRevisedOvers} overs (was ${dlsResult.originalTarget} from ${liveState.maxOvers})`,
+      kind: "info" as const,
+    }
+    const withCommentary = {
+      ...next,
+      commentary: [entry, ...next.commentary].slice(0, 120),
+    }
+    pushState(withCommentary)
+    persist(withCommentary)
+    toast.success(`DLS target applied: ${dlsResult.revisedTarget} from ${dlsRevisedOvers} overs`)
+    setDlsOpen(false)
+    setDlsResult(null)
+    setDlsRevisedOvers("")
+  }
 
   /* ------------------ Voice clip (🎙 mic) recording ------------------
    * The scorer clicks "Record voice clip", the browser captures audio from
@@ -754,6 +817,22 @@ export function LiveScorerView() {
                 >
                   <Save className="h-3.5 w-3.5" /> Save
                 </Button>
+                {/* DLS Calculator — shown for limited-overs matches when
+                    Team 2 is batting (innings 2+). Auto-fills from the
+                    current match state. */}
+                {liveState.maxOvers > 0 &&
+                  liveState.currentInnings >= 1 &&
+                  liveState.status === "live" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => { setDlsOpen(true); setDlsResult(null); setDlsRevisedOvers("") }}
+                      className="gap-1 border-sky-400 text-sky-700 hover:bg-sky-50 dark:text-sky-300 dark:hover:bg-sky-950/40"
+                      title="DLS Calculator — recalculate target after rain"
+                    >
+                      <CloudRain className="h-3.5 w-3.5" /> DLS
+                    </Button>
+                  )}
               </div>
             )}
           </div>
@@ -918,6 +997,102 @@ export function LiveScorerView() {
                     setWicketOpen(false)
                   }}
                 />
+              )}
+
+              {/* DLS Calculator panel — auto-fills from current match state */}
+              {dlsOpen && liveState && liveState.innings.length >= 2 && (
+                <div className="rounded-lg border-2 border-sky-400 bg-sky-50/50 p-4 dark:bg-sky-950/20">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CloudRain className="h-5 w-5 text-sky-500" />
+                      <h3 className="font-display text-sm font-bold uppercase tracking-wide text-sky-700 dark:text-sky-300">
+                        DLS Calculator
+                      </h3>
+                    </div>
+                    <button onClick={() => setDlsOpen(false)} className="text-muted-foreground hover:text-foreground">
+                      ✕
+                    </button>
+                  </div>
+
+                  {/* Auto-filled match state */}
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                    <div className="rounded-md bg-white p-2 dark:bg-card">
+                      <div className="font-display text-xs font-bold uppercase text-muted-foreground">Team 1</div>
+                      <div className="font-display text-base font-black">
+                        {liveState.innings[0].runs}/{liveState.innings[0].wickets}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        ({oversString(liveState.innings[0].balls)} ov · {liveState.maxOvers} allocated)
+                      </div>
+                    </div>
+                    <div className="rounded-md bg-white p-2 dark:bg-card">
+                      <div className="font-display text-xs font-bold uppercase text-muted-foreground">Team 2 (current)</div>
+                      <div className="font-display text-base font-black">
+                        {liveState.innings[liveState.currentInnings]?.runs ?? 0}/
+                        {liveState.innings[liveState.currentInnings]?.wickets ?? 0}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        ({oversString(liveState.innings[liveState.currentInnings]?.balls ?? 0)} ov faced)
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Revised overs input */}
+                  <div className="mt-3">
+                    <label className="mb-1 block font-display text-xs font-bold uppercase text-sky-700 dark:text-sky-300">
+                      Revised overs for Team 2 (after rain)
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        value={dlsRevisedOvers}
+                        onChange={(e) => setDlsRevisedOvers(e.target.value)}
+                        placeholder={String(liveState.maxOvers)}
+                        className="h-9 flex-1 rounded-md border border-sky-300 bg-white px-3 text-sm tabular-nums dark:bg-card dark:border-sky-700"
+                      />
+                      <Button
+                        size="sm"
+                        onClick={handleDLSCalculate}
+                        className="bg-sky-600 text-white hover:bg-sky-700"
+                      >
+                        Calculate
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* DLS result */}
+                  {dlsResult && (
+                    <div className="mt-3 rounded-md bg-[#1e2a5e] p-3 text-center text-white">
+                      <p className="font-display text-xs uppercase tracking-wide text-white/60">Revised Target</p>
+                      <p className="font-display text-3xl font-black">{dlsResult.revisedTarget}</p>
+                      <p className="text-xs text-white/60">
+                        from {dlsRevisedOvers} overs · was {dlsResult.originalTarget}
+                      </p>
+                      <div className="mt-2 flex justify-center gap-4 text-xs">
+                        <span>T1: {dlsResult.team1Resources}%</span>
+                        <span>T2: {dlsResult.team2Resources}%</span>
+                        <span>RRR: {dlsResult.requiredRunRate.toFixed(1)}</span>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={handleDLSApply}
+                        className="mt-3 gap-2 bg-amber-500 text-white hover:bg-amber-600"
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                        Apply Target to Match
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Show current DLS target if already applied */}
+                  {liveState.dlsTarget && !dlsResult && (
+                    <div className="mt-3 rounded-md bg-amber-50 p-2 text-center text-sm dark:bg-amber-950/30">
+                      <span className="font-bold text-amber-700 dark:text-amber-300">
+                        Current DLS target: {liveState.dlsTarget} from {liveState.dlsRevisedOvers} overs
+                      </span>
+                    </div>
+                  )}
+                </div>
               )}
 
               {isComplete && (

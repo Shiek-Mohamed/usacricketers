@@ -13,6 +13,7 @@ import { CommentaryFeedRow } from "@/components/cricket/ball-chip"
 import {
   Activity,
   Radio,
+  CloudRain,
   ChevronLeft,
   Trophy,
   MapPin,
@@ -157,6 +158,19 @@ export function LiveBlogView() {
             />
           </div>
         </div>
+
+        {/* DLS revised target banner */}
+        {liveState?.dlsTarget && (
+          <div className="flex items-center gap-2 bg-sky-100 px-4 py-2 dark:bg-sky-950/40">
+            <CloudRain className="h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" />
+            <span className="font-display text-sm font-bold text-sky-800 dark:text-sky-300">
+              DLS Revised Target: {liveState.dlsTarget}
+            </span>
+            <span className="font-display text-xs text-sky-600 dark:text-sky-400">
+              from {liveState.dlsRevisedOvers} overs
+            </span>
+          </div>
+        )}
 
         {/* Score ticker — the auto-updating live score */}
         <div className="px-4 py-4 sm:px-6 sm:py-5">

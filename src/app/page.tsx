@@ -55,6 +55,7 @@ import { ScorerShell } from "@/components/admin/scorer-shell"
 import { useScorerSession } from "@/lib/scorer-session"
 import { LeagueAdminLoginView } from "@/components/site/views/league-admin-login-view"
 import { LeagueAdminSignupView } from "@/components/site/views/league-admin-signup-view"
+import { LeagueAdminShell } from "@/components/admin/league-admin-shell"
 import { LeagueAdminHomeView } from "@/components/site/views/league-admin-home-view"
 import { LeagueAdminSeriesEditView } from "@/components/site/views/league-admin-series-edit-view"
 import { LeagueAdminMatchesView } from "@/components/site/views/league-admin-matches-view"
@@ -262,7 +263,20 @@ export default function Home() {
 
   // League admin mode: minimal shell, no regular header/footer. Views wrap
   // themselves in LeagueAdminShell internally (except the login view).
+  // Public tool views (DLS Calculator, Pricing) linked from the league admin
+  // sidebar are raw content fragments without a shell — wrap them so the
+  // sidebar + layout stay consistent instead of looking like a different page.
   if (mode === "leagueAdmin") {
+    if (view === "dls" || view === "pricing") {
+      const title = view === "dls" ? "DLS Calculator" : "Pricing"
+      return (
+        <ViewErrorBoundary key={view} label={`league-admin:${view}`}>
+          <LeagueAdminShell title={title}>
+            {renderView()}
+          </LeagueAdminShell>
+        </ViewErrorBoundary>
+      )
+    }
     return (
       <ViewErrorBoundary key={view} label={`league-admin:${view}`}>
         {renderView()}

@@ -21,7 +21,7 @@ const COOKIE_MAX_AGE = 60 * 60 * 12 // 12 hours
  *  without being user-hostile. Returns 429 with `Retry-After` if exceeded. */
 export async function POST(req: NextRequest) {
   // Rate-limit first — don't even read the body if the IP is over quota.
-  const limited = rateLimit(req, { limit: 10, windowMs: 10 * 60 * 1000 })
+  const limited = rateLimit(req, { limit: 30, windowMs: 5 * 60 * 1000 })
   if (limited) return limited
 
   try {

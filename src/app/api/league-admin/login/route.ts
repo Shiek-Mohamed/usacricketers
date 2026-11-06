@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic"
 
 /** POST /api/league-admin/login — rate-limited (10 attempts / 10 min / IP). */
 export async function POST(req: NextRequest) {
-  const limited = rateLimit(req, { limit: 10, windowMs: 10 * 60 * 1000 })
+  const limited = rateLimit(req, { limit: 30, windowMs: 5 * 60 * 1000 })
   if (limited) return limited
 
   try {

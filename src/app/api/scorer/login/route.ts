@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic"
 // Returns { scorer:{id,name,username}, token, tournamentIds } or 401.
 // Rate-limited: 10 attempts per 10 minutes per IP — brute-force resistant.
 export async function POST(req: NextRequest) {
-  const limited = rateLimit(req, { limit: 10, windowMs: 10 * 60 * 1000 })
+  const limited = rateLimit(req, { limit: 30, windowMs: 5 * 60 * 1000 })
   if (limited) return limited
 
   let body: { username?: string; password?: string }

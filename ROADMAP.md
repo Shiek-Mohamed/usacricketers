@@ -637,5 +637,159 @@ The gaps are: SQLite → PostgreSQL, Redis provisioning, multi-instance setup, a
 
 ---
 
+## CricClubs Competitor — Feature Gap Analysis & Build Plan
+
+The platform will compete with CricClubs (the leading US cricket league management platform). 10 of 15 core features already exist. The remaining 5 are in the roadmap. Plus 7 CricClubs-specific features need to be added.
+
+### Feature comparison: Current platform vs CricClubs
+
+| # | Feature | We have? | In roadmap? | Additional effort |
+|---|---|---|---|---|
+| 1 | Live scoring (ball-by-ball) | ✅ | — | — |
+| 2 | Scorecards (batting/bowling/FOW) | ✅ | — | — |
+| 3 | Player profiles + career stats | ✅ | — | — |
+| 4 | Team management | ✅ | — | — |
+| 5 | League/division/season management | ✅ | — | — |
+| 6 | Auto schedule generation | ✅ | — | — |
+| 7 | Public league pages | ✅ | — | — |
+| 8 | News/articles/galleries/videos | ✅ | — | — |
+| 9 | Live blog + ball chips + over summaries | ✅ | — | — |
+| 10 | Mobile scoring (PWA) | ✅ | — | — |
+| 11 | Multi-tenancy (branded sites) | ❌ | ✅ Phase 1 | — |
+| 12 | Subscriptions/payments | ❌ | ✅ Planned | — |
+| 13 | Competition rules engine | ❌ | ✅ Planned | — |
+| 14 | Match lifecycle (reviewer approval) | ❌ | ✅ Planned | — |
+| 15 | Database redesign (deliveries, orgs) | ❌ | ✅ Planned | — |
+
+### CricClubs-specific features NOT in roadmap yet
+
+| # | Feature | What it does | Effort | Files to create/modify |
+|---|---|---|---|---|
+| C1 | **DLS calculator** | Duckworth-Lewis-Stern rain adjustment — recalculates targets when rain interrupts | ~2 days | `src/lib/dls.ts` (algorithm), `src/components/cricket/dls-calculator.tsx` (UI), `src/app/api/dls/route.ts` |
+| C2 | **Tournament brackets** | Knockout, group stage, hybrid formats + bracket visualization tree | ~3-5 days | `src/lib/tournament-brackets.ts` (generation logic), `src/components/cricket/bracket-view.tsx` (bracket UI), `src/app/api/brackets/route.ts` |
+| C3 | **Player rankings/leaderboards** | Computed batting/bowling rankings across all matches in a season/competition | ~2 days | `src/lib/rankings.ts` (aggregation + sorting), `src/components/cricket/leaderboard.tsx` (UI), `src/app/api/rankings/route.ts` |
+| C4 | **Player registration + waivers** | Online registration forms with digital liability waivers + e-signature | ~3 days | `src/app/api/registration/route.ts`, `src/components/site/registration-form.tsx`, `src/lib/waiver-pdf.ts` (PDF generation) |
+| C5 | **Umpire assignment** | Assign umpires to matches, track availability, conflict detection | ~1 day | `src/app/api/officials/route.ts`, `src/components/admin/umpire-assignment.tsx` (uses `officials` table from DB Phase 2) |
+| C6 | **Email/SMS notifications** | Match alerts, schedule changes, registration confirmations | ~2 days | `src/lib/notifications.ts`, `src/app/api/notifications/route.ts` (uses `notification_queue` table from operational tables) |
+| C7 | **DLS/Premium features gating** | Some features (DLS, advanced stats) are premium-only (paid subscribers) | ~1 day | `src/lib/feature-gating.ts` (checks subscription plan → enables/disables features) |
+
+**Total additional effort for CricClubs-specific features:** ~14-16 days (~3 weeks)
+
+### DLS Calculator details
+
+The Duckworth-Lewis-Stern (DLS) method recalculates target scores when rain interrupts play. It's the standard method used in all professional limited-overs cricket.
+
+**Implementation:**
+- `src/lib/dls.ts` — the DLS algorithm (based on the ICC's published formula)
+  - Input: innings 1 score, overs used, overs remaining (after rain), wickets lost
+  - Output: revised target for innings 2
+  - Uses the G50 constant (average score = 245 in 50 overs) + par score tables
+- `src/components/cricket/dls-calculator.tsx` — admin UI
+  - Enter match situation (innings 1 total, overs bowled, rain interruption details)
+  - Shows revised target + required run rate
+- `src/app/api/dls/route.ts` — API endpoint for programmatic access
+- Premium feature (Pro plan and above only)
+
+**Note:** The full DLS method is proprietary (ICC licenses it). The implementation uses the publicly available approximation formula which is accurate enough for amateur/club cricket. For professional use, an ICC license would be needed.
+
+### Tournament bracket details
+
+**Supported formats:**
+- **Round-robin** (already have — auto schedule generation)
+- **Knockout/single elimination** — bracket tree, seeds, byes
+- **Group stage → knockout** — groups feed into a knockout bracket
+- **Double elimination** — losers bracket + winners bracket
+- **Hybrid** — custom combinations
+
+**Implementation:**
+- `src/lib/tournament-brackets.ts` — bracket generation logic
+  - Seed placement (standard seeding, random, or custom)
+  - Bye calculation (for non-power-of-2 team counts)
+  - Round progression (advance winners, generate next round)
+  - Group stage → knockout mapping
+- `src/components/cricket/bracket-view.tsx` — visual bracket tree
+  - SVG or CSS-based bracket rendering
+  - Click a match → view/edit scorecard
+  - Responsive (collapses to vertical on mobile)
+- `src/app/api/brackets/route.ts` — generate/update/retrieve brackets
+
+### Player rankings/leaderboard details
+
+**Categories:**
+- **Most runs** (season/competition/all-time)
+- **Highest averages** (min 10 innings)
+- **Best strike rates** (min 100 balls)
+- **Most wickets**
+- **Best bowling averages**
+- **Best economy rates** (min 50 overs)
+- **Most sixes/fours**
+- **Best all-rounder** (combined batting + bowling index)
+
+**Implementation:**
+- `src/lib/rankings.ts` — aggregation engine
+  - Reads from `deliveries` table (ball-by-ball data) + `batting_performances` + `bowling_performances`
+  - Computes stats per player per season/competition
+  - Sorts by category + applies minimum qualification thresholds
+- `src/components/cricket/leaderboard.tsx` — UI
+  - Tabbed view (Batting / Bowling / All-rounder)
+  - Filter by season, competition, division
+  - Shows rank, player name, team, key stat, matches played
+- `src/app/api/rankings/route.ts` — API endpoint
+
+### Complete commercial launch timeline (CricClubs competitor)
+
+Combining the commercial scalability roadmap + CricClubs-specific features:
+
+| Phase | Step | Effort | Cumulative |
+|---|---|---|---|
+| **Infrastructure** | SQLite → PostgreSQL | ~2 days | 2 days |
+| | Redis cache + socket.io adapter | ~1 day | 3 days |
+| **DB Redesign** | Phase 1: Organization layer | ~1 week | ~1.5 weeks |
+| | Phase 2: Cricket admin | ~1 week | ~2.5 weeks |
+| | Phase 3: Match & scoring + deliveries | ~2 weeks | ~4.5 weeks |
+| **Scale** | Consumer service + event queue | ~3-5 days | ~5.5 weeks |
+| | Multiple score-service instances | ~1 day | ~6 weeks |
+| **CricClubs features** | DLS calculator | ~2 days | ~6.5 weeks |
+| | Tournament brackets | ~3-5 days | ~7.5 weeks |
+| | Player rankings/leaderboards | ~2 days | ~8 weeks |
+| | Player registration + waivers | ~3 days | ~8.5 weeks |
+| | Umpire assignment | ~1 day | ~8.5 weeks |
+| | Email/SMS notifications | ~2 days | ~9 weeks |
+| | Feature gating (premium) | ~1 day | ~9 weeks |
+| **Monetization** | Stripe subscriptions | ~1 week | ~10 weeks |
+| | Multi-tenancy / branded sites | ~2 weeks | ~12 weeks |
+| **Workflow** | Match lifecycle state machine | ~1 week | ~13 weeks |
+| **Polish** | Competition rules engine | ~1 week | ~14 weeks |
+| | Operational tables | ~1 week | ~15 weeks |
+| | PWA enhancements (push, offline) | ~1 week | ~16 weeks |
+
+**Total to CricClubs competitor:** ~14-16 weeks
+
+### Competitive advantages over CricClubs
+
+| Feature | CricClubs | Our platform |
+|---|---|---|
+| **Live blog** | No commentary feed | ✅ Ball-by-ball commentary + ball chips + over summaries |
+| **Live blog (immersive)** | No dedicated live view | ✅ Full-screen live blog with key moments sidebar |
+| **News/articles** | Minimal content | ✅ Full CMS with article scraping, SEO, social sharing |
+| **Photo galleries + videos** | Basic | ✅ Full gallery system + video embedding |
+| **Design** | Dated (2010s UI) | ✅ Modern (Rajdhani sporty font, gradient headers, clean scorecard) |
+| **PWA** | Native apps only | ✅ Installable PWA (no app store needed) |
+| **SEO** | Poor (client-rendered) | ✅ Server-side rendered + structured data + sitemaps |
+| **Voice commentary** | No | ✅ Scorer can record voice clips during scoring |
+| **Error boundaries** | Crashes on errors | ✅ Graceful error recovery with retry |
+| **Open roadmap** | Closed source | ✅ Full roadmap documented, can iterate fast |
+
+### What CricClubs has that we should monitor
+
+| Feature | Notes | Priority |
+|---|---|---|
+| Native iOS/Android apps | PWA covers 95% of use cases. Consider native only if customers demand app store presence. | Low (PWA first) |
+| Ball-by-ball API for third parties | CricClubs sells data feeds. Could add `api_keys` table + rate-limited API. | Medium (revenue opportunity) |
+| Cricket ball tracking integration | Hawk-Eye-style trajectory tracking. Very advanced, needs hardware. | Not planned |
+| Fantasy league integration | Users pick players, score points. Engagement feature. | Low (future) |
+
+---
+
 *Last updated: Nov 2026*
 *Log maintained in: /home/z/my-project/ROADMAP.md*

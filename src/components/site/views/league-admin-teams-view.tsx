@@ -48,34 +48,39 @@ export function LeagueAdminTeamsView() {
     return () => { cancelled = true }
   }, [session])
 
-  function handleSave(team: Partial<Team>) {
+  // Returns a promise that resolves to true on success, false on failure.
+  // Awaited by the form so the "saving" spinner reflects the real request
+  // state and the button stays disabled until the fetch completes.
+  function handleSave(team: Partial<Team>): Promise<boolean> {
     const method = team.id ? "PUT" : "POST"
     const url = team.id ? `/api/teams/${team.id}` : "/api/teams"
-    fetch(url, {
+    return fetch(url, {
       method,
       headers: authHeaders,
       body: JSON.stringify(team),
     })
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return r.json()
-      })
-      .then((saved: Team) => {
-        if (saved?.id) {
-          if (method === "POST") {
-            setTeams((prev) => [...(prev ?? []), saved])
-          } else {
-            setTeams((prev) =>
-              (prev ?? []).map((t) => (t.id === saved.id ? saved : t)),
-            )
-          }
-          setShowForm(false)
-          setEditing(null)
-        } else {
-          alert(saved?.error || "Failed to save team")
+      .then(async (r) => {
+        const data = await r.json().catch(() => ({}))
+        if (!r.ok || !data?.id) {
+          alert(data?.error || `Failed to save team (HTTP ${r.status})`)
+          return false
         }
+        const saved: Team = data
+        if (method === "POST") {
+          setTeams((prev) => [...(prev ?? []), saved])
+        } else {
+          setTeams((prev) =>
+            (prev ?? []).map((t) => (t.id === saved.id ? saved : t)),
+          )
+        }
+        setShowForm(false)
+        setEditing(null)
+        return true
       })
-      .catch(() => alert("Failed to save team"))
+      .catch(() => {
+        alert("Failed to save team")
+        return false
+      })
   }
 
   function handleDelete(teamId: string) {
@@ -97,9 +102,15 @@ export function LeagueAdminTeamsView() {
       actionLabel="Add Team"
       onAction={() => { setEditing(null); setShowForm(true) }}
     >
-      {/* Form (modal-style inline) */}
+      {/* Form (modal-style inline).
+          The `key` forces React to remount TeamForm whenever the target
+          team changes (or when switching between "new" and "edit"). Without
+          it, useState initializers in TeamForm only run once on first mount,
+          so clicking edit on a team while the form is already open would
+          leave the fields showing stale (empty) data. */}
       {showForm && (
         <TeamForm
+          key={editing?.id ?? "new"}
           team={editing}
           onSave={handleSave}
           onCancel={() => { setShowForm(false); setEditing(null) }}
@@ -188,7 +199,7 @@ function TeamForm({
   onCancel,
 }: {
   team: Team | null
-  onSave: (team: Partial<Team>) => void
+  onSave: (team: Partial<Team>) => Promise<boolean>
   onCancel: () => void
 }) {
   const [name, setName] = useState(team?.name ?? "")
@@ -199,22 +210,25 @@ function TeamForm({
   const [description, setDescription] = useState(team?.description ?? "")
   const [saving, setSaving] = useState(false)
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!name.trim() || !shortName.trim()) {
       alert("Team name and short name are required")
       return
     }
     setSaving(true)
-    onSave({
-      id: team?.id,
-      name: name.trim(),
-      shortName: shortName.trim().toUpperCase(),
-      country: country.trim(),
-      primaryColor,
-      accentColor,
-      description: description.trim(),
-    })
-    setSaving(false)
+    try {
+      await onSave({
+        id: team?.id,
+        name: name.trim(),
+        shortName: shortName.trim().toUpperCase(),
+        country: country.trim(),
+        primaryColor,
+        accentColor,
+        description: description.trim(),
+      })
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (

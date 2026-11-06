@@ -5,14 +5,16 @@
 
 set -e
 
-# Sync the DB schema on every container start — drops legacy columns that
-# exist in old DB snapshots but not the current Prisma schema (e.g. the
-# old Series.slug column). Uses the Prisma client directly (sync-db.js),
-# not the prisma CLI (which has missing transitive deps in the runtime
-# image). Idempotent + non-fatal.
-echo "📦 Syncing DB schema..."
+# Push the Prisma schema to PostgreSQL (creates tables if they don't exist).
+# Idempotent — safe to run on every boot. Non-fatal (app can start even
+# if this fails, e.g. during a temporary DB outage).
+echo "📦 Pushing Prisma schema to PostgreSQL..."
 cd /app
-node sync-db.js || true
+npx prisma db push --accept-data-loss 2>&1 || echo "⚠️ prisma db push failed — app will start with existing schema"
+
+# Migrate data from SQLite (runs only if the database is empty — idempotent)
+echo "📦 Running data migration (SQLite → PostgreSQL)..."
+node migrate-to-postgres.js 2>&1 || echo "⚠️ migration script failed — app will start with current data"
 
 # Start the score-service in the background (port 3003)
 echo "🏏 Starting score-service on port 3003..."

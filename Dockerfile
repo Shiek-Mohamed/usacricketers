@@ -46,14 +46,20 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/db ./db
 
 # Copy prisma schema + generated client (the runtime Prisma CLIENT — used by
-# the app's queries and by sync-db.js). The prisma CLI is NOT needed at
-# runtime; sync-db.js uses the client's $executeRawUnsafe for schema fixups.
+# the app's queries and by sync-db.js). Also copy the prisma CLI for
+# `prisma db push` on boot (creates tables in PostgreSQL).
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 
-# DB schema fixup script — drops legacy columns on boot (idempotent).
+# DB schema fixup script (legacy — only runs if sync-db.js exists)
 COPY --from=builder /app/sync-db.js ./sync-db.js
+
+# PostgreSQL migration script + data (runs on first boot to create tables +
+# import existing data from SQLite)
+COPY --from=builder /app/migrate-to-postgres.js ./migrate-to-postgres.js
+COPY --from=builder /app/migration ./migration
 
 # Copy the score-service mini-service
 COPY --from=builder /app/mini-services ./mini-services

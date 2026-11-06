@@ -334,5 +334,105 @@ Currently all competition rules are hardcoded in the scoring engine or derived f
 
 ---
 
+## Architecture Restructure — Monorepo (Future Milestone)
+
+The current platform is a **single Next.js app** — admin, scoring, public site, and API are all in one app, switched via Zustand state. This works for a prototype but should eventually be restructured into a proper monorepo for a production SaaS platform.
+
+### Current structure (single app)
+```
+my-project/
+├── src/
+│   ├── app/              # All routes + API in one app
+│   │   ├── [slug]/       # League public pages
+│   │   ├── api/          # Flat API routes (not domain-organized)
+│   │   ├── matches/      # SSR match pages
+│   │   ├── news/         # SSR article pages
+│   │   ├── players/      # SSR player pages
+│   │   ├── teams/        # SSR team pages
+│   │   └── page.tsx      # SPA homepage (all views via Zustand switch)
+│   ├── components/       # All UI (admin + public + cricket + ui)
+│   ├── hooks/
+│   └── lib/              # Types, scoring engine, API client
+├── prisma/               # Single schema.prisma
+├── mini-services/
+│   └── score-service/    # WebSocket service (separate process)
+├── public/               # Static assets
+├── db/                   # SQLite DB + uploaded images
+├── Dockerfile, Caddyfile.fly, fly.toml  # Infrastructure (flat in root)
+```
+
+### Target structure (monorepo)
+```
+usacricketers-platform/
+├── apps/
+│   ├── web/                 # Public websites (SSR + SPA)
+│   ├── admin/               # Super admin dashboard
+│   ├── organization/        # League and club portal
+│   └── scoring/             # Scorer interface (mobile-first)
+├── server/
+│   ├── auth/                # Authentication + RBAC
+│   ├── organizations/       # Multi-tenant org management
+│   ├── subscriptions/       # Stripe billing + plans
+│   ├── players/             # Player profiles + memberships
+│   ├── teams/               # Team management
+│   ├── competitions/        # Leagues, seasons, divisions
+│   ├── matches/             # Match scheduling + status
+│   ├── scoring/             # Ball-by-ball scoring engine
+│   ├── statistics/          # Stats computation + analytics
+│   ├── websites/            # Branded website builder
+│   ├── notifications/       # Email + push notification queue
+│   └── payments/            # Payment processing
+├── database/
+│   ├── migrations/          # Prisma migrations
+│   ├── seeds/               # Seed data for dev/staging
+│   └── schemas/             # Schema files (split by domain)
+├── shared/
+│   ├── cricket-rules/       # Configurable competition rules engine
+│   ├── scoring-types/       # LiveMatchState, CommentaryEntry, etc.
+│   └── api-types/           # Shared API request/response types
+└── infrastructure/
+    ├── docker/              # Dockerfiles per app
+    ├── nginx/               # Caddy/nginx config
+    └── deployment/          # fly.io, CI/CD, env management
+```
+
+### When to restructure
+
+Do NOT restructure yet. Build features first within the current single-app. Restructure only when **one or more** of these triggers is met:
+
+- [ ] Codebase exceeds ~50K lines (getting hard to navigate)
+- [ ] Multiple developers/teams need to work independently
+- [ ] Need separate deployment cycles (web deploys without touching scoring)
+- [ ] Need to run admin/scoring on different infrastructure (e.g., scoring on a higher-memory machine)
+- [ ] Customer-facing branded sites (#4) need their own app instances
+
+### Migration approach (when the time comes)
+
+**Don't do a big-bang rewrite.** Split gradually:
+
+1. **Extract `shared/` first** — move types + scoring engine + cricket rules into a shared package. Low risk, immediate benefit (cleaner imports).
+
+2. **Extract `server/` next** — move API routes into domain-organized modules. Still within the same app, but organized by domain (auth, matches, scoring, etc.).
+
+3. **Split `apps/scoring/` first** — the scoring interface is the most independent (mobile-first, different UX, separate WebSocket). Extract it into its own Next.js app.
+
+4. **Split `apps/admin/` next** — the admin dashboard is self-contained. Extract it.
+
+5. **Split `apps/organization/` when #4 is built** — the league/club portal is a new app that doesn't exist yet, so it can be built as a separate app from the start.
+
+6. **`apps/web/` stays as the main app** — the public website remains the primary Next.js app.
+
+**Estimated effort:** ~2-3 weeks (when the time comes)
+
+### Monorepo tooling
+
+When restructuring, use:
+- **Turborepo** or **Nx** for monorepo management (build caching, task running)
+- **pnpm workspaces** for package management (faster than npm, disk-efficient)
+- **Shared Prisma client** — one database, shared across apps via the `database/` package
+- **Shared ESLint + TypeScript config** — consistent code quality across apps
+
+---
+
 *Last updated: Nov 2026*
 *Log maintained in: /home/z/my-project/ROADMAP.md*

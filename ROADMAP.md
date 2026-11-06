@@ -508,83 +508,132 @@ When restructuring, use:
 
 ---
 
-## Real-Time Scoring Architecture — Scalability Upgrade (Future Milestone)
+## Real-Time Scoring Architecture — COMMERCIAL SCALE (Required for Launch)
 
-A reference architecture diagram is saved at `upload/real time scoring architecture.jpg`. It shows an enterprise-grade real-time scoring pipeline with Kafka + Redis + Consumer Service + WebSocket Server.
+**This platform will be a commercial product with hundreds of matches scored simultaneously.** The current simplified architecture (single score-service, in-memory cache, SQLite) CANNOT handle this scale. The full enterprise architecture is a **launch requirement**, not a future milestone.
 
-### Current architecture (simplified)
+### Scale requirements
 
-```
-Scorer UI → socket.io → score-service (port 3003) → in-memory Map (cache)
-                                      → debounced JSON write to SQLite (persist)
-                                      → socket.io broadcast → viewer devices
-```
+| Metric | Current capacity | Commercial requirement |
+|---|---|---|
+| Concurrent matches scored | ~10 | **100-500+** |
+| Concurrent WebSocket connections | ~5,000 (one instance) | **50,000-100,000+** |
+| Concurrent database writes | ~1 (SQLite single-writer lock) | **100-500+** (one per match, per ball) |
+| Match state cache | In-memory Map (lost on restart) | **Redis** (persistent, shared across instances) |
 
-- **1 process** (score-service) does everything: receive + cache + broadcast
-- **In-memory cache** (`Map<string, unknown>`) — lost on restart (workaround: localStorage backup)
-- **JSON blob persistence** — full scorecard saved debounced, not per-ball
-- **No message queue** — synchronous processing, no buffering
-- Capacity: ~5,000 concurrent connections on one fly.io machine
-
-### Target architecture (enterprise)
+### Current architecture (will NOT scale)
 
 ```
-Admin Panel → REST API (Ingestion) → Kafka (match-events topic) → Consumer Service
-                                                                      ↓
-                                                              ┌───────────────┐
-                                                              │ Redis (cache) │
-                                                              │ Database (per-ball) │
-                                                              │ WebSocket Server → viewers │
-                                                              └───────────────┘
+Scorer UI → socket.io → score-service (1 instance, port 3003) → in-memory Map
+                                      → SQLite (single-writer, JSON blob)
+                                      → socket.io broadcast → viewers
 ```
 
-### Component comparison
+### Target architecture (COMMERCIAL — required)
 
-| Proposed | Current | Status | When to add |
-|---|---|---|---|
-| Admin Panel | Scorer UI | ✅ Have | — |
-| REST Ingestion API | WebSocket `operator:state` | ❌ Different pattern | When you need offline sync / retry |
-| Apache Kafka | None (synchronous) | ❌ Missing | When traffic spikes or multi-match concurrent |
-| Consumer Service | Integrated in score-service | ❌ Missing | When you need horizontal scaling |
-| Redis | In-memory Map | ⚠️ Partial | **Add first** — solves cache-lost-on-restart |
-| Database (per-ball) | JSON blob (debounced) | ⚠️ Partial | When deliveries table is built (DB Phase 3) |
-| WebSocket Server | score-service (socket.io) | ✅ Have | — |
-| User Devices | `useLiveScore` hook | ✅ Have | — |
+```
+Scorer UI → REST API → Kafka (match-events) → Consumer Service (multiple instances)
+                                                   ↓
+                                           ┌─────────────────┐
+                                           │ Redis (shared cache) │
+                                           │ PostgreSQL (per-ball) │
+                                           │ socket.io + Redis adapter → viewers │
+                                           └─────────────────┘
+```
 
-### Recommended upgrade sequence
+### What MUST change before commercial launch
 
-1. **Redis cache** (highest value, lowest effort) — ~1 day
-   - Replace in-memory `Map` with Redis
-   - Cache survives score-service restarts (no more localStorage workaround needed)
-   - Enables multiple score-service instances to share cache
-   - Upstash Redis on fly.io: ~$0-10/mo
+#### 1. Database: SQLite → PostgreSQL (CRITICAL)
+SQLite has a single-writer lock — only one write at a time. Hundreds of scorers writing balls simultaneously will cause lock contention + timeouts. PostgreSQL handles concurrent writes natively.
 
-2. **Per-ball database storage** — part of DB redesign Phase 3
-   - When the `deliveries` table exists, the consumer writes each ball to it
-   - Replaces the debounced JSON blob persistence
-   - Enables ball-by-ball querying + audit trail
+- **Effort:** ~2 days (swap Prisma datasource, migrate data, update connection pooling)
+- **Cost:** ~$20-50/mo on fly.io (managed Postgres) or ~$5/mo self-hosted
+- **This is the #1 blocker** — nothing else matters if the database can't handle concurrent writes
 
-3. **Kafka + Consumer Service** — only when needed
-   - Add when: multiple matches scored simultaneously with 1000s of viewers each
-   - Or when: offline scoring sync is needed (scorer at a ground with poor connectivity → Kafka as durable queue)
-   - Effort: ~1 week (Kafka setup on fly.io + consumer service + migration from synchronous to async)
+#### 2. Redis cache (CRITICAL)
+The in-memory Map is lost on every restart + can't be shared across instances. Redis provides:
+- Persistent cache (survives restarts)
+- Shared state across multiple score-service instances
+- socket.io Redis adapter (enables multi-instance WebSocket fan-out)
+- The score-service ALREADY has Redis adapter support built in (`REDIS_URL` env var) — just needs a Redis instance
 
-4. **REST ingestion API** — optional
-   - Replace WebSocket `operator:state` with REST POST
-   - Enables retry logic (HTTP retries vs WebSocket fire-and-forget)
-   - Effort: ~2 days
+- **Effort:** ~1 day (provision Redis on fly.io, set REDIS_URL, test)
+- **Cost:** ~$0-15/mo (Upstash Redis free tier → paid as usage grows)
 
-**Total effort for full upgrade:** ~2 weeks (Redis + deliveries table + Kafka + consumer)
+#### 3. Multiple score-service instances (REQUIRED)
+Single socket.io instance = ~5,000 connections max. For 50,000+ viewers, need multiple instances with:
+- Redis adapter for cross-instance pub/sub (already supported in code)
+- Load balancer with sticky sessions (fly.io handles this)
+- Each instance handles a subset of connections
 
-### When NOT to upgrade
+- **Effort:** ~1 day (configure fly.io to run multiple score-service instances + Redis adapter)
+- **Cost:** ~$15-30/mo per instance (2-3 instances for launch)
 
-The current simplified architecture is fine for:
-- Single-tenant usage (one organization, a few leagues)
-- < 5,000 concurrent viewers
-- < 10 matches scored simultaneously
-- Always-online scoring (no offline sync needed)
+#### 4. Kafka or alternative message queue (REQUIRED at scale)
+For hundreds of concurrent matches, a message queue buffers scoring events so spikes don't overwhelm the database. Options:
+- **Apache Kafka** — the diagram's recommendation. Robust but complex to operate.
+- **Redis Streams** — simpler than Kafka, uses the same Redis instance. Good enough for 100-500 matches.
+- **Recommendation:** Start with Redis Streams (simpler), upgrade to Kafka only if needed.
 
-Don't upgrade until you have a concrete scaling problem. Premature Kafka/Redis adds operational complexity (monitoring, retries, offset management) for no benefit at low scale.
+- **Effort:** ~3-5 days (implement consumer service + event queue)
+- **Cost:** Included in Redis cost (if using Redis Streams)
+
+#### 5. Per-ball database storage (REQUIRED for commercial)
+The `deliveries` table from the DB redesign (Phase 3) is essential — can't store hundreds of matches' ball-by-ball data as JSON blobs. Each ball must be a queryable row.
+
+- **Effort:** Part of DB redesign Phase 3 (~2 weeks)
+- **Ties to:** PostgreSQL migration (need a real database for this volume of writes)
+
+### Revised commercial launch timeline
+
+The previous roadmap had scalability as a "future milestone." For a commercial product, it must be integrated into the main build sequence:
+
+1. **Database: SQLite → PostgreSQL** — ~2 days (BLOCKER — do this first)
+2. **Redis cache + socket.io adapter** — ~1 day (enables multi-instance)
+3. **DB redesign Phase 1: Organization layer** — ~1 week (multi-tenancy foundation)
+4. **DB redesign Phase 2: Cricket admin** — ~1 week
+5. **DB redesign Phase 3: Match & scoring + deliveries table** — ~2 weeks
+6. **Consumer service + event queue (Redis Streams)** — ~3-5 days
+7. **Multiple score-service instances** — ~1 day
+8. **Stripe subscriptions (#5)** — ~1 week
+9. **Competition rules engine** — ~1 week
+10. **Multi-tenancy / branded sites (#4)** — ~2-3 weeks
+11. **Operational tables** (audit, notifications, webhooks) — ~1 week
+12. **Match lifecycle state machine** (reviewer approval workflow) — ~1 week
+
+**Total to commercial launch:** ~10-12 weeks
+
+### Infrastructure cost estimate (commercial scale)
+
+| Component | Monthly cost |
+|---|---|
+| fly.io app (Next.js, 2GB RAM) | ~$14 |
+| fly.io score-service (2-3 instances, 512MB each) | ~$15-23 |
+| Managed PostgreSQL (fly.io or Neon) | ~$20-50 |
+| Redis (Upstash) | ~$0-15 (scales with usage) |
+| Persistent volume (uploads) | ~$3 |
+| **Total infrastructure** | **~$52-105/mo** |
+
+At scale (500+ concurrent matches):
+| Component | Monthly cost |
+|---|---|
+| fly.io app (larger or multiple) | ~$30-60 |
+| fly.io score-service (5-10 instances) | ~$40-75 |
+| Managed PostgreSQL (larger) | ~$50-100 |
+| Redis (higher tier) | ~$30-50 |
+| **Total at scale** | **~$150-285/mo** |
+
+### Good news: the platform is partially prepared
+
+The score-service was already built with commercial scaling in mind:
+- ✅ Redis adapter support is already coded (just needs `REDIS_URL`)
+- ✅ socket.io room-based routing (each match = one room, scales to thousands)
+- ✅ Token-based scorer auth (HMAC-SHA256, stateless, scales horizontally)
+- ✅ Throttling (80ms min broadcast gap per match)
+- ✅ Connection limits (MAX_TOTAL_CONNECTIONS, MAX_PER_MATCH)
+- ✅ Caddy gateway routes WebSocket traffic correctly
+
+The gaps are: SQLite → PostgreSQL, Redis provisioning, multi-instance setup, and the deliveries table. These are infrastructure changes, not application rewrites.
 
 ---
 

@@ -3,17 +3,43 @@
 import { useAppStore } from "@/lib/store"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Shield, LogOut, ArrowLeft, Plus, Home, Trophy, Users, UserCheck, CloudRain, Sparkles } from "lucide-react"
+import {
+  Shield,
+  LogOut,
+  Home,
+  Trophy,
+  Users,
+  UserCheck,
+  CloudRain,
+  Sparkles,
+  BarChart3,
+  Settings,
+  CalendarDays,
+  ListChecks,
+  Newspaper,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { ViewKey } from "@/lib/types"
 
-/** League admin navigation items. */
-const ADMIN_NAV: { label: string; view: ViewKey; icon: React.ElementType }[] = [
+/** League admin sidebar navigation — CricClubs-style vertical menu.
+ *  Items with `comingSoon: true` show a "Soon" badge and aren't clickable. */
+const ADMIN_NAV: {
+  label: string
+  view: ViewKey
+  icon: React.ElementType
+  comingSoon?: boolean
+}[] = [
   { label: "Dashboard", view: "league-admin-home", icon: Home },
   { label: "My Leagues", view: "league-admin-series-edit", icon: Trophy },
-  { label: "Matches", view: "league-admin-matches", icon: Users },
+  { label: "Schedule", view: "league-admin-matches", icon: CalendarDays },
   { label: "Scorers", view: "league-admin-scorers", icon: UserCheck },
-  { label: "DLS", view: "dls", icon: CloudRain },
+  { label: "Teams", view: "teams", icon: Users, comingSoon: true },
+  { label: "Players", view: "players", icon: Users, comingSoon: true },
+  { label: "Standings", view: "stats", icon: BarChart3, comingSoon: true },
+  { label: "Stats & Reports", view: "stats", icon: Newspaper, comingSoon: true },
+  { label: "Officials", view: "stats", icon: Shield, comingSoon: true },
+  { label: "DLS Calculator", view: "dls", icon: CloudRain },
+  { label: "Settings", view: "stats", icon: Settings, comingSoon: true },
   { label: "Pricing", view: "pricing", icon: Sparkles },
 ]
 
@@ -35,51 +61,59 @@ export function LeagueAdminShell({
   const view = useAppStore((s) => s.view)
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      {/* League admin top bar */}
-      <header className="sticky top-0 z-50 border-b bg-[#1e2a5e] text-white">
-        {/* Row 1: wordmark + badge + exit */}
-        <div className="flex h-12 items-center justify-between px-4">
+    <div className="flex min-h-screen flex-col bg-background md:flex-row">
+      {/* Sidebar (desktop) / top bar (mobile) */}
+      <aside className="sticky top-0 z-50 w-full shrink-0 border-b bg-[#1e2a5e] text-white md:h-screen md:w-56 md:border-b-0 md:border-r">
+        {/* Logo + badge + exit */}
+        <div className="flex items-center justify-between px-4 py-3 md:flex-col md:items-start md:gap-2">
           <div className="flex items-center gap-2">
             <Shield className="h-4 w-4 text-emerald-400" />
             <span className="font-extrabold text-sm tracking-tight">usacricketers</span>
-            <Badge className="ml-2 bg-emerald-600 text-white">League Admin</Badge>
           </div>
+          <Badge className="bg-emerald-600 text-white md:mt-1">League Admin</Badge>
           <Button
             variant="ghost"
             size="sm"
             onClick={exitLeagueAdminMode}
-            className="gap-1.5 text-xs text-white/80 hover:text-white hover:bg-white/10"
+            className="gap-1.5 text-xs text-white/80 hover:text-white hover:bg-white/10 md:mt-3 md:w-full md:justify-start"
           >
             <LogOut className="h-3.5 w-3.5" />
-            Exit
+            Exit to Site
           </Button>
         </div>
-        {/* Row 2: admin navigation */}
-        <nav className="flex items-center gap-1 overflow-x-auto px-4 pb-1.5">
+
+        {/* Navigation — horizontal scroll on mobile, vertical on desktop */}
+        <nav className="flex gap-1 overflow-x-auto px-2 pb-2 md:flex-col md:overflow-y-auto md:pb-4">
           {ADMIN_NAV.map((item) => {
             const Icon = item.icon
+            const isActive = view === item.view
             return (
               <button
-                key={item.view}
-                onClick={() => navigate(item.view)}
+                key={item.label}
+                onClick={() => !item.comingSoon && navigate(item.view)}
+                disabled={item.comingSoon}
                 className={cn(
-                  "flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1 font-display text-xs font-bold uppercase tracking-wide transition-colors",
-                  view === item.view
-                    ? "bg-white/15 text-white"
-                    : "text-white/60 hover:bg-white/10 hover:text-white",
+                  "flex shrink-0 items-center gap-2 rounded-md px-3 py-2 font-display text-xs font-bold uppercase tracking-wide transition-colors md:w-full md:justify-start",
+                  isActive && !item.comingSoon && "bg-white/15 text-white",
+                  !isActive && !item.comingSoon && "text-white/60 hover:bg-white/10 hover:text-white",
+                  item.comingSoon && "cursor-not-allowed text-white/30",
                 )}
               >
-                <Icon className="h-3 w-3" />
-                {item.label}
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                <span className="whitespace-nowrap">{item.label}</span>
+                {item.comingSoon && (
+                  <span className="ml-auto rounded bg-white/10 px-1 py-0.5 text-[8px] font-bold uppercase">
+                    Soon
+                  </span>
+                )}
               </button>
             )
           })}
         </nav>
-      </header>
+      </aside>
 
-      {/* Content */}
-      <main className="flex-1 w-full">
+      {/* Main content area */}
+      <main className="flex-1 overflow-x-hidden">
         <div className="mx-auto max-w-6xl px-3 py-4 sm:px-4 sm:py-6">
           <div className="mb-4 flex flex-wrap items-center gap-3">
             {onBack && (
@@ -89,8 +123,7 @@ export function LeagueAdminShell({
                 onClick={onBack}
                 className="gap-1.5 text-muted-foreground hover:text-foreground"
               >
-                <ArrowLeft className="h-4 w-4" />
-                Back
+                ← Back
               </Button>
             )}
             <h1 className="flex-1 text-xl font-bold tracking-tight text-[#1e2a5e] sm:text-2xl">
@@ -102,12 +135,11 @@ export function LeagueAdminShell({
                 onClick={onAction}
                 className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
               >
-                <Plus className="h-4 w-4" />
-                {actionLabel}
+                + {actionLabel}
               </Button>
             )}
           </div>
-          <div className={cn("space-y-4")}>{children}</div>
+          <div className="space-y-4">{children}</div>
         </div>
       </main>
     </div>

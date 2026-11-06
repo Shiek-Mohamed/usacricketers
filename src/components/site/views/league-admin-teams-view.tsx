@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useAppStore } from "@/lib/store"
 import { useLeagueAdminSession } from "@/lib/league-admin-session"
 import { LeagueAdminShell } from "@/components/admin/league-admin-shell"
@@ -210,6 +210,17 @@ function TeamForm({
   const [description, setDescription] = useState(team?.description ?? "")
   const [saving, setSaving] = useState(false)
 
+  // The form renders above the team list. When a user clicks edit on a team
+  // far down the list, the form opens off-screen at the top — so scroll it
+  // into view on mount (and on team change, since the `key` on <TeamForm>
+  // forces a remount). "start" keeps the form header visible at the top of
+  // the viewport; a small negative scroll-margin (via the wrapper class)
+  // leaves breathing room beneath the sticky app header.
+  const formRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }, [])
+
   async function handleSubmit() {
     if (!name.trim() || !shortName.trim()) {
       alert("Team name and short name are required")
@@ -232,6 +243,7 @@ function TeamForm({
   }
 
   return (
+    <div ref={formRef} className="scroll-mt-24">
     <Card className="p-4">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="font-display text-sm font-bold uppercase tracking-wide">
@@ -349,5 +361,6 @@ function TeamForm({
         </Button>
       </div>
     </Card>
+    </div>
   )
 }

@@ -54,17 +54,24 @@ export function LeagueAdminTeamsView() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(team),
     })
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
       .then((saved: Team) => {
-        if (method === "POST") {
-          setTeams((prev) => [...(prev ?? []), saved])
+        if (saved?.id) {
+          if (method === "POST") {
+            setTeams((prev) => [...(prev ?? []), saved])
+          } else {
+            setTeams((prev) =>
+              (prev ?? []).map((t) => (t.id === saved.id ? saved : t)),
+            )
+          }
+          setShowForm(false)
+          setEditing(null)
         } else {
-          setTeams((prev) =>
-            (prev ?? []).map((t) => (t.id === saved.id ? saved : t)),
-          )
+          alert(saved?.error || "Failed to save team")
         }
-        setShowForm(false)
-        setEditing(null)
       })
       .catch(() => alert("Failed to save team"))
   }

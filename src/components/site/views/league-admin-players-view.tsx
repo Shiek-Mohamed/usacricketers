@@ -57,17 +57,24 @@ export function LeagueAdminPlayersView() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(player),
     })
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
       .then((saved: Player) => {
-        if (method === "POST") {
-          setPlayers((prev) => [...(prev ?? []), saved])
+        if (saved?.id) {
+          if (method === "POST") {
+            setPlayers((prev) => [...(prev ?? []), saved])
+          } else {
+            setPlayers((prev) =>
+              (prev ?? []).map((p) => (p.id === saved.id ? saved : p)),
+            )
+          }
+          setShowForm(false)
+          setEditing(null)
         } else {
-          setPlayers((prev) =>
-            (prev ?? []).map((p) => (p.id === saved.id ? saved : p)),
-          )
+          alert(saved?.error || "Failed to save player")
         }
-        setShowForm(false)
-        setEditing(null)
       })
       .catch(() => alert("Failed to save player"))
   }

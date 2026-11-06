@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { serializePlayer } from "@/lib/serialize"
 import { requireSiteAdmin } from "@/lib/scorer-auth"
+import { authenticateLeagueAdmin } from "@/lib/league-admin-guard"
+
+async function isAuthorized(req: NextRequest): Promise<boolean> {
+  if (requireSiteAdmin(req)) return true
+  const leagueAdmin = await authenticateLeagueAdmin(req)
+  return !!leagueAdmin
+}
 
 export async function GET(
   _req: NextRequest,
@@ -21,8 +28,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const admin = requireSiteAdmin(req)
-  if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
+  if (!(await isAuthorized(req))) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 })
+  }
   const body = await req.json()
   const player = await db.player.update({
     where: { id },
@@ -55,8 +63,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const admin = requireSiteAdmin(req)
-  if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
+  if (!(await isAuthorized(req))) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 })
+  }
   try {
     await db.player.delete({ where: { id } })
   } catch {

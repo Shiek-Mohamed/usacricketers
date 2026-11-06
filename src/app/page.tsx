@@ -284,6 +284,23 @@ export default function Home() {
     )
   }
 
+  // If a league admin is viewing a public tool (DLS/Pricing) from the
+  // sidebar — which happens when the page was loaded via a ?view= URL so
+  // the stored mode is still "public" — keep them in the league admin
+  // shell instead of dropping them into the public site layout. The
+  // league-admin-* views self-wrap in LeagueAdminShell, but dls/pricing
+  // are raw content fragments, so they need this explicit wrapper.
+  if (leagueAdminSession && (view === "dls" || view === "pricing")) {
+    const title = view === "dls" ? "DLS Calculator" : "Pricing"
+    return (
+      <ViewErrorBoundary key={view} label={`league-admin:${view}`}>
+        <LeagueAdminShell title={title}>
+          {renderView()}
+        </LeagueAdminShell>
+      </ViewErrorBoundary>
+    )
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />

@@ -263,6 +263,56 @@ The `deliveries` table is the single most important addition. It transforms the 
 
 ---
 
+## Match Lifecycle State Machine (Governed Scoring Workflow)
+
+A match lifecycle flowchart is saved at `upload/mermaid-diagram(1).png`. It defines the governed scoring workflow with 11 states:
+
+```
+Match Created → Match Setup → Toss & Playing XI → Scoring in Progress
+                                                        ↓
+                                                Innings Complete → More Innings?
+                                                   ↓ (Yes)                    ↓ (No)
+                                           (loop to Scoring)          Match Result Calculated
+                                                                        ↓
+                                                                  Scorer Submits
+                                                                        ↓
+                                                                  Authorized Review
+                                                                   ↓            ↓
+                                                              Publish       Correction Required
+                                                                  ↓            ↓
+                                                           Match Published   (back to Scoring)
+```
+
+**States to implement:**
+1. `created` — match record exists, no setup yet
+2. `setup` — teams, venue, officials configured
+3. `toss_done` — toss completed, playing XI locked
+4. `scoring` — live scoring in progress
+5. `innings_complete` — an innings has ended
+6. `result_calculated` — all innings done, result computed
+7. `submitted` — scorer has submitted the scorecard for review
+8. `under_review` — authorized reviewer checking the scorecard
+9. `published` — scorecard is official + public (terminal)
+10. `correction_required` — reviewer found errors, sent back to scorer
+11. `abandoned` — match abandoned (no result)
+
+**Key gates currently missing from platform:**
+- **Scorer Submits** — formal submission (currently scoring just ends, no submit)
+- **Authorized Review** — league official verifies before publishing (currently auto-published)
+- **Correction Required** — reviewer rejects + sends back with notes (currently only Undo)
+- **Match Published** — triggers stats aggregation, standings, notifications
+
+**Side effects on `published`:**
+- Update team standings (points, NRR)
+- Update player career stats
+- Send notifications to followers
+- Generate scorecard snapshot (versioned)
+- Update series/competition status
+
+**Effort:** ~1 week (state machine + API transitions + reviewer UI + notification triggers)
+
+---
+
 ## Competition Rule Configurability (13 rules — ALL MISSING)
 
 Currently all competition rules are hardcoded in the scoring engine or derived from the format string (Test/ODI/T20I). None are configurable per competition in the database.

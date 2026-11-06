@@ -20,6 +20,7 @@ import { PlayerTimelineView } from "@/components/site/views/player-timeline-view
 import { PlayerComparisonView } from "@/components/site/views/player-comparison-view"
 import { StatsView } from "@/components/site/views/stats-view"
 import { RankingsView } from "@/components/site/views/rankings-view"
+import { BracketPageView } from "@/components/site/views/bracket-view-page"
 import { ScheduleView } from "@/components/site/views/schedule-view"
 import { PhotosView } from "@/components/site/views/photos-view"
 import { GalleryDetailView } from "@/components/site/views/gallery-detail-view"
@@ -131,6 +132,8 @@ export default function Home() {
         return <StatsView />
       case "rankings":
         return <RankingsView />
+      case "bracket":
+        return <BracketPageView />
       case "schedule":
         return <ScheduleView />
       case "photos":

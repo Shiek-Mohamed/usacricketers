@@ -190,6 +190,7 @@ export type ViewKey =
   | "interviews"
   | "series"
   | "series-detail"
+  | "bracket"
   | "teams"
   | "team-detail"
   | "players"

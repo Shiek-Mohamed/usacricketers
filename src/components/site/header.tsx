@@ -41,6 +41,7 @@ const navItems: { label: string; view: ViewKey; icon: React.ElementType }[] = [
   { label: "Home", view: "home", icon: Home },
   { label: "Live", view: "matches", icon: Activity },
   { label: "Series", view: "series", icon: Trophy },
+  { label: "Brackets", view: "bracket", icon: Trophy },
   { label: "Teams", view: "teams", icon: Users },
   { label: "Players", view: "players", icon: UserSearch },
   { label: "Rankings", view: "rankings", icon: Trophy },

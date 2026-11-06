@@ -27,6 +27,7 @@ import {
   Images,
   Radio,
   Play,
+  Sparkles,
   Sun,
   Moon,
   ChevronDown,
@@ -51,6 +52,7 @@ const navItems: { label: string; view: ViewKey; icon: React.ElementType }[] = [
   { label: "Interviews", view: "interviews", icon: Mic },
   { label: "Photos", view: "photos", icon: Images },
   { label: "Videos", view: "videos", icon: Play },
+  { label: "Pricing", view: "pricing", icon: Sparkles },
 ]
 
 // Grouped structure for the desktop dropdown nav (4 top-level items —
@@ -76,6 +78,7 @@ const navGroups: NavGroup[] = [
     ],
   },
   { label: "Stats", view: "stats" },
+  { label: "Pricing", view: "pricing" },
   {
     label: "News",
     children: [

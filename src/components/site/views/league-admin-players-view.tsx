@@ -231,6 +231,7 @@ export function LeagueAdminPlayersView() {
             player={editing}
             teams={teams}
             defaultTeamId={selectedTeam !== "all" ? selectedTeam : undefined}
+            authToken={token}
             onSave={handleSave}
             onCancel={() => { setShowForm(false); setEditing(null) }}
           />
@@ -358,12 +359,14 @@ function PlayerForm({
   player,
   teams,
   defaultTeamId,
+  authToken,
   onSave,
   onCancel,
 }: {
   player: Player | null
   teams: Team[]
   defaultTeamId?: string
+  authToken?: string | null
   onSave: (player: Partial<Player>) => Promise<boolean>
   onCancel: () => void
 }) {
@@ -425,6 +428,8 @@ function PlayerForm({
             )}
             <UploadButton
               label="Upload"
+              resize={300}
+              authToken={authToken}
               onUploaded={(url) => setImageUrl(url)}
             />
             {imageUrl && (

@@ -12,17 +12,22 @@ import { toast } from "sonner"
  * Pass `resize={300}` to automatically resize the image to 300×300 square
  * (cover-cropped, JPEG q85) — ideal for player avatars / headshots where you
  * don't need the full-resolution original.
+ *
+ * Pass `authToken` for league-admin auth (Bearer token). When omitted, the
+ * button falls back to the CSRF cookie used by site-admins.
  */
 export function UploadButton({
   onUploaded,
   label = "Upload",
   resize,
   className,
+  authToken,
 }: {
   onUploaded: (url: string) => void
   label?: string
   resize?: number
   className?: string
+  authToken?: string | null
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
@@ -33,16 +38,21 @@ export function UploadButton({
       const fd = new FormData()
       fd.append("file", file)
       const endpoint = resize ? `/api/upload?resize=${resize}` : "/api/upload"
-      // CSRF double-submit: read the non-httpOnly csrf-token cookie and
-      // send it as the X-CSRF-Token header (required by requireSiteAdmin
-      // for POST requests).
-      const csrfToken =
-        typeof document !== "undefined"
-          ? document.cookie.match(/csrf-token=([^;]+)/)?.[1] || ""
-          : ""
+      // Auth: league admins send a Bearer token; site admins rely on the
+      // CSRF double-submit cookie (X-CSRF-Token header).
+      const headers: Record<string, string> = {}
+      if (authToken) {
+        headers["Authorization"] = `Bearer ${authToken}`
+      } else {
+        const csrfToken =
+          typeof document !== "undefined"
+            ? document.cookie.match(/csrf-token=([^;]+)/)?.[1] || ""
+            : ""
+        headers["X-CSRF-Token"] = csrfToken
+      }
       const res = await fetch(endpoint, {
         method: "POST",
-        headers: { "X-CSRF-Token": csrfToken },
+        headers,
         body: fd,
       })
       const data = await res.json()

@@ -28,6 +28,7 @@ import {
   Radio,
   Play,
   Sparkles,
+  CloudRain,
   Sun,
   Moon,
   ChevronDown,
@@ -46,6 +47,7 @@ const navItems: { label: string; view: ViewKey; icon: React.ElementType }[] = [
   { label: "Teams", view: "teams", icon: Users },
   { label: "Players", view: "players", icon: UserSearch },
   { label: "Rankings", view: "rankings", icon: Trophy },
+  { label: "DLS", view: "dls", icon: CloudRain },
   { label: "Stats", view: "stats", icon: BarChart3 },
   { label: "Schedule", view: "schedule", icon: CalendarDays },
   { label: "News", view: "news", icon: Newspaper },
@@ -78,6 +80,7 @@ const navGroups: NavGroup[] = [
     ],
   },
   { label: "Stats", view: "stats" },
+  { label: "DLS Calculator", view: "dls" },
   { label: "Pricing", view: "pricing" },
   {
     label: "News",

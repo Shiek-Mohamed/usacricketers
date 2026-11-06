@@ -207,6 +207,7 @@ export type ViewKey =
   | "search"
   | "feedback"
   | "pricing"
+  | "dls"
   | "admin-dashboard"
   | "admin-login"
   | "admin-reset-password"

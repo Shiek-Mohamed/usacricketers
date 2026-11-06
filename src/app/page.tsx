@@ -22,6 +22,7 @@ import { StatsView } from "@/components/site/views/stats-view"
 import { RankingsView } from "@/components/site/views/rankings-view"
 import { BracketPageView } from "@/components/site/views/bracket-view-page"
 import { PricingView } from "@/components/site/views/pricing-view"
+import { DLSCalculator } from "@/components/cricket/dls-calculator"
 import { ScheduleView } from "@/components/site/views/schedule-view"
 import { PhotosView } from "@/components/site/views/photos-view"
 import { GalleryDetailView } from "@/components/site/views/gallery-detail-view"
@@ -137,6 +138,8 @@ export default function Home() {
         return <BracketPageView />
       case "pricing":
         return <PricingView />
+      case "dls":
+        return <DLSCalculator />
       case "schedule":
         return <ScheduleView />
       case "photos":

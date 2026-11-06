@@ -239,5 +239,100 @@ The `deliveries` table is the single most important addition. It transforms the 
 
 ---
 
+## Competition Rule Configurability (13 rules — ALL MISSING)
+
+Currently all competition rules are hardcoded in the scoring engine or derived from the format string (Test/ODI/T20I). None are configurable per competition in the database.
+
+| # | Rule | Status | What's needed |
+|---|---|---|---|
+| 1 | Overs per innings | ❌ | `maxOvers` exists in LiveMatchState but not persisted to DB. Add `oversPerInnings` to competitions table |
+| 2 | Number of innings per team | ❌ | Hardcoded (Test=2, else=1). Add `inningsPerTeam` field |
+| 3 | Maximum overs per bowler | ❌ | Hardcoded. Add `maxOversPerBowler` field |
+| 4 | Powerplay overs | ❌ | Add `powerplayOvers` JSON field (phases + restrictions) |
+| 5 | Number of players | ❌ | Assumed 11. Add `playersPerSide` field |
+| 6 | Fielding restrictions | ❌ | Add `fieldingRestrictions` JSON field |
+| 7 | Free-hit rules | ❌ | Hardcoded (no-ball = free hit). Add `freeHitRules` field |
+| 8 | Follow-on rules | ❌ | Hardcoded (200+ lead in Test). Add `followOnThreshold` field |
+| 9 | Declaration permissions | ❌ | Hardcoded (Test only). Add `allowDeclaration` boolean |
+| 10 | Super-over rules | ❌ | Hardcoded (tied limited-overs). Add `superOverRules` field |
+| 11 | Tie-break rules | ❌ | Add `tieBreakRules` field |
+| 12 | Points allocation | ⚠️ | `Standing.points` exists but allocation (win=2, tie=1) is hardcoded. Add `pointsConfig` JSON (win, tie, loss, nr, bonus) |
+| 13 | Result and abandonment rules | ❌ | Add `resultRules` field (DLS, abandonment threshold, etc.) |
+
+**Fix:** Create a `competition_rules` table (or add fields to the `competitions` table from Phase 2 of the DB redesign) with all 13 rules as configurable fields. The scoring engine reads these instead of hardcoding.
+
+**Effort:** ~1 week (DB fields + scoring engine refactor to read rules from DB + admin UI to configure them)
+
+---
+
+## Database Best Practices (7 rules — 1 MET, 6 MISSING)
+
+| # | Rule | Status | Fix |
+|---|---|---|---|
+| 1 | UUID identifiers | ❌ Using `cuid()` | Change all `@default(cuid())` to `@default(uuid())`. Migration script needed to convert existing IDs. ~2 hours |
+| 2 | Foreign keys | ✅ Prisma relations maintain FK integrity | Already done |
+| 3 | Index org_id, match_id, player_id, dates | ⚠️ Has some indexes but no org_id/player_id | Add `@@index([organizationId])` to all org-owned tables + `@@index([matchId])` to scoring tables + `@@index([playerId])` to player tables. ~1 hour |
+| 4 | Transactions for deliveries | ❌ No deliveries table | When the `deliveries` table is built (Phase 3 of DB redesign), wrap ball-recording in `$transaction`. ~30 min (part of Phase 3) |
+| 5 | Audit trail of corrections | ❌ Missing | Covered by Gap 3 (ScoringAudit model) + `match_adjustments` table from Phase 3 |
+| 6 | Automatic database backups | ❌ Manual only | Add a cron job: `sqlite3 db/app.db ".backup db/backup-$(date +%Y%m%d).db"` daily + upload to fly.io volume or S3. ~1 hour |
+| 7 | Organization-level data access | ❌ No org model | Covered by Phase 1 of DB redesign (organization_id on all tables + RBAC) |
+
+**Effort to close all 6 gaps:** ~4 hours (UUID migration + indexes + backup script) — the rest is covered by the DB redesign phases.
+
+---
+
+## Operational Tables (8 tables — ALL MISSING)
+
+| Table | Purpose | Priority | Notes |
+|---|---|---|---|
+| `audit_logs` | System-wide audit trail (user logins, data changes, admin actions) | High | Separate from match scoring audit — this is platform-level audit |
+| `notification_queue` | Email/push notification queue (match alerts, newsletter, invitations) | High | Enables the push notifications + newsletter features |
+| `media_assets` | Normalized image/video storage (currently filesystem files in `/db/uploads`) | Medium | Replaces ad-hoc file paths with a tracked media library |
+| `api_keys` | API keys for external integrations (third-party apps, data feeds) | Medium | Needed for #4 (customers building on the platform via API) |
+| `webhook_events` | Outgoing webhook delivery log (Stripe events, external integrations) | Medium | Needed for #5 (Stripe subscription webhooks) |
+| `support_tickets` | In-platform support requests | Low | When customer base grows |
+| `system_settings` | Platform-wide configuration (feature flags, limits, defaults) | Medium | Replaces hardcoded config (max connections, rate limits, etc.) |
+| `background_jobs` | Job queue for async tasks (scorecard generation, stats computation, imports) | Medium | Enables heavy computations without blocking the request cycle |
+
+**Effort to build all 8:** ~1 week
+
+**Recommended priority order:**
+1. `audit_logs` + `system_settings` — foundation for everything else
+2. `notification_queue` — unlocks push notifications + newsletter automation
+3. `webhook_events` — needed for Stripe integration (#5)
+4. `media_assets` — clean up image management
+5. `api_keys` + `background_jobs` — needed for multi-tenancy (#4)
+6. `support_tickets` — when customer base justifies it
+
+---
+
+## Updated Total Platform Gap Analysis
+
+| Category | Needed | Have | Missing | Effort |
+|---|---|---|---|---|
+| Core capabilities (#1-5) | 5 | 3 | 2 | ~3-4 weeks (#4 + #5) |
+| Scoring data points (12) | 12 | 9 | 3 | ~3-4 hours |
+| Database tables (33) | 33 | 3 | 30 | ~4 weeks |
+| Competition rules (13) | 13 | 0 | 13 | ~1 week |
+| Database best practices (7) | 7 | 1 | 6 | ~4 hours |
+| Operational tables (8) | 8 | 0 | 8 | ~1 week |
+| **Total** | **78** | **16** | **62** | **~9-10 weeks** |
+
+### Recommended build sequence
+
+1. **Scoring data gaps** (~3-4 hours) — quick win, closes 3 data points
+2. **Database best practices** (~4 hours) — UUIDs, indexes, backups
+3. **Stripe subscriptions (#5)** (~1 week) — generates revenue immediately
+4. **Operational tables** (~1 week) — audit_logs, notification_queue, webhook_events first
+5. **Competition rules** (~1 week) — configurable rules engine
+6. **Database redesign Phase 1: Organization layer** (~1 week) — multi-tenancy foundation
+7. **Database redesign Phase 2: Cricket admin** (~1 week) — seasons, divisions, venues, officials
+8. **Database redesign Phase 3: Match & scoring** (~2 weeks) — deliveries table + normalized scoring
+9. **Multi-tenancy (#4)** (~2-3 weeks) — branded customer sites (builds on Phase 1-3)
+
+**Total to full professional platform:** ~9-10 weeks
+
+---
+
 *Last updated: Nov 2026*
 *Log maintained in: /home/z/my-project/ROADMAP.md*

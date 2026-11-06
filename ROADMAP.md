@@ -110,5 +110,42 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_...
 
 ---
 
+## Scoring Data Completeness — Gaps to Fix
+
+The scoring system preserves 9 of 12 required data points. 3 gaps need to be addressed:
+
+### Gap 1: Scorer identity per ball (currently partial)
+- **Current:** Scorer is authenticated via signed JWT token, but their ID is NOT recorded per-ball in the live state or commentary entries.
+- **Fix:** Add `scorerId` field to `CommentaryEntry` — set from the token when each ball is pushed.
+- **Effort:** ~30 min
+- **File:** `src/lib/scoring.ts` — add `scorerId?: string` to `CommentaryEntry`, populate in `pushCommentary`
+
+### Gap 2: Timestamp per ball (currently missing)
+- **Current:** No timestamp field on commentary entries or live state. Can't tell when each ball was scored.
+- **Fix:** Add `timestamp` field (ISO string) to `CommentaryEntry` — set to `Date.now()` when each ball is pushed.
+- **Effort:** ~30 min
+- **File:** `src/lib/scoring.ts` — add `timestamp?: string` to `CommentaryEntry`, populate in `pushCommentary`
+
+### Gap 3: Correction/revision audit trail (currently missing)
+- **Current:** Undo exists (local history stack in the scorer view) but undone states are discarded. No permanent audit trail of corrections.
+- **Fix:** Create a `ScoringAudit` Prisma model that logs every state change (ball scored, undo, correction) with: matchId, scorerId, timestamp, action type, before-state snapshot, after-state snapshot.
+- **Effort:** ~2-3 hours
+- **Files:**
+  - `prisma/schema.prisma` — add `ScoringAudit` model
+  - `src/app/api/scoring-audit/route.ts` — new API to write audit entries
+  - `src/components/admin/views/live-scorer-view.tsx` — call audit API on every `pushState` + `handleUndo`
+  - Admin UI to view audit trail per match (optional, can add later)
+
+### Summary table
+| # | Data point | Status | Gap fix effort |
+|---|---|---|---|
+| 10 | Scorer identity | ⚠️ Partial | ~30 min (add `scorerId` to CommentaryEntry) |
+| 11 | Timestamp | ❌ Missing | ~30 min (add `timestamp` to CommentaryEntry) |
+| 12 | Correction/revision reference | ❌ Missing | ~2-3 hours (ScoringAudit model + API + logging) |
+
+**Total effort to close all 3 gaps:** ~3-4 hours
+
+---
+
 *Last updated: Nov 2026*
 *Log maintained in: /home/z/my-project/ROADMAP.md*

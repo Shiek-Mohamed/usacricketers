@@ -36,10 +36,10 @@ const ADMIN_NAV: {
   { label: "Teams", view: "league-admin-teams", icon: Users },
   { label: "Players", view: "league-admin-players", icon: UserCheck },
   { label: "Standings", view: "league-admin-standings", icon: BarChart3 },
-  { label: "Stats & Reports", view: "stats", icon: Newspaper, comingSoon: true },
-  { label: "Officials", view: "stats", icon: Shield, comingSoon: true },
+  { label: "Stats & Reports", view: "league-admin-stats", icon: Newspaper },
+  { label: "Officials", view: "league-admin-officials", icon: Shield },
   { label: "DLS Calculator", view: "dls", icon: CloudRain },
-  { label: "Settings", view: "stats", icon: Settings, comingSoon: true },
+  { label: "Settings", view: "league-admin-settings", icon: Settings },
   { label: "Pricing", view: "pricing", icon: Sparkles },
 ]
 

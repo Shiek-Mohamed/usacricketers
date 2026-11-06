@@ -25,6 +25,7 @@ import {
   Save,
   Loader2,
   ShieldCheck,
+  ChevronRight,
 } from "lucide-react"
 import { BulkPlayersDialog } from "@/components/admin/bulk-players/bulk-players-dialog"
 import type { Team } from "@/lib/types"
@@ -145,6 +146,7 @@ export function LeagueAdminTeamsView() {
               onEdit={() => { setEditing(team); setShowForm(true) }}
               onDelete={() => handleDelete(team.id)}
               onBulk={() => setBulkFor(team)}
+              onViewRoster={() => navigate("league-admin-players", team.id)}
             />
           ))}
         </div>
@@ -199,87 +201,103 @@ function TeamCard({
   onEdit,
   onDelete,
   onBulk,
+  onViewRoster,
 }: {
   team: Team
   onEdit: () => void
   onDelete: () => void
   onBulk: () => void
+  onViewRoster: () => void
 }) {
   return (
     <Card className="group flex flex-col overflow-hidden p-0 transition-shadow hover:shadow-md">
-      {/* Badge banner */}
-      <div
-        className="relative flex h-16 items-center justify-between px-3"
-        style={{
-          background: `linear-gradient(135deg, ${team.primaryColor} 0%, ${team.primaryColor}dd 100%)`,
-        }}
+      {/* Clickable badge + info → navigates to the team's roster */}
+      <button
+        type="button"
+        onClick={onViewRoster}
+        className="flex flex-1 flex-col text-left"
+        aria-label={`View ${team.name} roster`}
+        title="View roster"
       >
-        <span className="font-display text-lg font-extrabold tracking-tight text-white drop-shadow-sm">
-          {team.shortName.slice(0, 4).toUpperCase()}
-        </span>
-        {/* Accent strip */}
-        <span
-          className="absolute bottom-0 left-0 h-1 w-full"
-          style={{ background: team.accentColor }}
-        />
-        {/* Color dots */}
-        <div className="flex gap-1">
+        {/* Badge banner */}
+        <div
+          className="relative flex h-16 items-center justify-between px-3"
+          style={{
+            background: `linear-gradient(135deg, ${team.primaryColor} 0%, ${team.primaryColor}dd 100%)`,
+          }}
+        >
+          <span className="font-display text-lg font-extrabold tracking-tight text-white drop-shadow-sm">
+            {team.shortName.slice(0, 4).toUpperCase()}
+          </span>
+          {/* Accent strip */}
           <span
-            className="h-3 w-3 rounded-full border border-white/40"
-            style={{ background: team.primaryColor }}
-            title="Primary color"
-          />
-          <span
-            className="h-3 w-3 rounded-full border border-white/40"
+            className="absolute bottom-0 left-0 h-1 w-full"
             style={{ background: team.accentColor }}
-            title="Accent color"
           />
+          {/* Color dots */}
+          <div className="flex gap-1">
+            <span
+              className="h-3 w-3 rounded-full border border-white/40"
+              style={{ background: team.primaryColor }}
+              title="Primary color"
+            />
+            <span
+              className="h-3 w-3 rounded-full border border-white/40"
+              style={{ background: team.accentColor }}
+              title="Accent color"
+            />
+          </div>
         </div>
-      </div>
 
-      {/* Team info */}
-      <div className="flex flex-1 flex-col gap-2 p-3">
-        <div className="min-h-[2.5rem]">
-          <div className="font-display text-sm font-bold leading-tight line-clamp-2">{team.name}</div>
-          {team.country && (
-            <div className="mt-0.5 text-xs text-muted-foreground truncate">{team.country}</div>
-          )}
+        {/* Team info */}
+        <div className="flex flex-1 flex-col gap-2 p-3">
+          <div className="min-h-[2.5rem]">
+            <div className="font-display text-sm font-bold leading-tight line-clamp-2">{team.name}</div>
+            {team.country && (
+              <div className="mt-0.5 text-xs text-muted-foreground truncate">{team.country}</div>
+            )}
+          </div>
+          {/* View roster hint */}
+          <div className="flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-emerald-600 opacity-0 transition-opacity group-hover:opacity-100">
+            View Roster
+            <ChevronRight className="h-3 w-3" />
+          </div>
         </div>
+      </button>
 
-        {/* Actions */}
-        <div className="flex items-center gap-1 border-t pt-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 flex-1 gap-1 px-1 text-xs"
-            aria-label="Bulk add players"
-            title="Bulk add players"
-            onClick={onBulk}
-          >
-            <Users className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Players</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 p-0"
-            aria-label="Edit team"
-            title="Edit team"
-            onClick={onEdit}
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-            aria-label="Delete team"
-            title="Delete team"
-            onClick={onDelete}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-        </div>
+      {/* Actions */}
+      <div className="flex items-center gap-1 border-t px-3 pb-3 pt-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 flex-1 gap-1 px-1 text-xs"
+          aria-label="Bulk add players"
+          title="Bulk add players"
+          onClick={onBulk}
+        >
+          <Users className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Players</span>
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 w-7 p-0"
+          aria-label="Edit team"
+          title="Edit team"
+          onClick={onEdit}
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+          aria-label="Delete team"
+          title="Delete team"
+          onClick={onDelete}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
       </div>
     </Card>
   )

@@ -23,11 +23,14 @@ import type { Player, Team } from "@/lib/types"
 
 export function LeagueAdminPlayersView() {
   const navigate = useAppStore((s) => s.navigate)
+  // If the user navigated here from a team card click, `id` holds the team
+  // id to pre-filter by. Falls back to "all" when arriving from the sidebar.
+  const initialTeamId = useAppStore((s) => s.id)
   const session = useLeagueAdminSession((s) => s.session)
   const [teams, setTeams] = useState<Team[]>([])
   const [players, setPlayers] = useState<Player[] | null>(null)
   const [loading, setLoading] = useState(true)
-  const [selectedTeam, setSelectedTeam] = useState<string>("all")
+  const [selectedTeam, setSelectedTeam] = useState<string>(initialTeamId ?? "all")
   const [editing, setEditing] = useState<Player | null>(null)
   const [showForm, setShowForm] = useState(false)
   const token = session?.token ?? null
@@ -42,10 +45,17 @@ export function LeagueAdminPlayersView() {
       .then(([t, p]: [Team[], Player[]]) => {
         setTeams(t)
         setPlayers(p)
+        // Validate the pre-selected team id against the loaded teams. If it
+        // doesn't match any team (stale id, or arrived from the sidebar with
+        // no id), reset to "all" so the filter doesn't silently hide every
+        // player.
+        if (initialTeamId && !t.some((tm) => tm.id === initialTeamId)) {
+          setSelectedTeam("all")
+        }
       })
       .catch(() => { setTeams([]); setPlayers([]) })
       .finally(() => setLoading(false))
-  }, [session])
+  }, [session, initialTeamId])
 
   const filteredPlayers = (players ?? []).filter(
     (p) => selectedTeam === "all" || p.teamId === selectedTeam,
@@ -94,13 +104,21 @@ export function LeagueAdminPlayersView() {
     return teams.find((t) => t.id === teamId)?.shortName ?? "?"
   }
 
+  // When a specific team is selected, show its full name in the header + a
+  // back link so the user can return to the teams grid.
+  const selectedTeamObj = teams.find((t) => t.id === selectedTeam) ?? null
+  const headerTitle = selectedTeamObj
+    ? `Players · ${selectedTeamObj.name}`
+    : "Players"
+
   if (!session) {
     return <LeagueAdminShell title="Players"><p className="text-sm text-muted-foreground">Please sign in.</p></LeagueAdminShell>
   }
 
   return (
     <LeagueAdminShell
-      title="Players"
+      title={headerTitle}
+      onBack={selectedTeamObj ? () => navigate("league-admin-teams") : undefined}
       actionLabel="Add Player"
       onAction={() => { setEditing(null); setShowForm(true) }}
     >

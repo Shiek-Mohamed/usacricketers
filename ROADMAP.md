@@ -147,5 +147,97 @@ The scoring system preserves 9 of 12 required data points. 3 gaps need to be add
 
 ---
 
+## Database Redesign — Normalized Multi-Tenant Schema
+
+The current database is flat — most scoring data lives as JSON blobs inside `Match.scorecard`. A full redesign is needed to support multi-tenancy (#4), subscriptions (#5), and the scoring audit trail. **33 tables needed, 3 exist, 30 missing.**
+
+### A. Organization & account tables (8 tables — ALL MISSING)
+
+These are the multi-tenancy + RBAC foundation. Without them, #4 (branded customer sites) and #5 (subscription gating per org) can't work.
+
+| Table | Purpose | Status | Migration notes |
+|---|---|---|---|
+| `users` | Unified user accounts + login identities | ❌ | Replace 3 separate models (SiteAdmin, Scorer, LeagueAdmin) with one `users` table + `role` field |
+| `organizations` | Leagues, clubs, tournament operators | ❌ | Each org owns their data. Has `name`, `slug`, `branding_json`, `stripe_customer_id`, `subscription_plan` |
+| `organization_members` | User membership in organizations | ❌ | Many-to-many: user ↔ org with role |
+| `roles` | Role definitions (admin, scorer, league-admin, viewer) | ❌ | Currently hardcoded in TypeScript |
+| `permissions` | Individual permissions (score_match, edit_teams, manage_scorers, etc.) | ❌ | Granular access control |
+| `role_permissions` | Role-to-permission mapping | ❌ | Many-to-many |
+| `invitations` | Invitations to join organizations | ❌ | Email-based invite flow |
+| `organization_settings` | Org configuration (branding, domain, features enabled) | ❌ | Per-tenant config: colors, logo, custom domain, feature flags |
+
+**Key principle:** Every organization-owned record (teams, players, matches, etc.) carries an `organization_id`. A player can belong to several organizations without duplicate global identities.
+
+### B. Cricket administration tables (11 tables — 2 EXIST, 9 MISSING)
+
+| Table | Purpose | Status | Migration notes |
+|---|---|---|---|
+| `seasons` | Competition seasons (2026, 2026-27) | ❌ | Currently `Series.season` is a string |
+| `competitions` | Leagues and tournaments | ⚠️ | `Series` model covers this — rename/restructure |
+| `divisions` | Multiple competition divisions (Premier, Division 1, etc.) | ❌ | Multiple Series per division currently |
+| `competition_formats` | T10, T20, ODI, Test, custom | ❌ | Currently a string field |
+| `teams` | Registered teams | ✅ | Add `organization_id` |
+| `team_entries` | Teams participating in competitions | ⚠️ | `TournamentTeam` covers this — rename |
+| `player_profiles` | Global player records (not tied to one team) | ⚠️ | `Player` exists but tied to one Team — decouple to global profile |
+| `player_team_memberships` | Team + season affiliations (player can play for different teams in different seasons) | ❌ | Many-to-many: player ↔ team ↔ season |
+| `team_staff` | Coaches, managers, officials | ❌ | |
+| `venues` | Cricket grounds (name, city, country) | ❌ | Currently a string field on Match |
+| `officials` | Umpires, scorers, match officials | ❌ | Currently string fields on Match |
+
+### C. Match & scoring tables (14 tables — 1 EXISTS, 13 MISSING)
+
+**This is the critical gap.** Currently all scoring data is stored as a JSON blob in `Match.scorecard`. The redesign normalizes everything — especially the `deliveries` table (every ball as a row).
+
+| Table | Purpose | Status | Migration notes |
+|---|---|---|---|
+| `matches` | Match details + status | ✅ | Add `organization_id`, `competition_id`, `division_id`, `season_id`, `venue_id` |
+| `match_teams` | Participating teams (many-to-many) | ❌ | Replace `Match.team1Id`/`team2Id` with junction table |
+| `match_officials` | Umpires + scorers assigned to matches | ❌ | Many-to-many: match ↔ official with role |
+| `playing_xis` | Confirmed playing elevens | ❌ | Currently in scorecard JSON |
+| `innings` | Individual innings (one per batting turn) | ❌ | Currently JSON array in scorecard |
+| `batting_performances` | Batter statistics per innings | ❌ | Currently JSON in scorecard.innings[].batting |
+| `bowling_performances` | Bowler statistics per innings | ❌ | Currently JSON in scorecard.innings[].bowling |
+| **`deliveries`** | **Every ball and scoring event** | ❌ | **THE BIG ONE.** Ball-by-ball record: innings_id, over_number, ball_number, batsman_id, bowler_id, runs, extras, wicket_id, is_legal, scorer_id, timestamp. Currently only exists as commentary entries in JSON. |
+| `wickets` | Dismissal information (type, batsman, bowler, fielders) | ❌ | Currently in fallOfWickets JSON + batsman dismissal string |
+| `partnerships` | Batting partnerships (pair, runs, balls) | ❌ | |
+| `over_summaries` | Over-by-over summaries (runs, wickets, score) | ❌ | Currently generated on-the-fly from commentary |
+| `match_events` | Toss, innings changes, rain delays, DRS | ❌ | |
+| `commentary` | Match commentary (text + audio clips) | ❌ | Currently JSON array in scorecard |
+| `match_adjustments` | Penalties and corrections (audit trail) | ❌ | Ties to Gap 3 (correction/revision reference) |
+| `scorecard_snapshots` | Published scorecard snapshots (versioned) | ❌ | |
+
+### Migration strategy
+
+**Phase 1: Organization layer (tables A)** — ~1 week
+- Create the 8 organization/account tables
+- Migrate existing SiteAdmin/Scorer/LeagueAdmin into unified `users` + `organization_members`
+- Add `organization_id` to existing Team, Player, Series, Match tables
+- Build RBAC (roles + permissions)
+
+**Phase 2: Cricket admin layer (tables B)** — ~1 week
+- Create seasons, divisions, competition_formats, venues, officials tables
+- Restructure Series → competitions, TournamentTeam → team_entries
+- Decouple Player into global `player_profiles` + `player_team_memberships`
+
+**Phase 3: Match & scoring layer (tables C)** — ~2 weeks
+- Create the 13 missing match/scoring tables
+- **The `deliveries` table is the centerpiece** — every ball as a normalized row with batsman, bowler, runs, extras, wicket, legal status, scorer ID, timestamp
+- Migrate existing scorecard JSON into normalized tables
+- Build scorecard_snapshots for versioned publishes
+- Wire the live scorer to write to `deliveries` + `innings` + `batting_performances` + `bowling_performances` in real-time (via the score-service WebSocket)
+
+**Total database redesign effort:** ~4 weeks
+
+### Why the `deliveries` table matters most
+
+The `deliveries` table is the single most important addition. It transforms the platform from "JSON blob storage" to "queryable ball-by-ball data." With it, you can:
+- Compute any stat on demand (strike rates, wagon wheels, heat maps, partnership trajectories)
+- Audit every ball (scorer ID + timestamp + correction reference)
+- Enable the scoring data completeness gaps (#10 scorer identity, #11 timestamp, #12 audit trail)
+- Power advanced analytics (player matchups, over-by-over momentum, bowler-vs-batsman breakdowns)
+- Support official cricket data standards (each delivery is a first-class record)
+
+---
+
 *Last updated: Nov 2026*
 *Log maintained in: /home/z/my-project/ROADMAP.md*

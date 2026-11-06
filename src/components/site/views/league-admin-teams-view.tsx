@@ -32,6 +32,8 @@ export function LeagueAdminTeamsView() {
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<Team | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const token = session?.token ?? null
+  const authHeaders = { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
 
   // Load teams for the managed series
   useEffect(() => {
@@ -51,7 +53,7 @@ export function LeagueAdminTeamsView() {
     const url = team.id ? `/api/teams/${team.id}` : "/api/teams"
     fetch(url, {
       method,
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders,
       body: JSON.stringify(team),
     })
       .then((r) => {
@@ -78,7 +80,7 @@ export function LeagueAdminTeamsView() {
 
   function handleDelete(teamId: string) {
     if (!confirm("Delete this team? This cannot be undone.")) return
-    fetch(`/api/teams/${teamId}`, { method: "DELETE" })
+    fetch(`/api/teams/${teamId}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } })
       .then(() => {
         setTeams((prev) => (prev ?? []).filter((t) => t.id !== teamId))
       })

@@ -30,6 +30,8 @@ export function LeagueAdminPlayersView() {
   const [selectedTeam, setSelectedTeam] = useState<string>("all")
   const [editing, setEditing] = useState<Player | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const token = session?.token ?? null
+  const authHeaders = { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
 
   useEffect(() => {
     if (!session) return
@@ -54,7 +56,7 @@ export function LeagueAdminPlayersView() {
     const url = player.id ? `/api/players/${player.id}` : "/api/players"
     fetch(url, {
       method,
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders,
       body: JSON.stringify(player),
     })
       .then((r) => {
@@ -81,7 +83,7 @@ export function LeagueAdminPlayersView() {
 
   function handleDelete(playerId: string) {
     if (!confirm("Delete this player?")) return
-    fetch(`/api/players/${playerId}`, { method: "DELETE" })
+    fetch(`/api/players/${playerId}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } })
       .then(() => {
         setPlayers((prev) => (prev ?? []).filter((p) => p.id !== playerId))
       })

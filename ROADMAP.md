@@ -228,7 +228,31 @@ These are the multi-tenancy + RBAC foundation. Without them, #4 (branded custome
 
 **Total database redesign effort:** ~4 weeks
 
-### Why the `deliveries` table matters most
+### Target schema diagram (reference ERD)
+
+A visual ERD for the core 15 entities is saved at `upload/mermaid-diagram.png`. It shows:
+
+```
+ORGANIZATIONS (root — multi-tenancy)
+├── USERS ←→ ORGANIZATION_MEMBERS (M:N join with roles)
+├── DOMAINS (custom domains per org)
+├── SEASONS → COMPETITIONS → DIVISIONS → TEAM_ENTRIES
+├── TEAMS → PLAYER_TEAM_MEMBERSHIPS ←→ PLAYER_PROFILES
+└── COMPETITIONS → MATCHES
+                      ├── MATCH_EVENTS (toss, innings changes)
+                      └── INNINGS → DELIVERIES → WICKETS
+```
+
+**Key design patterns in the diagram:**
+1. **Multi-tenancy root** — ORGANIZATIONS owns the entire tree. Every child carries org context.
+2. **Decoupled identity** — USERS and PLAYER_PROFILES are separate (a user may not be a player; a player may not have a user account). Linked via "may_link".
+3. **Ball-by-ball chain** — MATCHES → INNINGS → DELIVERIES → WICKETS is the 4-level scoring hierarchy.
+4. **M:N join tables** — ORGANIZATION_MEMBERS, PLAYER_TEAM_MEMBERSHIPS, TEAM_ENTRIES resolve many-to-many relationships cleanly.
+5. **Competition hierarchy** — SEASONS → COMPETITIONS → DIVISIONS → TEAM_ENTRIES enables multi-division, multi-season league structures.
+
+The diagram covers 15 of the 33 planned tables. The remaining 18 (roles, permissions, venues, officials, batting/bowling performances, partnerships, over_summaries, commentary, snapshots, operational tables, etc.) are secondary — they extend the core structure shown in the diagram.
+
+
 
 The `deliveries` table is the single most important addition. It transforms the platform from "JSON blob storage" to "queryable ball-by-ball data." With it, you can:
 - Compute any stat on demand (strike rates, wagon wheels, heat maps, partnership trajectories)

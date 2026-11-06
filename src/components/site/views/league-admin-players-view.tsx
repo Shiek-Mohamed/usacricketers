@@ -26,6 +26,7 @@ import {
   ShieldCheck,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { UploadButton } from "@/components/admin/upload-button"
 import type { Player, Team } from "@/lib/types"
 
 const ROLES = ["Batsman", "Bowler", "All-rounder", "Wicket-keeper", "Wicket-keeper batsman"] as const
@@ -262,13 +263,24 @@ function PlayerCard({
         style={{ background: teamColor }}
       />
       <div className="flex flex-1 items-center gap-2.5 py-2 pl-3 pr-2">
-        {/* Avatar */}
-        <span
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full font-display text-[11px] font-bold text-white"
-          style={{ background: `linear-gradient(135deg, ${teamColor} 0%, ${teamColor}bb 100%)` }}
-        >
-          {player.name.slice(0, 2).toUpperCase()}
-        </span>
+        {/* Avatar — player photo if available, otherwise initials on a
+            team-colored gradient. The ring gives photos a clean border so
+            faces read well even at this small size. */}
+        {player.imageUrl ? (
+          <img
+            src={player.imageUrl}
+            alt={player.name}
+            className="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-background"
+            loading="lazy"
+          />
+        ) : (
+          <span
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full font-display text-[11px] font-bold text-white ring-2 ring-background"
+            style={{ background: `linear-gradient(135deg, ${teamColor} 0%, ${teamColor}bb 100%)` }}
+          >
+            {player.name.slice(0, 2).toUpperCase()}
+          </span>
+        )}
         {/* Info */}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1">
@@ -335,6 +347,7 @@ function PlayerForm({
   const [battingStyle, setBattingStyle] = useState(player?.battingStyle ?? "Right-hand bat")
   const [bowlingStyle, setBowlingStyle] = useState(player?.bowlingStyle ?? "")
   const [bio, setBio] = useState(player?.bio ?? "")
+  const [imageUrl, setImageUrl] = useState(player?.imageUrl ?? "")
   const [saving, setSaving] = useState(false)
 
   async function handleSubmit() {
@@ -356,7 +369,7 @@ function PlayerForm({
         bio: bio.trim(),
         battingStats: player?.battingStats ?? '{"matches":0,"innings":0,"runs":0,"highest":"0","average":0,"strikeRate":0,"hundreds":0,"fifties":0,"fours":0,"sixes":0,"notOuts":0}',
         bowlingStats: player?.bowlingStats ?? null,
-        imageUrl: player?.imageUrl ?? "",
+        imageUrl: imageUrl.trim(),
       })
     } finally {
       setSaving(false)
@@ -365,28 +378,63 @@ function PlayerForm({
 
   return (
     <div className="grid gap-3 py-1">
-      {/* Name + Team */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="col-span-2 grid gap-1">
-          <label className="text-xs font-medium text-muted-foreground">Player Name *</label>
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="John Smith"
-            className="h-9 text-sm"
-          />
+      {/* Photo + Name + Team */}
+      <div className="flex items-start gap-3">
+        {/* Photo upload */}
+        <div className="grid shrink-0 gap-1">
+          <label className="text-xs font-medium text-muted-foreground">Photo</label>
+          <div className="flex items-center gap-2">
+            {imageUrl ? (
+              <img
+                src={imageUrl}
+                alt="Player"
+                className="h-11 w-11 rounded-full object-cover ring-2 ring-border"
+              />
+            ) : (
+              <span className="grid h-11 w-11 place-items-center rounded-full bg-muted font-display text-[11px] font-bold text-muted-foreground">
+                {(name || "?").slice(0, 2).toUpperCase()}
+              </span>
+            )}
+            <UploadButton
+              label="Upload"
+              onUploaded={(url) => setImageUrl(url)}
+            />
+            {imageUrl && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-xs text-destructive hover:text-destructive"
+                onClick={() => setImageUrl("")}
+              >
+                Remove
+              </Button>
+            )}
+          </div>
         </div>
-        <div className="grid gap-1">
-          <label className="text-xs font-medium text-muted-foreground">Team *</label>
-          <select
-            value={teamId}
-            onChange={(e) => setTeamId(e.target.value)}
-            className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-          >
-            {teams.map((t) => (
-              <option key={t.id} value={t.id}>{t.shortName}</option>
-            ))}
-          </select>
+        {/* Name + Team */}
+        <div className="grid flex-1 grid-cols-3 gap-3">
+          <div className="col-span-2 grid gap-1">
+            <label className="text-xs font-medium text-muted-foreground">Player Name *</label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="John Smith"
+              className="h-9 text-sm"
+            />
+          </div>
+          <div className="grid gap-1">
+            <label className="text-xs font-medium text-muted-foreground">Team *</label>
+            <select
+              value={teamId}
+              onChange={(e) => setTeamId(e.target.value)}
+              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+            >
+              {teams.map((t) => (
+                <option key={t.id} value={t.id}>{t.shortName}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 

@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { serializePlayer } from "@/lib/serialize"
 import { requireSiteAdmin } from "@/lib/scorer-auth"
+import { authenticateLeagueAdmin } from "@/lib/league-admin-guard"
 
 /**
  * POST /api/players/bulk
  *
- * Bulk-create players for a team. Site-admin only.
+ * Bulk-create players for a team. Authorised for site-admins (cookie auth)
+ * OR league-admins (Bearer token auth).
  *
  * Body:
  *   {
@@ -31,9 +33,16 @@ import { requireSiteAdmin } from "@/lib/scorer-auth"
  * client gets a `skippedNames` list back so it can show the user exactly
  * which ones weren't re-imported.
  */
+async function isAuthorized(req: NextRequest): Promise<boolean> {
+  // Site admin (cookie-based auth + CSRF check)
+  if (requireSiteAdmin(req)) return true
+  // League admin (Bearer token auth)
+  const leagueAdmin = await authenticateLeagueAdmin(req)
+  return !!leagueAdmin
+}
+
 export async function POST(req: NextRequest) {
-  const admin = requireSiteAdmin(req)
-  if (!admin) {
+  if (!(await isAuthorized(req))) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   }
 

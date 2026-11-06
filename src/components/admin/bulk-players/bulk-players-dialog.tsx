@@ -181,6 +181,10 @@ export interface BulkPlayersDialogProps {
    * "create team + players" flow, the textarea contents from that form are
    * forwarded here so the user doesn't have to re-paste. */
   initialText?: string
+  /** Optional Bearer token for league-admin auth. When provided, the upload
+   *  fetch uses `Authorization: Bearer <token>` instead of the CSRF cookie
+   *  used by site-admins. */
+  authToken?: string | null
 }
 
 export function BulkPlayersDialog({
@@ -190,6 +194,7 @@ export function BulkPlayersDialog({
   teamName,
   onDone,
   initialText = "",
+  authToken = null,
 }: BulkPlayersDialogProps) {
   const [text, setText] = useState(initialText)
   const [defaultRole, setDefaultRole] = useState<string>("Batsman")
@@ -219,28 +224,45 @@ export function BulkPlayersDialog({
     }
     setBusy(true)
     try {
-      const result = await api.players.bulkCreate(
+      // League admins pass a Bearer token; site admins rely on the CSRF
+      // cookie attached by api.players.bulkCreate. Branch on which auth
+      // mode the caller supplied.
+      const payload = {
         teamId,
-        preview.map((p) => ({
+        players: preview.map((p) => ({
           name: p.name,
           role: p.role,
           isCaptain: p.isCaptain,
           isKeeper: p.isKeeper,
           battingStyle: p.battingStyle,
           bowlingStyle: p.bowlingStyle,
-        }))
-      )
-      if (result.skipped > 0) {
+        })),
+      }
+      const result = authToken
+        ? await fetch("/api/players/bulk", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${authToken}`,
+            },
+            body: JSON.stringify(payload),
+          }).then(async (r) => {
+            if (!r.ok) throw new Error(`HTTP ${r.status}`)
+            return r.json()
+          })
+        : await api.players.bulkCreate(payload.teamId, payload.players)
+      const res = result as { created: number; skipped: number; skippedNames: string[] }
+      if (res.skipped > 0) {
         toast.warning(
-          `${result.created} added, ${result.skipped} skipped (already exist)`,
+          `${res.created} added, ${res.skipped} skipped (already exist)`,
           {
-            description: result.skippedNames.slice(0, 8).join(", ") + (result.skippedNames.length > 8 ? "…" : ""),
+            description: res.skippedNames.slice(0, 8).join(", ") + (res.skippedNames.length > 8 ? "…" : ""),
           }
         )
       } else {
-        toast.success(`${result.created} player${result.created === 1 ? "" : "s"} added to ${teamName}`)
+        toast.success(`${res.created} player${res.created === 1 ? "" : "s"} added to ${teamName}`)
       }
-      onDone?.(result.created)
+      onDone?.(res.created)
       onOpenChange(false)
       setText("")
     } catch (e) {

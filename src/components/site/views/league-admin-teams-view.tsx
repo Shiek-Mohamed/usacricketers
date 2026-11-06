@@ -18,6 +18,7 @@ import {
   Loader2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { BulkPlayersDialog } from "@/components/admin/bulk-players/bulk-players-dialog"
 import type { Team } from "@/lib/types"
 
 /* -------------------------------------------------------------------------- */
@@ -32,6 +33,7 @@ export function LeagueAdminTeamsView() {
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<Team | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const [bulkFor, setBulkFor] = useState<Team | null>(null)
   const token = session?.token ?? null
   const authHeaders = { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
 
@@ -150,6 +152,18 @@ export function LeagueAdminTeamsView() {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8"
+                aria-label="Bulk add players"
+                title="Bulk add players"
+                onClick={() => setBulkFor(team)}
+              >
+                <Users className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                aria-label="Edit team"
+                title="Edit team"
                 onClick={() => { setEditing(team); setShowForm(true) }}
               >
                 <Pencil className="h-3.5 w-3.5" />
@@ -158,6 +172,8 @@ export function LeagueAdminTeamsView() {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-red-600 hover:text-red-700"
+                aria-label="Delete team"
+                title="Delete team"
                 onClick={() => handleDelete(team.id)}
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -184,6 +200,17 @@ export function LeagueAdminTeamsView() {
             Manage Players →
           </button>
         </div>
+      )}
+
+      {/* Bulk add players dialog */}
+      {bulkFor && (
+        <BulkPlayersDialog
+          open={!!bulkFor}
+          onOpenChange={(v) => !v && setBulkFor(null)}
+          teamId={bulkFor.id}
+          teamName={bulkFor.name}
+          authToken={token}
+        />
       )}
     </LeagueAdminShell>
   )

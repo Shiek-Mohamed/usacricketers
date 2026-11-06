@@ -259,33 +259,33 @@ function PlayerCard({
 }) {
   const teamColor = team?.primaryColor ?? "#94a3b8"
   return (
-    <Card className="group relative flex items-center gap-3 overflow-hidden p-3 pl-4 transition-shadow hover:shadow-md">
+    <Card className="group relative flex items-center gap-4 overflow-hidden p-4 pl-5 transition-shadow hover:shadow-md">
       {/* Left accent stripe in team color */}
       <span
-        className="absolute left-0 top-0 h-full w-1"
+        className="absolute left-0 top-0 h-full w-1.5"
         style={{ background: teamColor }}
       />
       {/* Clickable avatar + info → navigates to the player's stats page */}
       <button
         type="button"
         onClick={onViewStats}
-        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        className="flex min-w-0 flex-1 items-center gap-4 text-left"
         aria-label={`View ${player.name} stats`}
         title="View stats"
       >
         {/* Avatar — player photo if available, otherwise initials on a
-            team-colored gradient. Bigger now (h-14) so faces are clearly
+            team-colored gradient. Large (h-20) so faces are clearly
             visible in the 2-per-row layout. */}
         {player.imageUrl ? (
           <img
             src={player.imageUrl}
             alt={player.name}
-            className="h-14 w-14 shrink-0 rounded-full object-cover ring-2 ring-background"
+            className="h-20 w-20 shrink-0 rounded-full object-cover ring-4 ring-background"
             loading="lazy"
           />
         ) : (
           <span
-            className="grid h-14 w-14 shrink-0 place-items-center rounded-full font-display text-sm font-bold text-white ring-2 ring-background"
+            className="grid h-20 w-20 shrink-0 place-items-center rounded-full font-display text-xl font-bold text-white ring-4 ring-background"
             style={{ background: `linear-gradient(135deg, ${teamColor} 0%, ${teamColor}bb 100%)` }}
           >
             {player.name.slice(0, 2).toUpperCase()}
@@ -293,57 +293,57 @@ function PlayerCard({
         )}
         {/* Info */}
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <span className="font-display text-sm font-bold leading-tight line-clamp-1">{player.name}</span>
-            {player.isCaptain && <span className="shrink-0 rounded bg-emerald-100 px-1 text-[9px] font-bold uppercase text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">C</span>}
-            {player.isKeeper && <span className="shrink-0 rounded bg-amber-100 px-1 text-[9px] font-bold uppercase text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">WK</span>}
+          <div className="flex items-center gap-2">
+            <span className="font-display text-base font-bold leading-tight line-clamp-1">{player.name}</span>
+            {player.isCaptain && <span className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">C</span>}
+            {player.isKeeper && <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">WK</span>}
           </div>
-          <div className="mt-1 flex items-center gap-1.5 text-xs">
+          <div className="mt-1.5 flex items-center gap-2 text-sm">
             {team && <span className="font-bold uppercase tracking-wide" style={{ color: teamColor }}>{team.shortName}</span>}
             <span className="text-muted-foreground/50">·</span>
             <span className="truncate text-muted-foreground">{player.role}</span>
           </div>
-          {/* Batting / bowling style — visible now that cards are bigger */}
-          <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground/80">
+          {/* Batting / bowling style */}
+          <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
             {player.battingStyle && (
-              <span className="inline-flex items-center gap-0.5">
+              <span className="inline-flex items-center gap-1">
                 <span className="font-semibold uppercase tracking-wide text-muted-foreground/60">Bat:</span>
                 {player.battingStyle.replace(" bat", "")}
               </span>
             )}
             {player.bowlingStyle && (
-              <span className="inline-flex items-center gap-0.5">
+              <span className="inline-flex items-center gap-1">
                 <span className="font-semibold uppercase tracking-wide text-muted-foreground/60">Bowl:</span>
                 {player.bowlingStyle}
               </span>
             )}
           </div>
-          <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-emerald-600 opacity-0 transition-opacity group-hover:opacity-100">
+          <div className="mt-1.5 text-xs font-bold uppercase tracking-wide text-emerald-600 opacity-0 transition-opacity group-hover:opacity-100">
             View Stats →
           </div>
         </div>
       </button>
       {/* Actions */}
-      <div className="flex shrink-0 flex-col items-center gap-1">
+      <div className="flex shrink-0 flex-col items-center gap-1.5">
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 opacity-60 transition-opacity group-hover:opacity-100"
+          className="h-9 w-9 opacity-60 transition-opacity group-hover:opacity-100"
           aria-label="Edit player"
           title="Edit player"
           onClick={onEdit}
         >
-          <Pencil className="h-3.5 w-3.5" />
+          <Pencil className="h-4 w-4" />
         </Button>
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-destructive opacity-60 transition-opacity group-hover:opacity-100 hover:text-destructive"
+          className="h-9 w-9 text-destructive opacity-60 transition-opacity group-hover:opacity-100 hover:text-destructive"
           aria-label="Delete player"
           title="Delete player"
           onClick={onDelete}
         >
-          <Trash2 className="h-3.5 w-3.5" />
+          <Trash2 className="h-4 w-4" />
         </Button>
       </div>
     </Card>

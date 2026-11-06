@@ -124,19 +124,26 @@ export async function POST(req: NextRequest) {
     await db.$transaction(async (tx) => {
       for (const f of creatable) {
         const id = randomUUID()
-        await tx.$executeRawUnsafe(
-          `INSERT INTO "Match" (id, seriesId, team1Id, team2Id, format, matchNo, status, venue, city, startDate, result, manOfMatch, umpires, tvUmpire, referee, scorecard, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, 'upcoming', ?, '', ?, '', NULL, '', '', '', '', ?, ?)`,
-          id,
-          seriesId,
-          f.team1Id,
-          f.team2Id,
-          matchFormat,
-          `${f.matchNo}${f.knockoutRound ? ` (${f.knockoutRound})` : f.group ? ` (${f.group})` : ""}`,
-          venue,
-          f.dateISO,
-          nowIso,
-          nowIso,
-        )
+        await tx.match.create({
+          data: {
+            id,
+            seriesId,
+            team1Id: f.team1Id,
+            team2Id: f.team2Id,
+            format: matchFormat,
+            matchNo: `${f.matchNo}${f.knockoutRound ? ` (${f.knockoutRound})` : f.group ? ` (${f.group})` : ""}`,
+            status: "upcoming",
+            venue,
+            city: "",
+            startDate: new Date(f.dateISO),
+            result: "",
+            manOfMatch: null,
+            umpires: "",
+            tvUmpire: "",
+            referee: "",
+            scorecard: "",
+          },
+        })
         created.push({
           id,
           matchNo: f.matchNo,

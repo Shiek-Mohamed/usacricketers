@@ -110,18 +110,15 @@ export async function POST(req: NextRequest) {
           .slice(0, 6) || leagueName.slice(0, 6)
       const now = new Date()
       const startIso = now.toISOString()
-      const endIso = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 90).toISOString()
-      // Use raw SQL to insert the Series — Prisma 6.x's query engine
-      // mishandles Date objects for SQLite (serializes to integer timestamps
-      // that can't be read back via RETURNING → "Inconsistent column data"
-      // error). Raw SQL with ISO string params bypasses the broken
-      // serialization, and $executeRawUnsafe doesn't use RETURNING.
+      const endIso = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 90)
       const seriesId = randomUUID()
-      await tx.$executeRawUnsafe(
-        `INSERT INTO "Series" (id, name, shortName, format, season, startDate, endDate, status, description, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        seriesId, leagueName, shortName, leagueFormat, leagueSeason,
-        startIso, endIso, "upcoming", "", startIso, startIso
-      )
+      await tx.series.create({
+        data: {
+          id: seriesId, name: leagueName, shortName, format: leagueFormat, season: leagueSeason,
+          startDate: new Date(startIso), endDate: endIso,
+          status: "upcoming", description: "",
+        },
+      })
       const series = { id: seriesId }
 
       // Auto-assign the new admin as the owner of this league.

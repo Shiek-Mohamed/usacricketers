@@ -12,6 +12,10 @@ RUN bun install --frozen-lockfile
 
 # Copy prisma schema + generate client
 COPY prisma ./prisma
+# Set dummy DATABASE_URL + DIRECT_URL during build so prisma generate can
+# validate the schema. Real values are set as runtime secrets on fly.io.
+ENV DATABASE_URL=postgresql://dummy:dummy@dummy:5432/dummy
+ENV DIRECT_URL=postgresql://dummy:dummy@dummy:5432/dummy
 RUN bun run prisma generate
 
 # Copy the rest of the source

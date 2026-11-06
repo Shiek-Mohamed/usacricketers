@@ -46,16 +46,17 @@ export async function POST(req: NextRequest) {
     const description = String(body.description || "")
 
     const created = await db.$transaction(async (tx) => {
-      await tx.$executeRawUnsafe(
-        `INSERT INTO "Series" (id, name, shortName, format, season, startDate, endDate, status, description, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        seriesId, name, shortName, format, season,
-        startIso, endIso, status, description, nowIso, nowIso,
-      )
+      await tx.series.create({
+        data: {
+          id: seriesId, name, shortName, format, season,
+          startDate: new Date(startIso), endDate: new Date(endIso),
+          status, description,
+        },
+      })
       // Auto-assign the creating admin as the owner of this league.
       await tx.leagueAdminAssignment.create({
         data: { adminId: payload.adminId, seriesId },
       })
-      // Read back (reads work fine — only create/RETURNING was broken).
       return await tx.series.findUnique({ where: { id: seriesId } })
     })
     if (!created) {

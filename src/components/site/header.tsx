@@ -64,6 +64,7 @@ const navGroups: NavGroup[] = [
       { label: "Live Scores", view: "matches", icon: Activity },
       { label: "Schedule", view: "schedule", icon: CalendarDays },
       { label: "Series", view: "series", icon: Trophy },
+      { label: "Brackets", view: "bracket", icon: Trophy },
     ],
   },
   {

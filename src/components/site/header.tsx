@@ -47,14 +47,12 @@ const navItems: { label: string; view: ViewKey; icon: React.ElementType }[] = [
   { label: "Teams", view: "teams", icon: Users },
   { label: "Players", view: "players", icon: UserSearch },
   { label: "Rankings", view: "rankings", icon: Trophy },
-  { label: "DLS", view: "dls", icon: CloudRain },
   { label: "Stats", view: "stats", icon: BarChart3 },
   { label: "Schedule", view: "schedule", icon: CalendarDays },
   { label: "News", view: "news", icon: Newspaper },
   { label: "Interviews", view: "interviews", icon: Mic },
   { label: "Photos", view: "photos", icon: Images },
   { label: "Videos", view: "videos", icon: Play },
-  { label: "Pricing", view: "pricing", icon: Sparkles },
 ]
 
 // Grouped structure for the desktop dropdown nav (4 top-level items —
@@ -80,8 +78,6 @@ const navGroups: NavGroup[] = [
     ],
   },
   { label: "Stats", view: "stats" },
-  { label: "DLS Calculator", view: "dls" },
-  { label: "Pricing", view: "pricing" },
   {
     label: "News",
     children: [

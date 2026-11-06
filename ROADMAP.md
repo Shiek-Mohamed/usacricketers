@@ -508,5 +508,85 @@ When restructuring, use:
 
 ---
 
+## Real-Time Scoring Architecture — Scalability Upgrade (Future Milestone)
+
+A reference architecture diagram is saved at `upload/real time scoring architecture.jpg`. It shows an enterprise-grade real-time scoring pipeline with Kafka + Redis + Consumer Service + WebSocket Server.
+
+### Current architecture (simplified)
+
+```
+Scorer UI → socket.io → score-service (port 3003) → in-memory Map (cache)
+                                      → debounced JSON write to SQLite (persist)
+                                      → socket.io broadcast → viewer devices
+```
+
+- **1 process** (score-service) does everything: receive + cache + broadcast
+- **In-memory cache** (`Map<string, unknown>`) — lost on restart (workaround: localStorage backup)
+- **JSON blob persistence** — full scorecard saved debounced, not per-ball
+- **No message queue** — synchronous processing, no buffering
+- Capacity: ~5,000 concurrent connections on one fly.io machine
+
+### Target architecture (enterprise)
+
+```
+Admin Panel → REST API (Ingestion) → Kafka (match-events topic) → Consumer Service
+                                                                      ↓
+                                                              ┌───────────────┐
+                                                              │ Redis (cache) │
+                                                              │ Database (per-ball) │
+                                                              │ WebSocket Server → viewers │
+                                                              └───────────────┘
+```
+
+### Component comparison
+
+| Proposed | Current | Status | When to add |
+|---|---|---|---|
+| Admin Panel | Scorer UI | ✅ Have | — |
+| REST Ingestion API | WebSocket `operator:state` | ❌ Different pattern | When you need offline sync / retry |
+| Apache Kafka | None (synchronous) | ❌ Missing | When traffic spikes or multi-match concurrent |
+| Consumer Service | Integrated in score-service | ❌ Missing | When you need horizontal scaling |
+| Redis | In-memory Map | ⚠️ Partial | **Add first** — solves cache-lost-on-restart |
+| Database (per-ball) | JSON blob (debounced) | ⚠️ Partial | When deliveries table is built (DB Phase 3) |
+| WebSocket Server | score-service (socket.io) | ✅ Have | — |
+| User Devices | `useLiveScore` hook | ✅ Have | — |
+
+### Recommended upgrade sequence
+
+1. **Redis cache** (highest value, lowest effort) — ~1 day
+   - Replace in-memory `Map` with Redis
+   - Cache survives score-service restarts (no more localStorage workaround needed)
+   - Enables multiple score-service instances to share cache
+   - Upstash Redis on fly.io: ~$0-10/mo
+
+2. **Per-ball database storage** — part of DB redesign Phase 3
+   - When the `deliveries` table exists, the consumer writes each ball to it
+   - Replaces the debounced JSON blob persistence
+   - Enables ball-by-ball querying + audit trail
+
+3. **Kafka + Consumer Service** — only when needed
+   - Add when: multiple matches scored simultaneously with 1000s of viewers each
+   - Or when: offline scoring sync is needed (scorer at a ground with poor connectivity → Kafka as durable queue)
+   - Effort: ~1 week (Kafka setup on fly.io + consumer service + migration from synchronous to async)
+
+4. **REST ingestion API** — optional
+   - Replace WebSocket `operator:state` with REST POST
+   - Enables retry logic (HTTP retries vs WebSocket fire-and-forget)
+   - Effort: ~2 days
+
+**Total effort for full upgrade:** ~2 weeks (Redis + deliveries table + Kafka + consumer)
+
+### When NOT to upgrade
+
+The current simplified architecture is fine for:
+- Single-tenant usage (one organization, a few leagues)
+- < 5,000 concurrent viewers
+- < 10 matches scored simultaneously
+- Always-online scoring (no offline sync needed)
+
+Don't upgrade until you have a concrete scaling problem. Premature Kafka/Redis adds operational complexity (monitoring, retries, offset management) for no benefit at low scale.
+
+---
+
 *Last updated: Nov 2026*
 *Log maintained in: /home/z/my-project/ROADMAP.md*

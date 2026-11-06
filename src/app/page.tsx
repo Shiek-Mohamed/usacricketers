@@ -59,6 +59,8 @@ import { LeagueAdminHomeView } from "@/components/site/views/league-admin-home-v
 import { LeagueAdminSeriesEditView } from "@/components/site/views/league-admin-series-edit-view"
 import { LeagueAdminMatchesView } from "@/components/site/views/league-admin-matches-view"
 import { LeagueAdminScorersView } from "@/components/site/views/league-admin-scorers-view"
+import { LeagueAdminTeamsView } from "@/components/site/views/league-admin-teams-view"
+import { LeagueAdminPlayersView } from "@/components/site/views/league-admin-players-view"
 import { useLeagueAdminSession } from "@/lib/league-admin-session"
 import { ViewErrorBoundary } from "@/components/site/view-error-boundary"
 import { useEffect } from "react"
@@ -221,6 +223,12 @@ export default function Home() {
       case "league-admin-scorers":
         if (!leagueAdminSession) return <LeagueAdminLoginView />
         return <LeagueAdminScorersView />
+      case "league-admin-teams":
+        if (!leagueAdminSession) return <LeagueAdminLoginView />
+        return <LeagueAdminTeamsView />
+      case "league-admin-players":
+        if (!leagueAdminSession) return <LeagueAdminLoginView />
+        return <LeagueAdminPlayersView />
       default:
         return <HomeView />
     }

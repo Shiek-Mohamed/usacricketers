@@ -234,6 +234,8 @@ export type ViewKey =
   | "league-admin-series-edit"
   | "league-admin-matches"
   | "league-admin-scorers"
+  | "league-admin-teams"
+  | "league-admin-players"
   | "admin-import-league"
 
 export interface NavState {

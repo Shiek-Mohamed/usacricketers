@@ -71,6 +71,15 @@ import type { Player } from "@/lib/types"
 import { useLiveScoreBackup } from "@/lib/use-live-score-backup"
 import { calculateDLS, type DLSResult } from "@/lib/dls"
 
+/** Log a scoring action to the audit trail (non-fatal — fire and forget). */
+function logAudit(matchId: string, scorerId: string | null, action: string, ballNo: number, detail: string) {
+  fetch("/api/scoring-audit", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ matchId, scorerId, action, ballNo, detail }),
+  }).catch(() => {}) // non-fatal
+}
+
 const RUN_BUTTONS = [0, 1, 2, 3, 4, 6] as const
 
 export function LiveScorerView() {
@@ -201,6 +210,7 @@ export function LiveScorerView() {
     pushState(withCommentary)
     persist(withCommentary)
     toast.success(`DLS target applied: ${dlsResult.revisedTarget} from ${dlsRevisedOvers} overs`)
+    if (id) logAudit(id, liveState.scorerId ?? null, "dls_applied", liveState.ballNo, `Target: ${dlsResult.revisedTarget} from ${dlsRevisedOvers} overs (was ${dlsResult.originalTarget})`)
     setDlsOpen(false)
     setDlsResult(null)
     setDlsRevisedOvers("")
@@ -492,6 +502,8 @@ export function LiveScorerView() {
     const next = applyBall(liveState, event)
     pushState(next)
     persist(next)
+    // Audit trail — log every ball scored
+    if (id) logAudit(id, liveState.scorerId ?? null, "ball_scored", next.ballNo, `${event.kind}${'runs' in event ? ` ${event.runs}` : ''}`)
   }
 
   function handleUndo() {
@@ -504,6 +516,8 @@ export function LiveScorerView() {
     pushState(prev)
     persist(prev)
     toast.success("Undid last action")
+    // Audit trail — log every undo
+    if (id) logAudit(id, prev.scorerId ?? null, "undo", prev.ballNo, "Reverted last action")
   }
 
   function startInnings(
@@ -550,6 +564,7 @@ export function LiveScorerView() {
     pushState(state)
     persist(state)
     toast.success("Innings started — status set to LIVE")
+    if (id) logAudit(id, state.scorerId ?? null, "innings_started", 0, `Innings ${state.currentInnings + 1}: ${battingFirstId === match!.team1Id ? t1?.shortName : t2?.shortName} batting first`)
   }
 
   function bringInBatsman(playerId: string) {

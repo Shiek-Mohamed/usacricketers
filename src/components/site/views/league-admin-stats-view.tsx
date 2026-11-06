@@ -126,45 +126,48 @@ export function LeagueAdminStatsView() {
             <SummaryCard label="Upcoming" value={matchSummary.upcoming} icon={Newspaper} color="text-amber-500" />
           </div>
 
-          {/* Batting Leaders */}
-          <Card className="overflow-hidden p-0">
-            <div className="flex items-center gap-2 bg-[#f8f8f8] px-4 py-2 border-b border-gray-200">
-              <span className="h-4 w-1 rounded-full bg-emerald-500" />
-              <h3 className="font-display text-sm font-bold uppercase tracking-wide text-[#1e2a5e]">Batting Leaders — Most Runs</h3>
-            </div>
-            {battingLeaders.length > 0 ? (
-              <div className="divide-y divide-gray-100">
-                {battingLeaders.map((item, i) => (
-                  <div key={item.player.id} className="flex items-center gap-3 px-4 py-2">
-                    <span className={cn("w-6 font-display text-sm font-bold tabular-nums", i < 3 ? "text-amber-500" : "text-gray-400")}>{i + 1}</span>
-                    <span className="flex-1 font-display text-sm font-bold truncate">{item.player.name}</span>
-                    <span className="font-display text-sm font-black tabular-nums">{item.stats.runs}</span>
-                    <span className="hidden text-xs text-muted-foreground sm:block">{item.stats.innings} inn · avg {item.stats.average.toFixed(1)} · SR {item.stats.strikeRate.toFixed(1)}</span>
-                  </div>
-                ))}
+          {/* Batting + Bowling Leaders — side by side on desktop */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {/* Batting Leaders */}
+            <Card className="overflow-hidden p-0">
+              <div className="flex items-center gap-2 bg-[#f8f8f8] px-4 py-2 border-b border-gray-200">
+                <span className="h-4 w-1 rounded-full bg-emerald-500" />
+                <h3 className="font-display text-sm font-bold uppercase tracking-wide text-[#1e2a5e]">Batting Leaders — Most Runs</h3>
               </div>
-            ) : <p className="px-4 py-6 text-center text-sm text-muted-foreground">No batting data yet.</p>}
-          </Card>
+              {battingLeaders.length > 0 ? (
+                <div className="divide-y divide-gray-100">
+                  {battingLeaders.map((item, i) => (
+                    <div key={item.player.id} className="flex items-center gap-3 px-4 py-2">
+                      <span className={cn("w-6 font-display text-sm font-bold tabular-nums", i < 3 ? "text-amber-500" : "text-gray-400")}>{i + 1}</span>
+                      <span className="flex-1 font-display text-sm font-bold truncate">{item.player.name}</span>
+                      <span className="font-display text-sm font-black tabular-nums">{item.stats.runs}</span>
+                      <span className="hidden text-xs text-muted-foreground lg:block">{item.stats.innings} inn · avg {item.stats.average.toFixed(1)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : <p className="px-4 py-6 text-center text-sm text-muted-foreground">No batting data yet.</p>}
+            </Card>
 
-          {/* Bowling Leaders */}
-          <Card className="overflow-hidden p-0">
-            <div className="flex items-center gap-2 bg-[#f8f8f8] px-4 py-2 border-b border-gray-200">
-              <span className="h-4 w-1 rounded-full bg-red-500" />
-              <h3 className="font-display text-sm font-bold uppercase tracking-wide text-[#1e2a5e]">Bowling Leaders — Most Wickets</h3>
-            </div>
-            {bowlingLeaders.length > 0 ? (
-              <div className="divide-y divide-gray-100">
-                {bowlingLeaders.map((item, i) => (
-                  <div key={item.player.id} className="flex items-center gap-3 px-4 py-2">
-                    <span className={cn("w-6 font-display text-sm font-bold tabular-nums", i < 3 ? "text-amber-500" : "text-gray-400")}>{i + 1}</span>
-                    <span className="flex-1 font-display text-sm font-bold truncate">{item.player.name}</span>
-                    <span className="font-display text-sm font-black tabular-nums">{item.stats.wickets}</span>
-                    <span className="hidden text-xs text-muted-foreground sm:block">econ {item.stats.economy.toFixed(2)} · {(item.stats.balls / 6).toFixed(1)} ov</span>
-                  </div>
-                ))}
+            {/* Bowling Leaders */}
+            <Card className="overflow-hidden p-0">
+              <div className="flex items-center gap-2 bg-[#f8f8f8] px-4 py-2 border-b border-gray-200">
+                <span className="h-4 w-1 rounded-full bg-red-500" />
+                <h3 className="font-display text-sm font-bold uppercase tracking-wide text-[#1e2a5e]">Bowling Leaders — Most Wickets</h3>
               </div>
-            ) : <p className="px-4 py-6 text-center text-sm text-muted-foreground">No bowling data yet.</p>}
-          </Card>
+              {bowlingLeaders.length > 0 ? (
+                <div className="divide-y divide-gray-100">
+                  {bowlingLeaders.map((item, i) => (
+                    <div key={item.player.id} className="flex items-center gap-3 px-4 py-2">
+                      <span className={cn("w-6 font-display text-sm font-bold tabular-nums", i < 3 ? "text-amber-500" : "text-gray-400")}>{i + 1}</span>
+                      <span className="flex-1 font-display text-sm font-bold truncate">{item.player.name}</span>
+                      <span className="font-display text-sm font-black tabular-nums">{item.stats.wickets}</span>
+                      <span className="hidden text-xs text-muted-foreground lg:block">econ {item.stats.economy.toFixed(2)} · {(item.stats.balls / 6).toFixed(1)} ov</span>
+                    </div>
+                  ))}
+                </div>
+              ) : <p className="px-4 py-6 text-center text-sm text-muted-foreground">No bowling data yet.</p>}
+            </Card>
+          </div>
         </div>
       )}
     </LeagueAdminShell>

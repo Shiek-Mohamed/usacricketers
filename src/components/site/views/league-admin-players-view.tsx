@@ -186,13 +186,13 @@ export function LeagueAdminPlayersView() {
 
       {/* Player grid */}
       {loading ? (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-20 w-full rounded-lg" />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-lg" />
           ))}
         </div>
       ) : filteredPlayers.length > 0 ? (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {filteredPlayers.map((player) => {
             const team = teamFor(player.teamId)
             return (
@@ -259,79 +259,92 @@ function PlayerCard({
 }) {
   const teamColor = team?.primaryColor ?? "#94a3b8"
   return (
-    <Card className="group relative flex flex-col overflow-hidden p-0 transition-shadow hover:shadow-md">
+    <Card className="group relative flex items-center gap-3 overflow-hidden p-3 pl-4 transition-shadow hover:shadow-md">
       {/* Left accent stripe in team color */}
       <span
         className="absolute left-0 top-0 h-full w-1"
         style={{ background: teamColor }}
       />
-      <div className="flex flex-1 items-center gap-2.5 py-2 pl-3 pr-2">
-        {/* Clickable avatar + info → navigates to the player's stats page */}
-        <button
-          type="button"
-          onClick={onViewStats}
-          className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
-          aria-label={`View ${player.name} stats`}
-          title="View stats"
-        >
-          {/* Avatar — player photo if available, otherwise initials on a
-              team-colored gradient. The ring gives photos a clean border so
-              faces read well even at this small size. */}
-          {player.imageUrl ? (
-            <img
-              src={player.imageUrl}
-              alt={player.name}
-              className="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-background"
-              loading="lazy"
-            />
-          ) : (
-            <span
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-full font-display text-[11px] font-bold text-white ring-2 ring-background"
-              style={{ background: `linear-gradient(135deg, ${teamColor} 0%, ${teamColor}bb 100%)` }}
-            >
-              {player.name.slice(0, 2).toUpperCase()}
-            </span>
-          )}
-          {/* Info */}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1">
-              <span className="font-display text-xs font-bold leading-tight line-clamp-1">{player.name}</span>
-              {player.isCaptain && <span className="shrink-0 text-[10px] font-bold text-emerald-600">(c)</span>}
-              {player.isKeeper && <span className="shrink-0 text-[10px] font-bold text-amber-600">†</span>}
-            </div>
-            <div className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
-              {team && <span className="font-bold uppercase tracking-wide" style={{ color: teamColor }}>{team.shortName}</span>}
-              <span className="text-muted-foreground/50">·</span>
-              <span className="truncate">{player.role}</span>
-            </div>
-            <div className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-600 opacity-0 transition-opacity group-hover:opacity-100">
-              View Stats →
-            </div>
+      {/* Clickable avatar + info → navigates to the player's stats page */}
+      <button
+        type="button"
+        onClick={onViewStats}
+        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        aria-label={`View ${player.name} stats`}
+        title="View stats"
+      >
+        {/* Avatar — player photo if available, otherwise initials on a
+            team-colored gradient. Bigger now (h-14) so faces are clearly
+            visible in the 2-per-row layout. */}
+        {player.imageUrl ? (
+          <img
+            src={player.imageUrl}
+            alt={player.name}
+            className="h-14 w-14 shrink-0 rounded-full object-cover ring-2 ring-background"
+            loading="lazy"
+          />
+        ) : (
+          <span
+            className="grid h-14 w-14 shrink-0 place-items-center rounded-full font-display text-sm font-bold text-white ring-2 ring-background"
+            style={{ background: `linear-gradient(135deg, ${teamColor} 0%, ${teamColor}bb 100%)` }}
+          >
+            {player.name.slice(0, 2).toUpperCase()}
+          </span>
+        )}
+        {/* Info */}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <span className="font-display text-sm font-bold leading-tight line-clamp-1">{player.name}</span>
+            {player.isCaptain && <span className="shrink-0 rounded bg-emerald-100 px-1 text-[9px] font-bold uppercase text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">C</span>}
+            {player.isKeeper && <span className="shrink-0 rounded bg-amber-100 px-1 text-[9px] font-bold uppercase text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">WK</span>}
           </div>
-        </button>
-        {/* Actions */}
-        <div className="flex shrink-0 items-center">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 opacity-60 transition-opacity group-hover:opacity-100"
-            aria-label="Edit player"
-            title="Edit player"
-            onClick={onEdit}
-          >
-            <Pencil className="h-3 w-3" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-destructive opacity-60 transition-opacity group-hover:opacity-100 hover:text-destructive"
-            aria-label="Delete player"
-            title="Delete player"
-            onClick={onDelete}
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
+          <div className="mt-1 flex items-center gap-1.5 text-xs">
+            {team && <span className="font-bold uppercase tracking-wide" style={{ color: teamColor }}>{team.shortName}</span>}
+            <span className="text-muted-foreground/50">·</span>
+            <span className="truncate text-muted-foreground">{player.role}</span>
+          </div>
+          {/* Batting / bowling style — visible now that cards are bigger */}
+          <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground/80">
+            {player.battingStyle && (
+              <span className="inline-flex items-center gap-0.5">
+                <span className="font-semibold uppercase tracking-wide text-muted-foreground/60">Bat:</span>
+                {player.battingStyle.replace(" bat", "")}
+              </span>
+            )}
+            {player.bowlingStyle && (
+              <span className="inline-flex items-center gap-0.5">
+                <span className="font-semibold uppercase tracking-wide text-muted-foreground/60">Bowl:</span>
+                {player.bowlingStyle}
+              </span>
+            )}
+          </div>
+          <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-emerald-600 opacity-0 transition-opacity group-hover:opacity-100">
+            View Stats →
+          </div>
         </div>
+      </button>
+      {/* Actions */}
+      <div className="flex shrink-0 flex-col items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 opacity-60 transition-opacity group-hover:opacity-100"
+          aria-label="Edit player"
+          title="Edit player"
+          onClick={onEdit}
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-destructive opacity-60 transition-opacity group-hover:opacity-100 hover:text-destructive"
+          aria-label="Delete player"
+          title="Delete player"
+          onClick={onDelete}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
       </div>
     </Card>
   )

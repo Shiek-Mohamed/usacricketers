@@ -271,7 +271,7 @@ function toCentreMatch(m: MatchWithTeams): CentreMatch {
 
   return {
     division: m.matchNo || m.format,
-    date: formatMatchDate(m.startDate.toISOString(), status),
+    date: formatMatchDate(new Date(m.startDate).toISOString(), status),
     status,
     statusLabel,
     teams: [
@@ -469,7 +469,7 @@ export async function getLeagueArticles(
       excerpt: a.excerpt,
       imageUrl: a.imageUrl,
       category: primaryCat,
-      publishedAt: a.publishedAt.toISOString(),
+      publishedAt: new Date(a.publishedAt).toISOString(),
     }
   })
 }

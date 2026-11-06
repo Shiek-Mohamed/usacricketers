@@ -2,6 +2,16 @@ import { parseBattingStats, parseBowlingStats, parseCategories, parseScorecard }
 import type { Article, Banner, Gallery, LeagueAdmin, Match, PhotoItem, Player, Scorer, Series, SidebarBlock, SiteAdmin, Team, Video } from "./types"
 import type { Prisma } from "@prisma/client"
 
+/** Safely convert a Prisma DateTime field to ISO string. PostgreSQL (via
+ *  PgBouncer) returns DateTime fields as strings, not Date objects — so
+ *  calling .toISOString() directly fails. This wrapper handles both. */
+function toISO(x: Date | string | number | null | undefined): string {
+  if (!x) return ""
+  if (typeof x === "string") return x
+  if (x instanceof Date) return x.toISOString()
+  return new Date(x).toISOString()
+}
+
 export function serializeTeam(t: Prisma.TeamGetPayload<Record<string, never>>): Team {
   return {
     id: t.id,
@@ -12,8 +22,8 @@ export function serializeTeam(t: Prisma.TeamGetPayload<Record<string, never>>): 
     accentColor: t.accentColor,
     logoUrl: t.logoUrl,
     description: t.description,
-    createdAt: t.createdAt.toISOString(),
-    updatedAt: t.updatedAt.toISOString(),
+    createdAt: toISO(t.createdAt),
+    updatedAt: toISO(t.updatedAt),
   }
 }
 
@@ -34,8 +44,8 @@ export function serializePlayer(
     bio: p.bio,
     imageUrl: p.imageUrl,
     team: p.team ? serializeTeam(p.team) : undefined,
-    createdAt: p.createdAt.toISOString(),
-    updatedAt: p.updatedAt.toISOString(),
+    createdAt: toISO(p.createdAt),
+    updatedAt: toISO(p.updatedAt),
   }
 }
 
@@ -48,13 +58,13 @@ export function serializeSeries(
     shortName: s.shortName,
     format: s.format,
     season: s.season,
-    startDate: s.startDate.toISOString(),
-    endDate: s.endDate.toISOString(),
+    startDate: toISO(s.startDate),
+    endDate: toISO(s.endDate),
     status: s.status,
     description: s.description,
     teams: (s as any).tournamentTeams?.map((tt: any) => serializeTeam(tt.team)) ?? [],
-    createdAt: s.createdAt.toISOString(),
-    updatedAt: s.updatedAt.toISOString(),
+    createdAt: toISO(s.createdAt),
+    updatedAt: toISO(s.updatedAt),
   }
 }
 
@@ -71,7 +81,7 @@ export function serializeMatch(
     status: m.status,
     venue: m.venue,
     city: m.city,
-    startDate: m.startDate.toISOString(),
+    startDate: toISO(m.startDate),
     result: m.result,
     manOfMatch: m.manOfMatch,
     umpires: m.umpires,
@@ -81,8 +91,8 @@ export function serializeMatch(
     team1: m.team1 ? serializeTeam(m.team1) : undefined,
     team2: m.team2 ? serializeTeam(m.team2) : undefined,
     series: m.series ? serializeSeries(m.series) : null,
-    createdAt: m.createdAt.toISOString(),
-    updatedAt: m.updatedAt.toISOString(),
+    createdAt: toISO(m.createdAt),
+    updatedAt: toISO(m.updatedAt),
   }
 }
 
@@ -100,9 +110,9 @@ export function serializeArticle(a: Prisma.ArticleGetPayload<Record<string, neve
     tags: a.tags,
     featured: a.featured,
     published: a.published,
-    publishedAt: a.publishedAt.toISOString(),
-    createdAt: a.createdAt.toISOString(),
-    updatedAt: a.updatedAt.toISOString(),
+    publishedAt: toISO(a.publishedAt),
+    createdAt: toISO(a.createdAt),
+    updatedAt: toISO(a.updatedAt),
   }
 }
 
@@ -116,8 +126,8 @@ export function serializeSidebarBlock(
     placement: b.placement,
     order: b.order,
     published: b.published,
-    createdAt: b.createdAt.toISOString(),
-    updatedAt: b.updatedAt.toISOString(),
+    createdAt: toISO(b.createdAt),
+    updatedAt: toISO(b.updatedAt),
   }
 }
 
@@ -138,8 +148,8 @@ export function serializeGallery(
     coverImage: g.coverImage,
     photos,
     published: g.published,
-    createdAt: g.createdAt.toISOString(),
-    updatedAt: g.updatedAt.toISOString(),
+    createdAt: toISO(g.createdAt),
+    updatedAt: toISO(g.updatedAt),
   }
 }
 
@@ -153,8 +163,8 @@ export function serializeScorer(
     name: s.name,
     active: s.active,
     tournamentIds: s.assignments.map((a) => a.seriesId),
-    createdAt: s.createdAt.toISOString(),
-    updatedAt: s.updatedAt.toISOString(),
+    createdAt: toISO(s.createdAt),
+    updatedAt: toISO(s.updatedAt),
   }
 }
 
@@ -176,9 +186,9 @@ export function serializeVideo(
     tags: v.tags,
     featured: v.featured,
     published: v.published,
-    publishedAt: v.publishedAt.toISOString(),
-    createdAt: v.createdAt.toISOString(),
-    updatedAt: v.updatedAt.toISOString(),
+    publishedAt: toISO(v.publishedAt),
+    createdAt: toISO(v.createdAt),
+    updatedAt: toISO(v.updatedAt),
   }
 }
 
@@ -192,8 +202,8 @@ export function serializeLeagueAdmin(
     name: a.name,
     active: a.active,
     managedSeriesIds: a.assignments.map((x) => x.seriesId),
-    createdAt: a.createdAt.toISOString(),
-    updatedAt: a.updatedAt.toISOString(),
+    createdAt: toISO(a.createdAt),
+    updatedAt: toISO(a.updatedAt),
   }
 }
 
@@ -205,8 +215,8 @@ export function serializeSiteAdmin(
     email: a.email,
     name: a.name,
     active: a.active,
-    createdAt: a.createdAt.toISOString(),
-    updatedAt: a.updatedAt.toISOString(),
+    createdAt: toISO(a.createdAt),
+    updatedAt: toISO(a.updatedAt),
   }
 }
 
@@ -221,8 +231,8 @@ export function serializeBanner(
     placement: b.placement,
     order: b.order,
     published: b.published,
-    startDate: b.startDate ? b.startDate.toISOString() : null,
-    endDate: b.endDate ? b.endDate.toISOString() : null,
+    startDate: b.startDate ? toISO(b.startDate) : null,
+    endDate: b.endDate ? toISO(b.endDate) : null,
     impressions: b.impressions,
     clicks: b.clicks,
     weight: b.weight,
@@ -234,7 +244,7 @@ export function serializeBanner(
     adsenseFormat: b.adsenseFormat,
     responsive: b.responsive,
     htmlContent: b.htmlContent,
-    createdAt: b.createdAt.toISOString(),
-    updatedAt: b.updatedAt.toISOString(),
+    createdAt: toISO(b.createdAt),
+    updatedAt: toISO(b.updatedAt),
   }
 }

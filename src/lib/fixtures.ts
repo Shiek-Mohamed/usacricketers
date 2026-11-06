@@ -106,7 +106,7 @@ function pairingsToFixtures(
         team2Id: team2.id,
         matchNo,
         round: r,
-        dateISO: date.toISOString(),
+        dateISO: new Date(date).toISOString(),
         group: group ?? null,
         knockoutRound: null,
       })
@@ -144,7 +144,7 @@ export function generateRoundRobin(
       intervalDays
     )
     // Offset second-leg dates to start after the first leg
-    const firstLegEnd = fixtures.length > 0 ? fixtures[fixtures.length - 1].dateISO : startDate.toISOString()
+    const firstLegEnd = fixtures.length > 0 ? fixtures[fixtures.length - 1].dateISO : new Date(startDate).toISOString()
     const offsetMs = new Date(firstLegEnd).getTime() - startDate.getTime() + intervalDays * 86400000
     secondLeg.forEach((f) => {
       f.dateISO = new Date(new Date(f.dateISO).getTime() + offsetMs).toISOString()
@@ -188,7 +188,7 @@ export function generateKnockout(
           team2Id: t2.id,
           matchNo,
           round: roundIdx,
-          dateISO: date.toISOString(),
+          dateISO: new Date(date).toISOString(),
           group: null,
           knockoutRound: roundNames[roundIdx] ?? `Round ${roundIdx + 1}`,
         })
@@ -252,7 +252,7 @@ export function generateGroupKnockout(
           team2Id: t2.id,
           matchNo,
           round: r,
-          dateISO: date.toISOString(),
+          dateISO: new Date(date).toISOString(),
           group: `Group ${groupNames[g] ?? g + 1}`,
           knockoutRound: null,
         })
@@ -284,7 +284,7 @@ export function generateGroupKnockout(
           team2Id: "TBD",
           matchNo,
           round: koRoundIdx,
-          dateISO: date.toISOString(),
+          dateISO: new Date(date).toISOString(),
           group: null,
           knockoutRound: roundNames[koRoundIdx] ?? `Knockout Round ${koRoundIdx + 1}`,
         })

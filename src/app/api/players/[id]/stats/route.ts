@@ -122,7 +122,7 @@ export async function GET(
           opponent,
           matchNo: m.matchNo,
           format: m.format,
-          date: m.startDate.toISOString(),
+          date: new Date(m.startDate).toISOString(),
         })
       }
       // Find this player in the bowling lines

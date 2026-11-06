@@ -733,8 +733,8 @@ function toTeam(t: Prisma.TeamGetPayload<Record<string, never>>): Team {
     primaryColor: t.primaryColor,
     accentColor: t.accentColor,
     description: t.description,
-    createdAt: t.createdAt.toISOString(),
-    updatedAt: t.updatedAt.toISOString(),
+    createdAt: new Date(t.createdAt).toISOString(),
+    updatedAt: new Date(t.updatedAt).toISOString(),
   }
 }
 
@@ -760,8 +760,8 @@ function toPlayer(p: Prisma.PlayerGetPayload<Record<string, never>>): Player {
     bio: p.bio,
     imageUrl: p.imageUrl,
     team: undefined,
-    createdAt: p.createdAt.toISOString(),
-    updatedAt: p.updatedAt.toISOString(),
+    createdAt: new Date(p.createdAt).toISOString(),
+    updatedAt: new Date(p.updatedAt).toISOString(),
   }
 }
 
@@ -772,13 +772,13 @@ function toSeries(s: Prisma.SeriesGetPayload<Record<string, never>>): Series {
     shortName: s.shortName,
     format: s.format,
     season: s.season,
-    startDate: s.startDate.toISOString(),
-    endDate: s.endDate.toISOString(),
+    startDate: new Date(s.startDate).toISOString(),
+    endDate: new Date(s.endDate).toISOString(),
     status: s.status,
     description: s.description,
     teams: [],
-    createdAt: s.createdAt.toISOString(),
-    updatedAt: s.updatedAt.toISOString(),
+    createdAt: new Date(s.createdAt).toISOString(),
+    updatedAt: new Date(s.updatedAt).toISOString(),
   }
 }
 
@@ -804,7 +804,7 @@ function toMatch(m: Prisma.MatchGetPayload<Record<string, never>>): Match {
     status: m.status,
     venue: m.venue,
     city: m.city,
-    startDate: m.startDate.toISOString(),
+    startDate: new Date(m.startDate).toISOString(),
     result: m.result,
     manOfMatch: m.manOfMatch,
     umpires: m.umpires,
@@ -814,7 +814,7 @@ function toMatch(m: Prisma.MatchGetPayload<Record<string, never>>): Match {
     team1: undefined,
     team2: undefined,
     series: null,
-    createdAt: m.createdAt.toISOString(),
-    updatedAt: m.updatedAt.toISOString(),
+    createdAt: new Date(m.createdAt).toISOString(),
+    updatedAt: new Date(m.updatedAt).toISOString(),
   }
 }

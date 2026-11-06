@@ -39,8 +39,8 @@ export async function POST(req: NextRequest) {
     // mishandles Date objects for SQLite (serializes to integer timestamps
     // that can't be read back via RETURNING). ISO string params bypass this.
     const seriesId = randomUUID()
-    const startIso = startDate.toISOString()
-    const endIso = endDate.toISOString()
+    const startIso = new Date(startDate).toISOString()
+    const endIso = new Date(endDate).toISOString()
     const nowIso = new Date().toISOString()
     const status = body.status || "upcoming"
     const description = String(body.description || "")

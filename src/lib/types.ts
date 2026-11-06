@@ -196,6 +196,7 @@ export type ViewKey =
   | "player-detail"
   | "player-timeline"
   | "stats"
+  | "rankings"
   | "player-comparison"
   | "schedule"
   | "photos"

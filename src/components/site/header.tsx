@@ -43,6 +43,7 @@ const navItems: { label: string; view: ViewKey; icon: React.ElementType }[] = [
   { label: "Series", view: "series", icon: Trophy },
   { label: "Teams", view: "teams", icon: Users },
   { label: "Players", view: "players", icon: UserSearch },
+  { label: "Rankings", view: "rankings", icon: Trophy },
   { label: "Stats", view: "stats", icon: BarChart3 },
   { label: "Schedule", view: "schedule", icon: CalendarDays },
   { label: "News", view: "news", icon: Newspaper },
@@ -69,6 +70,7 @@ const navGroups: NavGroup[] = [
     children: [
       { label: "All Teams", view: "teams", icon: Users },
       { label: "Players", view: "players", icon: UserSearch },
+      { label: "Rankings", view: "rankings", icon: Trophy },
     ],
   },
   { label: "Stats", view: "stats" },

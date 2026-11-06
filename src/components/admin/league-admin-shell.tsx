@@ -3,14 +3,20 @@
 import { useAppStore } from "@/lib/store"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Shield, LogOut, ArrowLeft, Plus } from "lucide-react"
+import { Shield, LogOut, ArrowLeft, Plus, Home, Trophy, Users, UserCheck, CloudRain, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
+import type { ViewKey } from "@/lib/types"
 
-/**
- * Minimal wrapper for league-admin mode — a thin sticky top bar with
- * "usacricketers" wordmark + emerald "League Admin Mode" badge + Exit button.
- * NO admin sidebar, NO admin nav. Mirrors ScorerShell.
- */
+/** League admin navigation items. */
+const ADMIN_NAV: { label: string; view: ViewKey; icon: React.ElementType }[] = [
+  { label: "Dashboard", view: "league-admin-home", icon: Home },
+  { label: "My Leagues", view: "league-admin-series-edit", icon: Trophy },
+  { label: "Matches", view: "league-admin-matches", icon: Users },
+  { label: "Scorers", view: "league-admin-scorers", icon: UserCheck },
+  { label: "DLS", view: "dls", icon: CloudRain },
+  { label: "Pricing", view: "pricing", icon: Sparkles },
+]
+
 export function LeagueAdminShell({
   title,
   onBack,
@@ -25,29 +31,51 @@ export function LeagueAdminShell({
   children: React.ReactNode
 }) {
   const exitLeagueAdminMode = useAppStore((s) => s.exitLeagueAdminMode)
+  const navigate = useAppStore((s) => s.navigate)
+  const view = useAppStore((s) => s.view)
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      {/* Minimal league-admin top bar */}
-      <header className="sticky top-0 z-50 flex h-12 items-center justify-between border-b bg-[#1e2a5e] px-4 text-white">
-        <div className="flex items-center gap-2">
-          <Shield className="h-4 w-4 text-emerald-400" />
-          <span className="font-extrabold text-sm tracking-tight">
-            usacricketers
-          </span>
-          <Badge className="ml-2 bg-emerald-600 text-white">
-            League Admin Mode
-          </Badge>
+      {/* League admin top bar */}
+      <header className="sticky top-0 z-50 border-b bg-[#1e2a5e] text-white">
+        {/* Row 1: wordmark + badge + exit */}
+        <div className="flex h-12 items-center justify-between px-4">
+          <div className="flex items-center gap-2">
+            <Shield className="h-4 w-4 text-emerald-400" />
+            <span className="font-extrabold text-sm tracking-tight">usacricketers</span>
+            <Badge className="ml-2 bg-emerald-600 text-white">League Admin</Badge>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={exitLeagueAdminMode}
+            className="gap-1.5 text-xs text-white/80 hover:text-white hover:bg-white/10"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            Exit
+          </Button>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={exitLeagueAdminMode}
-          className="gap-1.5 text-xs text-white/80 hover:text-white hover:bg-white/10"
-        >
-          <LogOut className="h-3.5 w-3.5" />
-          Exit
-        </Button>
+        {/* Row 2: admin navigation */}
+        <nav className="flex items-center gap-1 overflow-x-auto px-4 pb-1.5">
+          {ADMIN_NAV.map((item) => {
+            const Icon = item.icon
+            return (
+              <button
+                key={item.view}
+                onClick={() => navigate(item.view)}
+                className={cn(
+                  "flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1 font-display text-xs font-bold uppercase tracking-wide transition-colors",
+                  view === item.view
+                    ? "bg-white/15 text-white"
+                    : "text-white/60 hover:bg-white/10 hover:text-white",
+                )}
+              >
+                <Icon className="h-3 w-3" />
+                {item.label}
+              </button>
+            )
+          })}
+        </nav>
       </header>
 
       {/* Content */}

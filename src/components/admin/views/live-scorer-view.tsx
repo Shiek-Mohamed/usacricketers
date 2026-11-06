@@ -82,6 +82,7 @@ export function LiveScorerView() {
   const { data: t2Players } = usePlayers(match?.team2Id ?? null)
   const { refetch } = useMatches()
   const scorerToken = useScorerSession((s) => s.session?.token ?? null)
+  const session = useScorerSession((s) => s.session)
 
   // Site admins don't have a scorer session — they only have the sa-session
   // httpOnly cookie the score-service can't read. Fall back to fetching a
@@ -471,6 +472,8 @@ export function LiveScorerView() {
       over: overLabel,
       text: trimmed,
       kind: "manual" as const,
+      scorerId: liveState.scorerId ?? undefined,
+      timestamp: new Date().toISOString(),
     }
     const next: LiveMatchState = {
       ...liveState,
@@ -520,6 +523,9 @@ export function LiveScorerView() {
       return
     }
     let state = initState(match!, battingFirstId)
+    // Set the scorer's ID on the state so every commentary entry records
+    // who scored it (closes scoring data gap #10 — scorer identity per ball).
+    state.scorerId = session?.scorer?.id ?? null
     // Pre-populate the squad with the full batting-team roster so the
     // "Did not bat" section of the public scorecard lists bench players.
     // Captain/keeper tags come from the explicit Player model fields

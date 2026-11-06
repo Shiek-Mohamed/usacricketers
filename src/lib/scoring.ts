@@ -105,6 +105,12 @@ export interface CommentaryEntry {
     | "info"
     | "dot"
     | "manual"
+  /** Who scored this ball — the scorer's ID from their session token.
+   *  Closes scoring data gap #10 (scorer identity per ball). */
+  scorerId?: string
+  /** When this ball was scored — ISO timestamp.
+   *  Closes scoring data gap #11 (timestamp per ball). */
+  timestamp?: string
 }
 
 export interface LiveMatchState {
@@ -124,6 +130,9 @@ export interface LiveMatchState {
   // DLS — set when the scorer applies a DLS target after a rain interruption
   dlsTarget?: number | null
   dlsRevisedOvers?: number | null
+  /** The scorer's ID — set when scoring starts. Propagated to every
+   *  commentary entry via pushCommentary. Closes scoring data gap #10. */
+  scorerId?: string | null
 }
 
 export type WicketType =
@@ -361,7 +370,7 @@ function pushCommentary(
   state: LiveMatchState,
   text: string,
   kind: CommentaryEntry["kind"],
-  over: string
+  over: string,
 ): CommentaryEntry[] {
   const entry: CommentaryEntry = {
     id: uid(),
@@ -369,6 +378,8 @@ function pushCommentary(
     over,
     text,
     kind,
+    scorerId: state.scorerId ?? undefined,
+    timestamp: new Date().toISOString(),
   }
   return [entry, ...state.commentary].slice(0, 120)
 }

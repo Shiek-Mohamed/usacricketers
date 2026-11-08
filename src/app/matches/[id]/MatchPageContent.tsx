@@ -20,7 +20,7 @@ import { LiveMatchSection } from "@/components/site/live-match-section"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart"
-import { Bar, BarChart, XAxis, YAxis, Cell, ResponsiveContainer } from "recharts"
+import { Bar, BarChart, Line, LineChart, XAxis, YAxis, Cell, ResponsiveContainer, CartesianGrid } from "recharts"
 import {
   ChevronRight,
   ChevronDown,
@@ -696,6 +696,12 @@ function GraphsView({ match }: { match: Match }) {
 
   return (
     <div className="space-y-4">
+      {/* Cumulative Run Worm — both teams on one chart */}
+      {sc.innings.length >= 2 && (
+        <CumulativeRunWorm match={match} scorecard={sc} />
+      )}
+
+      {/* Per-innings Run Rate Worms (Manhattan) */}
       {sc.innings.map((inn, i) => {
         const team = inn.teamId === match.team1Id ? match.team1 : match.team2
         return (
@@ -711,6 +717,125 @@ function GraphsView({ match }: { match: Match }) {
         )
       })}
     </div>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Cumulative Run Worm — both teams' progress on one chart                    */
+/* --------------------------------------------------------------------------- */
+
+function CumulativeRunWorm({ match, scorecard }: { match: Match; scorecard: Scorecard }) {
+  const t1 = match.team1
+  const t2 = match.team2
+  const t1Color = t1?.primaryColor ?? "#1e2a5e"
+  const t2Color = t2?.primaryColor ?? "#94a3b8"
+
+  // Compute cumulative runs per over for each team
+  const ballKinds = new Set(["run", "boundary", "six", "wicket", "extra", "dot"])
+
+  function cumulativeForTeam(teamId: string): Map<number, number> {
+    const overRuns = new Map<number, number>()
+    for (const c of scorecard.commentary ?? []) {
+      const overNum = parseInt(c.over?.split(".")[0] || "0", 10)
+      if (overNum < 1) continue
+      if (!ballKinds.has(c.kind)) continue
+      // Check if this ball belongs to this team's innings
+      const inn = scorecard.innings.find((i) => i.teamId === teamId)
+      if (!inn) continue
+      const m = c.text.match(/^(\d+)/)
+      const runs = m ? Number(m[1]) : 0
+      overRuns.set(overNum, (overRuns.get(overNum) ?? 0) + runs)
+    }
+    // Convert to cumulative
+    let cum = 0
+    const cumulative = new Map<number, number>()
+    const sorted = Array.from(overRuns.keys()).sort((a, b) => a - b)
+    for (const over of sorted) {
+      cum += overRuns.get(over) ?? 0
+      cumulative.set(over, cum)
+    }
+    return cumulative
+  }
+
+  const t1Data = cumulativeForTeam(match.team1Id)
+  const t2Data = cumulativeForTeam(match.team2Id)
+
+  // Merge into a single dataset keyed by over number
+  const allOvers = Array.from(new Set([...t1Data.keys(), ...t2Data.keys()])).sort((a, b) => a - b)
+  const data = allOvers.map((over) => ({
+    over: `${over}`,
+    [match.team1Id]: t1Data.get(over) ?? null,
+    [match.team2Id]: t2Data.get(over) ?? null,
+  }))
+
+  if (data.length === 0) {
+    return null
+  }
+
+  const chartConfig: ChartConfig = {
+    [match.team1Id]: { label: t1?.shortName ?? "Team 1", color: t1Color },
+    [match.team2Id]: { label: t2?.shortName ?? "Team 2", color: t2Color },
+  }
+
+  return (
+    <Card className="overflow-hidden p-0">
+      <div className="border-b bg-muted/30 px-4 py-2.5">
+        <h3 className="flex items-center gap-1.5 font-display text-sm font-bold uppercase tracking-wide">
+          <BarChart3 className="h-4 w-4 text-emerald-600" />
+          Cumulative Run Worm
+        </h3>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {t1?.shortName} vs {t2?.shortName} — cumulative runs per over
+        </p>
+      </div>
+      <div className="p-4">
+        {/* Legend */}
+        <div className="mb-3 flex items-center gap-4">
+          <div className="flex items-center gap-1.5">
+            <span className="h-3 w-6 rounded-full" style={{ background: t1Color }} />
+            <span className="text-sm font-bold">{t1?.shortName}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-3 w-6 rounded-full" style={{ background: t2Color }} />
+            <span className="text-sm font-bold">{t2?.shortName}</span>
+          </div>
+        </div>
+        <ChartContainer config={chartConfig} className="h-[240px] w-full">
+          <LineChart data={data} margin={{ top: 8, right: 12, bottom: 8, left: -12 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+            <XAxis
+              dataKey="over"
+              tickLine={false}
+              axisLine={false}
+              tick={{ fontSize: 10 }}
+              label={{ value: "Overs", position: "insideBottom", offset: -2, style: { fontSize: 11, fill: "#9ca3af" } }}
+            />
+            <YAxis
+              tickLine={false}
+              axisLine={false}
+              tick={{ fontSize: 10 }}
+              label={{ value: "Runs", angle: -90, position: "insideLeft", style: { fontSize: 11, fill: "#9ca3af" } }}
+            />
+            <Line
+              type="monotone"
+              dataKey={match.team1Id}
+              stroke={t1Color}
+              strokeWidth={2.5}
+              dot={false}
+              connectNulls
+            />
+            <Line
+              type="monotone"
+              dataKey={match.team2Id}
+              stroke={t2Color}
+              strokeWidth={2.5}
+              dot={false}
+              connectNulls
+            />
+          </LineChart>
+        </ChartContainer>
+      </div>
+    </Card>
   )
 }
 

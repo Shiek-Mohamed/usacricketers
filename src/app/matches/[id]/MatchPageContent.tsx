@@ -800,7 +800,7 @@ function CumulativeRunWorm({ match, scorecard }: { match: Match; scorecard: Scor
             <span className="text-sm font-bold">{t2?.shortName}</span>
           </div>
         </div>
-        <ChartContainer config={chartConfig} className="h-[240px] w-full">
+        <ChartContainer config={chartConfig} className="h-[300px] w-full">
           <LineChart data={data} margin={{ top: 8, right: 12, bottom: 8, left: -12 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
             <XAxis
@@ -898,8 +898,8 @@ function RunRateWorm({
         </p>
       </div>
       <div className="p-4">
-        <ChartContainer config={chartConfig} className="h-[200px] w-full">
-          <BarChart data={data} margin={{ top: 8, right: 8, bottom: 8, left: -16 }}>
+        <ChartContainer config={chartConfig} className="h-[300px] w-full">
+          <BarChart data={data} margin={{ top: 16, right: 16, bottom: 16, left: 0 }} barCategoryGap="20%" barGap={4}>
             <XAxis
               dataKey="over"
               tickLine={false}
@@ -912,9 +912,9 @@ function RunRateWorm({
               axisLine={false}
               tick={{ fontSize: 10 }}
               domain={[0, maxRuns]}
-              width={28}
+              width={32}
             />
-            <Bar dataKey="runs" radius={[3, 3, 0, 0]}>
+            <Bar dataKey="runs" radius={[4, 4, 0, 0]} maxBarSize={48}>
               {data.map((entry, index) => (
                 <Cell
                   key={`cell-${index}`}

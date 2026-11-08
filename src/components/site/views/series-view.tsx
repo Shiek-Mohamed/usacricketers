@@ -165,12 +165,12 @@ function SeriesCard({
 
         <div className="flex items-center justify-between gap-2">
           <StatusPill status={series.status} />
-          <span className="text-[11px] font-medium text-muted-foreground">
+          <span className="text-xs font-medium text-muted-foreground">
             {series.season}
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <CalendarDays className="size-3.5 shrink-0" />
           <span>
             {formatMatchDate(series.startDate)} — {formatMatchDate(series.endDate)}

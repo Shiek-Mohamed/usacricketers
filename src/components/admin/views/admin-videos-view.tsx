@@ -529,7 +529,7 @@ export function AdminVideosView() {
                   }
                   placeholder="https://www.youtube.com/watch?v=… or youtu.be/… or bare ID"
                 />
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Accepts watch URLs, youtu.be, /embed/, /shorts/, or the bare
                   11-char ID. The backend extracts the ID for you.
                 </p>
@@ -564,7 +564,7 @@ export function AdminVideosView() {
                     }
                   />
                 )}
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Uploaded videos can be large (up to 500MB). Progress is shown
                   in real time.
                 </p>
@@ -734,7 +734,7 @@ export function AdminVideosView() {
                 </div>
               )}
               {form.thumbnailUrl === "" && form.source === "youtube" && (
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   <ImageIcon className="mr-0.5 inline h-3 w-3" />
                   Blank = the YouTube hqdefault thumbnail will be used.
                 </p>

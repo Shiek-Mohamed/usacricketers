@@ -142,8 +142,8 @@ export function SearchView() {
                       <PlayerAvatar name={p.name} imageUrl={p.imageUrl} size="lg" />
                       <div>
                         <div className="text-sm font-bold">{p.name}</div>
-                        <div className="text-[11px] text-muted-foreground">{p.role}</div>
-                        <div className="text-[11px] font-medium">{p.teamShortName}</div>
+                        <div className="text-xs text-muted-foreground">{p.role}</div>
+                        <div className="text-xs font-medium">{p.teamShortName}</div>
                       </div>
                     </button>
                   ))}
@@ -207,7 +207,7 @@ export function SearchView() {
                         )}
                       </div>
                       <div className="text-sm font-bold line-clamp-2">{v.title}</div>
-                      <div className="text-[11px] text-muted-foreground">{v.category}</div>
+                      <div className="text-xs text-muted-foreground">{v.category}</div>
                     </button>
                   ))}
                 </div>

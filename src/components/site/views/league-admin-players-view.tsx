@@ -154,7 +154,7 @@ export function LeagueAdminPlayersView() {
               <button
                 onClick={() => setSelectedTeam("all")}
                 className={cn(
-                  "rounded-full px-2.5 py-1 font-display text-[11px] font-bold uppercase tracking-wide transition-colors",
+                  "rounded-full px-2.5 py-1 font-display text-xs font-bold uppercase tracking-wide transition-colors",
                   selectedTeam === "all"
                     ? "bg-emerald-600 text-white"
                     : "bg-muted text-muted-foreground hover:bg-muted/80",
@@ -169,7 +169,7 @@ export function LeagueAdminPlayersView() {
                     key={t.id}
                     onClick={() => setSelectedTeam(t.id)}
                     className={cn(
-                      "rounded-full px-2.5 py-1 font-display text-[11px] font-bold uppercase tracking-wide transition-colors",
+                      "rounded-full px-2.5 py-1 font-display text-xs font-bold uppercase tracking-wide transition-colors",
                       selectedTeam === t.id
                         ? "bg-emerald-600 text-white"
                         : "bg-muted text-muted-foreground hover:bg-muted/80",
@@ -424,7 +424,7 @@ function PlayerForm({
                 className="h-11 w-11 rounded-full object-cover ring-2 ring-border"
               />
             ) : (
-              <span className="grid h-11 w-11 place-items-center rounded-full bg-muted font-display text-[11px] font-bold text-muted-foreground">
+              <span className="grid h-11 w-11 place-items-center rounded-full bg-muted font-display text-xs font-bold text-muted-foreground">
                 {(name || "?").slice(0, 2).toUpperCase()}
               </span>
             )}

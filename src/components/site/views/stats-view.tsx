@@ -173,7 +173,7 @@ function RankList({
   if (players.length === 0) {
     return (
       <div>
-        <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+        <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
           {title}
         </p>
         <p className="text-xs text-muted-foreground/70">No data</p>
@@ -183,7 +183,7 @@ function RankList({
   return (
     <div>
       <div className="mb-1.5 flex items-center justify-between">
-        <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+        <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
           {title}
         </p>
         <span className="text-[10px] font-medium text-muted-foreground">

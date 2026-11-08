@@ -288,7 +288,7 @@ export function LeagueAdminLoginView() {
         </CardContent>
       </Card>
 
-      <p className="mt-6 max-w-sm text-center text-[11px] leading-relaxed text-muted-foreground">
+      <p className="mt-6 max-w-sm text-center text-xs leading-relaxed text-muted-foreground">
         Don&apos;t have an account yet? Anyone can{" "}
         <button
           onClick={() => navigate("league-admin-signup")}

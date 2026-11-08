@@ -271,7 +271,7 @@ export function AdminSidebarView() {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Where this block appears in the sidebar.
                 </p>
               </div>
@@ -288,7 +288,7 @@ export function AdminSidebarView() {
                     }))
                   }
                 />
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Lower numbers appear first.
                 </p>
               </div>

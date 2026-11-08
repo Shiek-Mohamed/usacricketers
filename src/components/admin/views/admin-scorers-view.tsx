@@ -387,11 +387,11 @@ export function AdminScorerView() {
                 autoComplete="off"
               />
               {editingId ? (
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Username cannot be changed after creation.
                 </p>
               ) : (
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Used by the scorer to sign in.
                 </p>
               )}
@@ -453,7 +453,7 @@ export function AdminScorerView() {
                 }
               />
               Active
-              <span className="text-[11px] font-normal text-muted-foreground">
+              <span className="text-xs font-normal text-muted-foreground">
                 (inactive scorers cannot sign in)
               </span>
             </label>
@@ -461,7 +461,7 @@ export function AdminScorerView() {
             {/* Tournament multi-select */}
             <div className="grid gap-2 pt-2">
               <Label>Tournaments</Label>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Selected scorers will only see matches that belong to these
                 tournaments.
               </p>
@@ -510,7 +510,7 @@ export function AdminScorerView() {
                   </ul>
                 )}
               </div>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 {form.tournamentIds.length} selected
               </p>
             </div>

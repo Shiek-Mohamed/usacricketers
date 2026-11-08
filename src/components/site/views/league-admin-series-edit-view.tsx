@@ -470,7 +470,7 @@ export function LeagueAdminSeriesEditView() {
               disabled={saving}
               maxLength={12}
             />
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Defaults to the first 10 chars of the name.
             </p>
           </div>

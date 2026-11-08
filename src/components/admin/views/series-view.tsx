@@ -356,7 +356,7 @@ function TournamentEditor({
               </div>
               {/* Optional bulk players for the new team — parsed + added in one shot alongside team creation */}
               <div className="mt-3 grid gap-1.5">
-                <label className="text-[11px] font-medium text-muted-foreground">
+                <label className="text-xs font-medium text-muted-foreground">
                   Players (optional — one per line, or CSV: name, role, bat, bowl)
                 </label>
                 <Textarea
@@ -376,12 +376,12 @@ function TournamentEditor({
                   className="font-mono text-xs"
                 />
                 {newTeamPlayersText.trim() && (
-                  <p className="text-[11px] text-emerald-700 dark:text-emerald-400">
+                  <p className="text-xs text-emerald-700 dark:text-emerald-400">
                     {parsePlayerRows(newTeamPlayersText).length} player{parsePlayerRows(newTeamPlayersText).length === 1 ? "" : "s"} will be imported when the team is created.
                   </p>
                 )}
               </div>
-              <p className="mt-1.5 text-[11px] text-muted-foreground">Tip: you can also bulk-add players to an existing tournament team using the green <Users className="inline h-3 w-3 -translate-y-0.5" /> button on each team chip above.</p>
+              <p className="mt-1.5 text-xs text-muted-foreground">Tip: you can also bulk-add players to an existing tournament team using the green <Users className="inline h-3 w-3 -translate-y-0.5" /> button on each team chip above.</p>
             </div>
           </CardContent>
         </Card>

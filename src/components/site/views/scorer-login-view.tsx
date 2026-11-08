@@ -143,7 +143,7 @@ export function ScorerLoginView() {
         </CardContent>
       </Card>
 
-      <p className="mt-6 max-w-sm text-center text-[11px] leading-relaxed text-muted-foreground">
+      <p className="mt-6 max-w-sm text-center text-xs leading-relaxed text-muted-foreground">
         Scorer accounts are created by an administrator. If you can&apos;t sign in,
         contact your tournament organiser.
       </p>

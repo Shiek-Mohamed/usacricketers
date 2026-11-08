@@ -256,7 +256,7 @@ export function PlayerDetailView() {
             <span className="h-5 w-1 rounded-full bg-emerald-600" />
             Career Stats (from scorecards)
           </h2>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Auto-computed from {autoStats.matchesScored} match scorecard
             {autoStats.matchesScored !== 1 ? "s" : ""}. These update
             automatically as new matches are scored.
@@ -355,7 +355,7 @@ export function PlayerDetailView() {
       )}
 
       <Separator />
-      <p className="text-[11px] text-muted-foreground">
+      <p className="text-xs text-muted-foreground">
         All stats are career aggregates across formats as maintained by the CMS.
       </p>
       </div>
@@ -383,7 +383,7 @@ function BattingTable({ stats }: { stats: BattingStat }) {
       <TableHeader>
         <TableRow>
           {BATTING_ROWS.map((r) => (
-            <TableHead key={r.key} className="text-[11px] uppercase">
+            <TableHead key={r.key} className="text-xs uppercase">
               {r.label}
             </TableHead>
           ))}
@@ -428,7 +428,7 @@ function BowlingTable({ stats }: { stats: BowlingStat }) {
       <TableHeader>
         <TableRow>
           {BOWLING_ROWS.map((r) => (
-            <TableHead key={r.key} className="text-[11px] uppercase">
+            <TableHead key={r.key} className="text-xs uppercase">
               {r.label}
             </TableHead>
           ))}

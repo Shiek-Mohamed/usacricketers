@@ -517,7 +517,7 @@ export function LeagueAdminScorersView() {
                   disabled={saving}
                   autoComplete="off"
                 />
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Used by the scorer to sign in. Must be unique.
                 </p>
               </div>
@@ -598,7 +598,7 @@ export function LeagueAdminScorersView() {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   The scorer will be able to score matches in this league.
                   Assign more leagues later from the edit dialog.
                 </p>
@@ -613,7 +613,7 @@ export function LeagueAdminScorersView() {
                   disabled={saving}
                 />
                 Active
-                <span className="text-[11px] font-normal text-muted-foreground">
+                <span className="text-xs font-normal text-muted-foreground">
                   (inactive scorers cannot sign in)
                 </span>
               </label>
@@ -683,7 +683,7 @@ export function LeagueAdminScorersView() {
 
               <div className="grid gap-2 pt-2">
                 <Label>Assigned leagues</Label>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   The scorer can only score matches in the leagues you select
                   here. All assignments must be within leagues you manage.
                 </p>
@@ -731,7 +731,7 @@ export function LeagueAdminScorersView() {
                     </ul>
                   </div>
                 )}
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {editForm.tournamentIds.length} selected
                 </p>
               </div>

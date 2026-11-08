@@ -403,7 +403,7 @@ export function AdminArticlesView() {
             <div className="grid sm:grid-cols-2 gap-3">
               <div className="grid gap-1.5">
                 <Label>Categories</Label>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Select all that apply — the post appears in each selected
                   category&apos;s listing.
                 </p>
@@ -437,7 +437,7 @@ export function AdminArticlesView() {
                   })}
                 </div>
                 {form.categories.length === 0 && (
-                  <p className="text-[11px] text-red-600">
+                  <p className="text-xs text-red-600">
                     Pick at least one category.
                   </p>
                 )}
@@ -513,7 +513,7 @@ export function AdminArticlesView() {
                 }
                 placeholder="e.g. India celebrate with the Champions Trophy in Dubai. Photo: Getty Images"
               />
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Shown as a small caption beneath the hero image on the article page.
               </p>
             </div>

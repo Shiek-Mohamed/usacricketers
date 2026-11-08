@@ -421,7 +421,7 @@ export function AdminBannersView() {
                   ) : (
                     <UploadButton onUploaded={(url) => set("imageUrl", url)} />
                   )}
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     Recommended dimensions per placement slot —{" "}
                     <code className="rounded bg-muted px-1 py-0.5">
                       home-live-hero

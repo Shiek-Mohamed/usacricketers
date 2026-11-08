@@ -271,7 +271,7 @@ function SecondaryStoryCard({ article }: { article: Article }) {
         <h3 className="line-clamp-2 font-bold leading-snug transition-colors group-hover:text-red-600">
           {article.title}
         </h3>
-        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <User className="h-3 w-3" />
             {article.author}
@@ -709,7 +709,7 @@ function GalleryCard({
       </div>
       {/* Text content (transparent body, sits on white) */}
       <div className="mt-3">
-        <span className="text-[11px] font-extrabold uppercase tracking-wide text-foreground">
+        <span className="text-xs font-extrabold uppercase tracking-wide text-foreground">
           {photoCount > 0 ? `Photos · ${photoCount}` : "Photos"}
         </span>
         <h3 className="mt-1 line-clamp-2 text-base font-bold leading-snug text-foreground transition-colors group-hover:text-red-600">
@@ -864,7 +864,7 @@ function SmallVideoCard({ video, onClick }: { video: Video; onClick: () => void 
         <h3 className="mt-0.5 line-clamp-2 text-sm font-bold leading-snug transition-colors group-hover:text-red-600">
           {video.title}
         </h3>
-        <span className="mt-auto text-[11px] text-muted-foreground">
+        <span className="mt-auto text-xs text-muted-foreground">
           {video.duration && `${video.duration} · `}
           {formatShortDate(video.publishedAt)}
         </span>

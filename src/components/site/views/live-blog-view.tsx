@@ -123,7 +123,7 @@ export function LiveBlogView() {
         <div className="flex flex-wrap items-center justify-between gap-2 bg-[#1e2a5e] px-4 py-3 text-white">
           <div className="flex items-center gap-2">
             {isLive ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/20 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-red-300">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/20 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-red-300">
                 <span className="relative flex h-2 w-2">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
@@ -139,7 +139,7 @@ export function LiveBlogView() {
           </div>
           {/* Connection status + share buttons */}
           <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1.5 text-[11px] font-medium">
+            <span className="flex items-center gap-1.5 text-xs font-medium">
               {connected ? (
                 <span className="inline-flex items-center gap-1 text-emerald-300">
                   <Wifi className="h-3 w-3" /> Connected
@@ -354,7 +354,7 @@ function CommentaryFeed({
         <h2 className="font-display text-sm font-bold uppercase tracking-widest text-foreground">
           Live Commentary
         </h2>
-        <span className="text-[11px] text-muted-foreground">
+        <span className="text-xs text-muted-foreground">
           {commentary.length} entries
         </span>
       </div>
@@ -389,7 +389,7 @@ function CommentaryRow({
     >
       {/* Over label */}
       <div className="w-12 shrink-0 pt-0.5 text-right">
-        <span className="text-[11px] font-bold tabular-nums text-muted-foreground">
+        <span className="text-xs font-bold tabular-nums text-muted-foreground">
           {entry.over}
         </span>
       </div>

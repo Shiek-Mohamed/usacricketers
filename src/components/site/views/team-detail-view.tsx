@@ -176,7 +176,7 @@ export function TeamDetailView() {
                     if (list.length === 0) return null
                     return (
                       <li key={grp.label}>
-                        <div className="bg-muted/40 px-5 py-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                        <div className="bg-muted/40 px-5 py-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
                           {grp.label} ({list.length})
                         </div>
                         {list.map((p) => (
@@ -242,7 +242,7 @@ function PlayerRow({
       <PlayerAvatar name={player.name} team={player.team} imageUrl={player.imageUrl} size="sm" />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">{player.name}</p>
-        <p className="truncate text-[11px] text-muted-foreground">
+        <p className="truncate text-xs text-muted-foreground">
           {player.battingStyle}
           {player.bowlingStyle ? ` · ${player.bowlingStyle}` : ""}
         </p>

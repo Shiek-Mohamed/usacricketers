@@ -186,7 +186,7 @@ export function AdminLoginView() {
         </CardContent>
       </Card>
 
-      <p className="mt-6 max-w-sm text-center text-[11px] leading-relaxed text-muted-foreground">
+      <p className="mt-6 max-w-sm text-center text-xs leading-relaxed text-muted-foreground">
         League admins and scorers have their own sign-in (via the header
         buttons). This page is for site administrators only.
       </p>

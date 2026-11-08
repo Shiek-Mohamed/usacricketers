@@ -111,7 +111,7 @@ function MatchHeaderCard({ match }: { match: Match }) {
                   <div className="truncate text-base font-bold sm:text-lg">
                     {team.name}
                   </div>
-                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
                     {team.shortName}
                   </div>
                 </div>
@@ -353,7 +353,7 @@ function BatsmanCard({
           <span className="ml-1 text-xs text-muted-foreground">({batsman.balls})</span>
         </div>
       </div>
-      <div className="mt-1.5 flex items-center gap-3 text-[11px] text-muted-foreground">
+      <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">
         <span>4s <span className="font-semibold text-foreground">{batsman.fours}</span></span>
         <span>6s <span className="font-semibold text-foreground">{batsman.sixes}</span></span>
         <span>SR <span className="font-semibold text-foreground tabular-nums">{sr}</span></span>
@@ -382,7 +382,7 @@ function BowlerCard({ bowler }: { bowler: ScorerBowler }) {
           </span>
         </div>
       </div>
-      <div className="mt-1.5 flex items-center gap-3 text-[11px] text-muted-foreground">
+      <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">
         <span>Overs <span className="font-semibold text-foreground tabular-nums">{oversString(bowler.balls)}</span></span>
         <span>Maidens <span className="font-semibold text-foreground">{bowler.maidens}</span></span>
         <span>Runs <span className="font-semibold text-foreground">{bowler.runsConceded}</span></span>
@@ -415,7 +415,7 @@ function LiveSummaryBar({ state }: { state: LiveMatchState }) {
     <div className="rounded-lg border bg-gradient-to-br from-slate-900 to-slate-800 p-3 text-white sm:p-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[11px] uppercase tracking-wide text-slate-400">
+          <div className="text-xs uppercase tracking-wide text-slate-400">
             {inn.battingTeamShortName} · Innings {state.currentInnings + 1}
             {inn.target ? ` · target ${inn.target}` : ""}
           </div>
@@ -440,7 +440,7 @@ function LiveSummaryBar({ state }: { state: LiveMatchState }) {
           )}
         </div>
       </div>
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-white/10 pt-2 text-[11px] text-slate-300">
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-white/10 pt-2 text-xs text-slate-300">
         <span>
           Partnership:{" "}
           <span className="font-bold text-white tabular-nums">{pRuns} ({pBalls})</span>
@@ -547,14 +547,14 @@ function CommentaryFeed({
       <div className="rounded-lg border bg-card">
         <div className="flex items-center gap-2 border-b bg-muted/40 px-3 py-2">
           <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
-          <h3 className="text-[11px] font-extrabold uppercase tracking-wide">
+          <h3 className="text-xs font-extrabold uppercase tracking-wide">
             Commentary
           </h3>
         </div>
         <div className="flex flex-col items-center justify-center px-3 py-10 text-center">
           <MessageSquare className="h-8 w-8 text-muted-foreground/60" />
           <p className="mt-2 text-sm text-muted-foreground">No commentary yet</p>
-          <p className="text-[11px] text-muted-foreground/80">
+          <p className="text-xs text-muted-foreground/80">
             Ball-by-ball updates will appear here once scoring begins.
           </p>
         </div>
@@ -569,7 +569,7 @@ function CommentaryFeed({
       <div className="flex items-center justify-between gap-2 border-b bg-muted/40 px-3 py-2">
         <div className="flex items-center gap-2">
           <Radio className="h-3.5 w-3.5 text-red-600" />
-          <h3 className="text-[11px] font-extrabold uppercase tracking-wide">
+          <h3 className="text-xs font-extrabold uppercase tracking-wide">
             Live Commentary
           </h3>
         </div>
@@ -603,7 +603,7 @@ function CommentaryFeed({
                   >
                     <span
                       className={cn(
-                        "inline-flex h-6 min-w-[2.75rem] shrink-0 items-center justify-center rounded-md px-1.5 text-[11px] font-bold tabular-nums",
+                        "inline-flex h-6 min-w-[2.75rem] shrink-0 items-center justify-center rounded-md px-1.5 text-xs font-bold tabular-nums",
                         colors.badge
                       )}
                     >
@@ -771,10 +771,10 @@ export function MatchDetailView() {
               Live scoring in progress
             </span>
             {connected && (
-              <span className="text-[11px] text-red-600/80">· connected</span>
+              <span className="text-xs text-red-600/80">· connected</span>
             )}
             <span className="ml-auto flex items-center gap-2">
-              <span className="hidden text-[11px] text-muted-foreground sm:inline">
+              <span className="hidden text-xs text-muted-foreground sm:inline">
                 Updates in real time as balls are scored
               </span>
               {/* Live Blog button — opens the immersive ball-by-ball feed */}
@@ -806,7 +806,7 @@ export function MatchDetailView() {
             )}
             {/* Match officials — umpires + TV umpire + referee */}
             {(match_.umpires || match_.tvUmpire || match_.referee) && (
-              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                 {match_.umpires && (
                   <span>
                     <span className="font-semibold">Umpires:</span>{" "}

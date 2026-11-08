@@ -434,7 +434,7 @@ export function LeagueAdminSignupView() {
       </Card>
       )}
 
-      <p className="mt-6 max-w-md text-center text-[11px] leading-relaxed text-muted-foreground">
+      <p className="mt-6 max-w-md text-center text-xs leading-relaxed text-muted-foreground">
         By signing up you agree to run leagues honestly. Accounts can be
         deactivated for abuse. Your league is yours — you manage teams,
         schedules, and scorers; other league admins can&apos;t see or edit it.

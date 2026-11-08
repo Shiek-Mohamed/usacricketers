@@ -341,7 +341,7 @@ export function DashboardView() {
                           </span>
                           <div className="min-w-0 flex-1">
                             <div className="truncate text-sm font-medium">{item.name}</div>
-                            <div className="text-[11px] text-muted-foreground">{item.type}</div>
+                            <div className="text-xs text-muted-foreground">{item.type}</div>
                           </div>
                           <div className="shrink-0 text-xs text-muted-foreground">
                             {timeAgo(item.updatedAt)}

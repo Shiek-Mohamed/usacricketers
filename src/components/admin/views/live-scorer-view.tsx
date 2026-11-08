@@ -987,7 +987,7 @@ export function LiveScorerView() {
                       </span>
                     )}
                   </div>
-                  <p className="mt-1.5 text-[11px] font-medium text-emerald-600/70 dark:text-emerald-400/70">
+                  <p className="mt-1.5 text-xs font-medium text-emerald-600/70 dark:text-emerald-400/70">
                     Click to record your voice → broadcasts to all viewers as a
                     playable audio clip. Browser will ask for mic permission
                     the first time.
@@ -1633,7 +1633,7 @@ function BallPad({
           Wicket
         </Button>
       </div>
-      <p className="mt-2 text-[11px] text-muted-foreground">
+      <p className="mt-2 text-xs text-muted-foreground">
         Tap a run number, an extra, or Wicket. The Wicket button opens a
         dialog to pick dismissal type + fielder(s) involved.
         <br />
@@ -1894,7 +1894,7 @@ function WicketDialog({
                 </SelectContent>
               </Select>
               {wicketType === "stumped" && keeperId && !fielderId && (
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Wicket-keeper auto-prefilled (you can change it).
                 </p>
               )}
@@ -2015,7 +2015,7 @@ function CommentaryFeed({ state }: { state: LiveMatchState }) {
     <div className="rounded-lg border bg-card">
       <div className="flex items-center gap-2 border-b bg-muted/40 px-3 py-2">
         <CircleDot className="h-3.5 w-3.5 text-red-600" />
-        <h3 className="text-[11px] font-extrabold uppercase tracking-wide">
+        <h3 className="text-xs font-extrabold uppercase tracking-wide">
           Live Commentary
         </h3>
       </div>
@@ -2124,7 +2124,7 @@ function CommentaryInput({
           Send
         </Button>
       </div>
-      <p className="mt-1.5 text-[11px] font-medium text-blue-600/70 dark:text-blue-400/70">
+      <p className="mt-1.5 text-xs font-medium text-blue-600/70 dark:text-blue-400/70">
         Broadcasts instantly to all viewers on the Live tab. Press{" "}
         <code className="rounded bg-blue-100 px-1 py-0.5 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Enter</code> to send.
       </p>

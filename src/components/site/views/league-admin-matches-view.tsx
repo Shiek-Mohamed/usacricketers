@@ -541,7 +541,7 @@ export function LeagueAdminMatchesView() {
                             </span>
                           </div>
                         </div>
-                        <div className="mt-0.5 block text-[11px] text-muted-foreground lg:hidden">
+                        <div className="mt-0.5 block text-xs text-muted-foreground lg:hidden">
                           {m.venue || "—"}
                         </div>
                       </TableCell>

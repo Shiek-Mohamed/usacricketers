@@ -522,7 +522,7 @@ export function AdminPlayersView() {
                   </div>
                 </div>
               </div>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Uploaded photos are auto-resized to 300×300 (optimal for avatars).
               </p>
             </div>

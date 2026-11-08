@@ -216,11 +216,11 @@ function PlayerCard({
       </div>
 
       <CardContent className="space-y-2 border-t px-4 py-3">
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {player.battingStyle}
           {player.bowlingStyle ? ` · ${player.bowlingStyle}` : ""}
         </p>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] tabular-nums">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs tabular-nums">
           <Stat label="M" value={bs.matches} />
           <Stat label="R" value={bs.runs} />
           <Stat label="Avg" value={bs.average.toFixed(1)} />

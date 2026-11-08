@@ -324,8 +324,8 @@ function PlayerCard({
           </div>
         </div>
       </button>
-      {/* Actions */}
-      <div className="flex shrink-0 flex-col items-center gap-1.5">
+      {/* Actions — edit + delete side by side */}
+      <div className="flex shrink-0 items-center gap-1">
         <Button
           variant="ghost"
           size="icon"

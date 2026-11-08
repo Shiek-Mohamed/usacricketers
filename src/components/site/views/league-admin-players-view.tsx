@@ -260,7 +260,7 @@ function PlayerCard({
 }) {
   const teamColor = team?.primaryColor ?? "#94a3b8"
   return (
-    <Card className="group relative flex items-start gap-4 overflow-hidden p-4 pl-5 transition-shadow hover:shadow-md">
+    <Card className="group relative flex items-start gap-4 overflow-hidden pt-6 pb-5 pl-7 pr-5 transition-shadow hover:shadow-md">
       {/* Left accent stripe in team color */}
       <span
         className="absolute left-0 top-0 h-full w-1.5"

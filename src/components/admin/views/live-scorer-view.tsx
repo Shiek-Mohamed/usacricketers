@@ -1462,7 +1462,7 @@ function SetupPanel({
                 setShowAddPlayer(true)
                 setAddPlayerTeam(battingFirstId || t1?.id || "")
               }}
-              className="flex items-center gap-1.5 text-sm font-bold text-emerald-600 hover:text-emerald-700"
+              className="flex items-center gap-2 rounded-md bg-emerald-600 px-3 py-2 text-sm font-bold text-white transition-colors hover:bg-emerald-700"
             >
               <Plus className="h-4 w-4" />
               Add player not in list
@@ -2131,9 +2131,9 @@ function Picker({
               {!showAdd ? (
                 <button
                   onClick={() => setShowAdd(true)}
-                  className="flex items-center gap-1 text-xs font-bold text-emerald-600 hover:text-emerald-700"
+                  className="flex items-center gap-2 rounded-md bg-emerald-600 px-3 py-2 text-sm font-bold text-white transition-colors hover:bg-emerald-700"
                 >
-                  <Plus className="h-3 w-3" />
+                  <Plus className="h-4 w-4" />
                   Add player not in list
                 </button>
               ) : (

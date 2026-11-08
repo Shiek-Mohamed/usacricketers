@@ -260,7 +260,7 @@ function PlayerCard({
 }) {
   const teamColor = team?.primaryColor ?? "#94a3b8"
   return (
-    <Card className="group relative flex items-center gap-4 overflow-hidden p-4 pl-5 transition-shadow hover:shadow-md">
+    <Card className="group relative flex items-start gap-4 overflow-hidden p-4 pl-5 transition-shadow hover:shadow-md">
       {/* Left accent stripe in team color */}
       <span
         className="absolute left-0 top-0 h-full w-1.5"
@@ -270,7 +270,7 @@ function PlayerCard({
       <button
         type="button"
         onClick={onViewStats}
-        className="flex min-w-0 flex-1 items-center gap-4 text-left"
+        className="flex min-w-0 flex-1 items-start gap-4 text-left"
         aria-label={`View ${player.name} stats`}
         title="View stats"
       >
@@ -325,7 +325,7 @@ function PlayerCard({
         </div>
       </button>
       {/* Actions — edit + delete side by side with labels */}
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="flex shrink-0 self-center items-center gap-1">
         <Button
           variant="ghost"
           size="sm"

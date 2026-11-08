@@ -109,6 +109,112 @@ function inningsTotal(match: Match, teamId: string): string {
   return `${last.totalRuns}/${last.totalWickets}`
 }
 
+/** Horizontal scrollable carousel of match cards (ESPNcricinfo-style).
+ *  Shows live matches first (dark gradient cards), then recent results
+ *  (white cards), then upcoming (white cards with start time). Each card
+ *  is a mini-scorecard with status badge, teams, scores, and context. */
+function MatchCarousel({ matches }: { matches: Match[] }) {
+  return (
+    <div className="flex gap-3 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      {matches.map((m) => (
+        <MatchCard key={m.id} match={m} />
+      ))}
+    </div>
+  )
+}
+
+/** A single match card for the carousel. Adapts its design based on status:
+ *  - live: dark navy gradient + LIVE badge + big scores
+ *  - completed: white card + RESULT badge + result text
+ *  - upcoming: white card + UPCOMING badge + start time */
+function MatchCard({ match }: { match: Match }) {
+  const t1 = match.team1
+  const t2 = match.team2
+  const t1Score = inningsTotal(match, match.team1Id)
+  const t2Score = inningsTotal(match, match.team2Id)
+  const live = match.status === "live"
+  const completed = match.status === "completed"
+  const href = `/matches/${match.id}`
+
+  // Context line — what's the match situation?
+  const context = live
+    ? match.scorecard?.innings?.length
+      ? `Live — ${match.scorecard.innings[match.scorecard.innings.length - 1].totalRuns}/${match.scorecard.innings[match.scorecard.innings.length - 1].totalWickets} (${match.scorecard.innings[match.scorecard.innings.length - 1].totalOvers} ov)`
+      : "Innings starting..."
+    : completed
+      ? match.result || "Completed"
+      : `Starts ${formatMatchDate(match.startDate)}`
+
+  if (live) {
+    // Live match — dark gradient card (matches the match hero)
+    return (
+      <a
+        href={href}
+        className="group flex w-[280px] shrink-0 flex-col gap-3 rounded-xl bg-gradient-to-b from-[#1e2a5e] to-[#0f1729] p-4 shadow-lg transition-shadow hover:shadow-xl"
+      >
+        <div className="flex items-center justify-between">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
+            </span>
+            Live
+          </span>
+          <span className="text-[10px] text-white/50">{match.format} · {match.series?.shortName ?? ""}</span>
+        </div>
+        <div className="flex items-center justify-center gap-6">
+          <div className="flex flex-col items-center gap-1">
+            {t1 && <div className="grid h-8 w-8 place-items-center rounded-full bg-white/10 ring-1 ring-white/20"><TeamBadge team={t1} size="sm" /></div>}
+            <span className="text-[10px] font-bold uppercase text-white/70">{t1?.shortName}</span>
+            {t1Score ? <span className="text-base font-extrabold tabular-nums text-white">{t1Score}</span> : <span className="text-[10px] text-white/40">—</span>}
+          </div>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">vs</span>
+          <div className="flex flex-col items-center gap-1">
+            {t2 && <div className="grid h-8 w-8 place-items-center rounded-full bg-white/10 ring-1 ring-white/20"><TeamBadge team={t2} size="sm" /></div>}
+            <span className="text-[10px] font-bold uppercase text-white/70">{t2?.shortName}</span>
+            {t2Score ? <span className="text-base font-extrabold tabular-nums text-white">{t2Score}</span> : <span className="text-[10px] text-white/40">—</span>}
+          </div>
+        </div>
+        <p className="text-center text-[10px] text-white/50">{context}</p>
+      </a>
+    )
+  }
+
+  // Completed or upcoming — white card
+  return (
+    <a
+      href={href}
+      className="group flex w-[280px] shrink-0 flex-col gap-2 rounded-xl border bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
+    >
+      <div className="flex items-center justify-between">
+        <span className={`text-[10px] font-bold uppercase tracking-wide ${completed ? "text-emerald-600" : "text-amber-600"}`}>
+          {completed ? "Result" : "Upcoming"}
+        </span>
+        <span className="text-[10px] text-muted-foreground">{match.format} · {match.series?.shortName ?? ""}</span>
+      </div>
+      <div className="space-y-1.5">
+        {/* Team 1 */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            {t1 && <TeamBadge team={t1} size="sm" />}
+            <span className="text-xs font-bold">{t1?.shortName}</span>
+          </div>
+          {t1Score ? <span className="text-sm font-extrabold tabular-nums">{t1Score}</span> : <span className="text-[10px] text-muted-foreground">{completed ? "—" : ""}</span>}
+        </div>
+        {/* Team 2 */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            {t2 && <TeamBadge team={t2} size="sm" />}
+            <span className="text-xs font-bold">{t2?.shortName}</span>
+          </div>
+          {t2Score ? <span className="text-sm font-extrabold tabular-nums">{t2Score}</span> : <span className="text-[10px] text-muted-foreground">{completed ? "—" : ""}</span>}
+        </div>
+      </div>
+      <p className="truncate text-[10px] text-muted-foreground">{context}</p>
+    </a>
+  )
+}
+
 /** Prominent live-match card — dark navy gradient (matches the match page
  *  hero). Shows LIVE badge, both teams + scores, format, and a CTA to view
  *  the match page. Renders as `<a href="/matches/${id}">` for SEO + deep-link.
@@ -315,8 +421,17 @@ export function HomeView() {
   const { data: interviewData } = useArticles({ category: "interview", pageSize: 6 })
 
   const matches = matchesData ?? []
-  const liveMatch = matches.find((m) => m.status === "live")
 
+  // Build a carousel of recent matches: live first, then completed, then upcoming.
+  // Show up to 8 cards total — enough for a scrollable carousel.
+  const carouselMatches = useMemo(() => {
+    const live = matches.filter((m) => m.status === "live")
+    const completed = matches.filter((m) => m.status === "completed").slice(0, 4)
+    const upcoming = matches.filter((m) => m.status === "upcoming").slice(0, 3)
+    return [...live, ...completed, ...upcoming].slice(0, 8)
+  }, [matches])
+
+  // Keep these for the schedule section below
   const completedMatches = useMemo(
     () => matches.filter((m) => m.status === "completed").slice(0, 6),
     [matches]
@@ -359,11 +474,11 @@ export function HomeView() {
     <div className="space-y-6 sm:space-y-8">
       {/* Hero section — cricket.com.au-style featured story */}
       <section className="space-y-5">
-        {/* Live match strip */}
+        {/* Match carousel — live + recent results + upcoming */}
         {matchesLoading ? (
-          <Skeleton className="h-12 w-full rounded-lg" />
-        ) : liveMatch ? (
-          <LiveMatchStrip match={liveMatch} />
+          <Skeleton className="h-32 w-full rounded-xl" />
+        ) : carouselMatches.length > 0 ? (
+          <MatchCarousel matches={carouselMatches} />
         ) : null}
 
         {/* AD SLOT — between Live and the hero (AdSense, non-rotating) */}

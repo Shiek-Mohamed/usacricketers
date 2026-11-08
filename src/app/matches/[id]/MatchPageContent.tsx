@@ -219,34 +219,35 @@ function ScoreHeroSide({
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Ball chip — color-coded circle for one ball in an over                     */
-/*  Wisden-style: dot=gray · 1-3=green · 4=blue · 6=magenta · W=red            */
+/*  Ball chip — Wisden-style color-coded circles                               */
+/*  dot=dark gray · 1-3=white w/ border · 4=blue · 6=magenta · W=red           */
 /* -------------------------------------------------------------------------- */
 
 function BallChip({ kind, text, size = "sm" }: { kind: string; text: string; size?: "sm" | "md" }) {
-  const dim = size === "md" ? "h-8 w-8 text-xs" : "h-5 w-5 text-[9px]"
-  if (kind === "wicket") return <span className={`grid ${dim} place-items-center rounded-full bg-red-600 font-bold text-white`}>W</span>
-  if (kind === "six") return <span className={`grid ${dim} place-items-center rounded-full bg-fuchsia-600 font-bold text-white`}>6</span>
-  if (kind === "boundary") return <span className={`grid ${dim} place-items-center rounded-full bg-sky-600 font-bold text-white`}>4</span>
+  const dim = size === "md" ? "h-9 w-9 text-sm" : "h-7 w-7 text-xs"
+  if (kind === "wicket") return <span className={`grid ${dim} shrink-0 place-items-center rounded-full bg-red-600 font-bold text-white`}>W</span>
+  if (kind === "six") return <span className={`grid ${dim} shrink-0 place-items-center rounded-full bg-fuchsia-600 font-bold text-white`}>6</span>
+  if (kind === "boundary") return <span className={`grid ${dim} shrink-0 place-items-center rounded-full bg-sky-600 font-bold text-white`}>4</span>
   if (kind === "extra") {
     const t = text.toLowerCase()
     const label = t.includes("wide") ? "wd" : t.includes("no ball") ? "nb" : "+"
-    return <span className={`grid ${dim} place-items-center rounded-full bg-amber-500 font-bold text-amber-950`}>{label}</span>
+    return <span className={`grid ${dim} shrink-0 place-items-center rounded-full bg-amber-500 font-bold text-amber-950`}>{label}</span>
   }
   if (kind === "run") {
     const m = text.match(/^(\d+)/)
     const r = m ? m[1] : "0"
-    return <span className={`grid ${dim} place-items-center rounded-full bg-emerald-600 font-bold text-white`}>{r}</span>
+    // Scoring balls: white circle with gray border + dark number (Wisden style)
+    return <span className={`grid ${dim} shrink-0 place-items-center rounded-full border border-gray-300 bg-white font-bold text-gray-700`}>{r}</span>
   }
-  // dot ball or unknown
-  return <span className={`grid ${dim} place-items-center rounded-full bg-muted`}><span className="h-1 w-1 rounded-full bg-muted-foreground/60" /></span>
+  // Dot ball: dark gray filled circle with tiny lighter center dot
+  return <span className={`grid ${dim} shrink-0 place-items-center rounded-full bg-gray-300`}><span className="h-1.5 w-1.5 rounded-full bg-gray-500" /></span>
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Commentary accordion — over-by-over blocks with ball chips                */
-/* -------------------------------------------------------------------------- */
+/*  Commentary accordion — Wisden-style over-by-over blocks                    */
+/* --------------------------------------------------------------------------- */
 
-function CommentaryAccordion({ scorecard }: { scorecard: Scorecard }) {
+function CommentaryAccordion({ scorecard, match }: { scorecard: Scorecard; match: Match }) {
   const commentary = scorecard.commentary ?? []
   if (commentary.length === 0) {
     return (
@@ -256,7 +257,14 @@ function CommentaryAccordion({ scorecard }: { scorecard: Scorecard }) {
     )
   }
 
-  // Group by over number (extract from "82.6" → 82). Newest first.
+  // Build innings selector pills (if multiple innings)
+  const inningsLabels = scorecard.innings.map((inn, i) => ({
+    key: `inn-${i}`,
+    label: `${inn.teamShortName} Inns ${scorecard.innings.filter((x) => x.teamId === inn.teamId).indexOf(inn) + 1}`,
+    teamId: inn.teamId,
+  }))
+
+  // Group commentary by over number. Newest first.
   const ballKinds = new Set(["run", "boundary", "six", "wicket", "extra", "dot"])
   const overMap = new Map<number, typeof commentary>()
   for (const c of commentary) {
@@ -267,29 +275,49 @@ function CommentaryAccordion({ scorecard }: { scorecard: Scorecard }) {
   const overs = Array.from(overMap.keys()).sort((a, b) => b - a)
 
   return (
-    <div className="divide-y divide-border">
-      {overs.map((overNum) => {
-        const entries = overMap.get(overNum)!
-        const balls = entries.filter((e) => ballKinds.has(e.kind))
-        const runsInOver = balls.reduce((sum, b) => {
-          const m = b.text.match(/^(\d+)/)
-          return sum + (m ? Number(m[1]) : 0)
-        }, 0)
-        const hasWicket = balls.some((b) => b.kind === "wicket")
-        const bowler = entries.find((e) => e.text.includes("—"))?.text.split("—")[1]?.trim()?.split("  ")[0] ?? ""
+    <div className="space-y-3">
+      {/* Innings selector pills */}
+      {inningsLabels.length > 1 && (
+        <div className="flex gap-1 rounded-full bg-muted p-1">
+          {inningsLabels.map((inn, i) => (
+            <button
+              key={inn.key}
+              className={`flex-1 rounded-full px-3 py-1.5 text-sm font-bold transition-colors ${
+                i === 0 ? "bg-[#1e2a5e] text-white" : "text-muted-foreground hover:bg-accent"
+              }`}
+            >
+              {inn.label}
+            </button>
+          ))}
+        </div>
+      )}
 
-        return (
-          <OverBlock
-            key={overNum}
-            overNum={overNum}
-            entries={entries}
-            balls={balls}
-            runsInOver={runsInOver}
-            hasWicket={hasWicket}
-            bowler={bowler}
-          />
-        )
-      })}
+      {/* Over blocks */}
+      <div className="overflow-hidden rounded-lg border border-border/60">
+        {overs.map((overNum) => {
+          const entries = overMap.get(overNum)!
+          const balls = entries.filter((e) => ballKinds.has(e.kind))
+          const runsInOver = balls.reduce((sum, b) => {
+            const m = b.text.match(/^(\d+)/)
+            return sum + (m ? Number(m[1]) : 0)
+          }, 0)
+          const hasWicket = balls.some((b) => b.kind === "wicket")
+          const bowler = entries.find((e) => e.text.includes("—"))?.text.split("—")[1]?.trim()?.split("  ")[0] ?? ""
+
+          return (
+            <OverBlock
+              key={overNum}
+              overNum={overNum}
+              entries={entries}
+              balls={balls}
+              runsInOver={runsInOver}
+              hasWicket={hasWicket}
+              bowler={bowler}
+              isLast={overNum === overs[overs.length - 1]}
+            />
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -301,6 +329,7 @@ function OverBlock({
   runsInOver,
   hasWicket,
   bowler,
+  isLast,
 }: {
   overNum: number
   entries: { id: string; over: string; text: string; kind: string }[]
@@ -308,40 +337,47 @@ function OverBlock({
   runsInOver: number
   hasWicket: boolean
   bowler: string
+  isLast: boolean
 }) {
-  const [expanded, setExpanded] = useState(overNum === Math.max(...Object.keys(entries).map(Number)) || false)
+  const [expanded, setExpanded] = useState(false)
   return (
-    <div className="bg-card">
-      {/* Collapsed header */}
+    <div className={`bg-card ${!isLast ? "border-b border-border/40" : ""}`}>
+      {/* Over header — title row */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-accent/30"
+        className="flex w-full items-center justify-between gap-2 px-4 pt-3 text-left"
       >
-        <span className="shrink-0 font-display text-sm font-bold tabular-nums text-foreground">Over {overNum}</span>
-        {/* Ball chips */}
-        <div className="flex flex-1 items-center gap-1.5 overflow-hidden">
-          {balls.slice(0, 6).map((b) => (
+        <span className="font-display text-base font-bold tabular-nums text-foreground">Over {overNum}</span>
+        <div className="flex items-center gap-2">
+          {/* Summary text */}
+          <span className="text-sm text-muted-foreground">
+            {runsInOver > 0 && `${runsInOver} run${runsInOver > 1 ? "s" : ""}`}
+            {hasWicket && runsInOver > 0 && " · "}
+            {hasWicket && "W"}
+            {bowler && ` · ${bowler}`}
+          </span>
+          <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`} />
+        </div>
+      </button>
+
+      {/* Ball chips row — below the title */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center gap-2 px-4 pb-3 pt-2 text-left"
+      >
+        <div className="flex flex-1 items-center gap-2 overflow-hidden">
+          {balls.slice(0, 8).map((b) => (
             <BallChip key={b.id} kind={b.kind} text={b.text} />
           ))}
         </div>
-        {/* Summary */}
-        <span className="hidden shrink-0 text-sm text-muted-foreground sm:inline">
-          {runsInOver > 0 && `${runsInOver} run${runsInOver > 1 ? "s" : ""}`}
-          {hasWicket && runsInOver > 0 && " · "}
-          {hasWicket && "W"}
-          {bowler && ` · ${bowler}`}
-        </span>
-        <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`} />
       </button>
 
-      {/* Expanded — per-ball commentary cards */}
+      {/* Expanded — per-ball commentary cards (Wisden style) */}
       {expanded && (
-        <div className="mx-4 mb-3 rounded-lg bg-muted/50 p-3">
-          <div className="space-y-2">
-            {entries.map((e) => (
-              <BallCommentaryCard key={e.id} entry={e} />
-            ))}
-          </div>
+        <div className="space-y-2 px-4 pb-4">
+          {entries.map((e) => (
+            <BallCommentaryCard key={e.id} entry={e} />
+          ))}
         </div>
       )}
     </div>
@@ -351,21 +387,28 @@ function OverBlock({
 function BallCommentaryCard({ entry }: { entry: { id: string; over: string; text: string; kind: string } }) {
   const ballKinds = new Set(["run", "boundary", "six", "wicket", "extra", "dot"])
   const isBall = ballKinds.has(entry.kind)
+  // Parse "Bowler — description" format, or use the text as-is
+  const parts = entry.text.split("—")
+  const heading = parts[0]?.trim() || ""
+  const description = parts.slice(1).join("—").trim() || entry.text
+
   return (
-    <div className="flex items-start gap-3 rounded-md bg-card p-3">
-      {isBall ? (
-        <BallChip kind={entry.kind} text={entry.text} size="md" />
-      ) : (
-        <div className="h-8 w-8 shrink-0" />
-      )}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-sm font-bold text-foreground">
-            {entry.text.split("—")[0]?.trim() || entry.kind.toUpperCase()}
-          </span>
-          <span className="shrink-0 text-sm text-muted-foreground">{entry.over}</span>
-        </div>
-        <p className="mt-1 text-sm text-foreground">{entry.text}</p>
+    <div className="flex items-start gap-3 rounded-lg bg-muted/50 p-3">
+      {/* Ball number circle + over.ball notation */}
+      <div className="flex shrink-0 flex-col items-center gap-1">
+        {isBall ? (
+          <BallChip kind={entry.kind} text={entry.text} size="md" />
+        ) : (
+          <div className="h-9 w-9 shrink-0" />
+        )}
+        <span className="text-xs font-medium text-muted-foreground">{entry.over}</span>
+      </div>
+      {/* Commentary text */}
+      <div className="min-w-0 flex-1 pt-1">
+        {heading && (
+          <p className="text-sm font-bold text-foreground">{heading}</p>
+        )}
+        <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
       </div>
     </div>
   )
@@ -524,7 +567,7 @@ export function MatchPageContent({ match, recent }: { match: Match; recent: Matc
                 {/* Commentary tab — over-by-over accordion with ball chips */}
                 <TabsContent value="commentary" className="mt-4">
                   {match.scorecard?.commentary?.length ? (
-                    <CommentaryAccordion scorecard={match.scorecard} />
+                    <CommentaryAccordion scorecard={match.scorecard} match={match} />
                   ) : match.scorecard ? (
                     <Card className="p-6 text-center text-sm text-muted-foreground">
                       No commentary available for this match.

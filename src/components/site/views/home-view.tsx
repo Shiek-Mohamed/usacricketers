@@ -199,7 +199,7 @@ function FeaturedHero({ article }: { article: Article }) {
         <h2 className="mt-3 text-2xl font-extrabold leading-tight tracking-tight transition-colors group-hover:text-red-600 sm:text-3xl lg:text-[2rem]">
           {article.title}
         </h2>
-        <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
+        <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-foreground">
           {article.excerpt}
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">

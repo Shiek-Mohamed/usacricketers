@@ -404,14 +404,38 @@ export function LiveScorerView() {
   })
   /* eslint-enable react-hooks/immutability */
 
+  // Extra players created on-the-fly during live scoring (via the Picker's
+  // quick-add). Merged into playersByTeam so the dropdowns update instantly.
+  const [extraPlayers, setExtraPlayers] = useState<Player[]>([])
+
   const playersByTeam: Record<string, Player[]> = useMemo(() => {
     const m: Record<string, Player[]> = {}
     if (match) {
-      m[match.team1Id] = t1Players ?? []
-      m[match.team2Id] = t2Players ?? []
+      m[match.team1Id] = [...(t1Players ?? []), ...extraPlayers.filter((p) => p.teamId === match.team1Id)]
+      m[match.team2Id] = [...(t2Players ?? []), ...extraPlayers.filter((p) => p.teamId === match.team2Id)]
     }
     return m
-  }, [match, t1Players, t2Players])
+  }, [match, t1Players, t2Players, extraPlayers])
+
+  // Quick-add a player during live scoring — creates via API, adds to
+  // extraPlayers, and auto-picks them (calls onPick with the new ID).
+  async function liveQuickAddPlayer(name: string, teamId: string, role: string, onPick?: (id: string) => void) {
+    if (!name.trim() || !teamId || !token) return
+    try {
+      const res = await fetch("/api/players", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: name.trim(), teamId, role, battingStyle: "Right-hand bat", bowlingStyle: role === "Bowler" ? "Right-arm medium" : "" }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const player: Player = await res.json()
+      setExtraPlayers((prev) => [...prev, player])
+      onPick?.(player.id)
+      toast.success(`${player.name} added`)
+    } catch (e) {
+      toast.error("Failed to add player", { description: String(e) })
+    }
+  }
 
   if (loading) {
     return (
@@ -911,6 +935,8 @@ export function LiveScorerView() {
                   placeholder="Select new batsman"
                   confirmLabel="Add batsman"
                   onPick={bringInBatsman}
+                  teamId={currentInnings!.battingTeamId}
+                  onQuickAdd={(name, tid, cb) => liveQuickAddPlayer(name, tid, "Batsman", cb)}
                 />
               )}
               {needBowler && (
@@ -920,6 +946,8 @@ export function LiveScorerView() {
                   placeholder="Select bowler for next over"
                   confirmLabel="Set bowler"
                   onPick={pickNextBowler}
+                  teamId={currentInnings!.bowlingTeamId}
+                  onQuickAdd={(name, tid, cb) => liveQuickAddPlayer(name, tid, "Bowler", cb)}
                 />
               )}
 
@@ -2042,39 +2070,45 @@ function Picker({
   placeholder,
   onPick,
   confirmLabel = "Confirm",
+  teamId,
+  onQuickAdd,
 }: {
   title: string
   players: { id: string; name: string }[]
   placeholder: string
   onPick: (id: string) => void
-  /** Label for the commit button. Use "Add batsman" / "Set bowler" etc.
-   *  Defaults to "Confirm". */
   confirmLabel?: string
+  teamId?: string
+  onQuickAdd?: (name: string, teamId: string, onPick: (id: string) => void) => void
 }) {
   const [val, setVal] = useState("")
+  const [showAdd, setShowAdd] = useState(false)
+  const [addName, setAddName] = useState("")
+  const [adding, setAdding] = useState(false)
   const selected = players.find((p) => p.id === val)
-  // Decouple selection from commit: changing the dropdown only updates the
-  // local `val` state. The commit (calling onPick) requires an explicit
-  // button click — so a misclick in the dropdown doesn't write to the live
-  // state. If the user picks the wrong name in the dropdown, they can just
-  // pick a different one before pressing Confirm.
+
+  async function handleAdd() {
+    if (!addName.trim() || !teamId || !onQuickAdd) return
+    setAdding(true)
+    // The parent's onQuickAdd creates the player + calls onPick with the
+    // new ID, which auto-selects them.
+    onQuickAdd(addName.trim(), teamId, (id) => {
+      setVal(id)
+      setShowAdd(false)
+      setAddName("")
+    })
+    setAdding(false)
+  }
+
   return (
     <div className="rounded-lg border-2 border-amber-400 bg-amber-50 p-4 dark:bg-amber-950/40">
       <div className="mb-2 flex items-center gap-2 text-amber-800 dark:text-amber-300">
         <Plus className="h-4 w-4" />
         <h3 className="text-sm font-bold uppercase tracking-wide">{title}</h3>
       </div>
-      {players.length === 0 ? (
-        // Empty-state — the team has no bench players available (rare, but
-        // happens if a team was created without enough players seeded, or
-        // everyone has already batted). Tell the admin how to fix it instead
-        // of opening a broken dropdown.
+      {players.length === 0 && !onQuickAdd ? (
         <div className="rounded-md border border-dashed bg-amber-100/60 px-3 py-4 text-center text-xs text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
           No eligible players left in the squad.
-          <br />
-          Add more players to the team via{" "}
-          <span className="font-semibold">Admin → Teams → bulk-add players</span>{" "}
-          (the green Users icon on the team row), then come back here.
         </div>
       ) : (
         <>
@@ -2090,6 +2124,49 @@ function Picker({
               ))}
             </SelectContent>
           </Select>
+
+          {/* Quick add player — inline form */}
+          {onQuickAdd && (
+            <div className="mt-2">
+              {!showAdd ? (
+                <button
+                  onClick={() => setShowAdd(true)}
+                  className="flex items-center gap-1 text-xs font-bold text-emerald-600 hover:text-emerald-700"
+                >
+                  <Plus className="h-3 w-3" />
+                  Add player not in list
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={addName}
+                    onChange={(e) => setAddName(e.target.value)}
+                    placeholder="Player name"
+                    className="h-8 text-sm"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && addName.trim()) handleAdd()
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    className="h-8 gap-1 bg-emerald-600 text-white hover:bg-emerald-700"
+                    disabled={!addName.trim() || adding}
+                    onClick={handleAdd}
+                  >
+                    {adding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                    Add
+                  </Button>
+                  <button
+                    onClick={() => { setShowAdd(false); setAddName("") }}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="mt-2 flex items-center justify-between gap-2">
             <span className="text-xs text-amber-700 dark:text-amber-400">
               {selected ? (

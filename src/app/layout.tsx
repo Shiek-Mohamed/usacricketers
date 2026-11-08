@@ -16,14 +16,13 @@ const geistMono = Geist_Mono({
 });
 
 // Raleway — an elegant, clean sans-serif with a slightly rounded feel.
-// Great for sports/news headlines: reads well at large sizes, has strong
-// weights (up to 800) for bold headlines, and pairs cleanly with Geist
-// (body). Loaded alongside Geist — components use the generic `font-display`
-// Tailwind class, so swapping fonts only requires changing this import.
+// Used for BOTH headlines (font-display) and body text (font-sans) across
+// the entire site. Weight 300 for light body copy, up to 800 for bold
+// headlines. Geist is still loaded as a fallback but Raleway is the primary.
 const displayFont = Raleway({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["300", "400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {

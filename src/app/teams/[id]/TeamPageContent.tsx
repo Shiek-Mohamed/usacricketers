@@ -24,6 +24,7 @@ import { Footer } from "@/components/site/footer"
 import { ShareButtons } from "@/components/site/share-buttons"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import type { Match, Player, Team } from "@/lib/types"
 
 /**
@@ -194,42 +195,6 @@ export function TeamPageContent({
       <main className="flex-1 w-full">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6">
           <InnerPageLayout
-            header={
-              <>
-                <TeamBreadcrumbs name={team.name} />
-
-                {/* Header card */}
-                <Card className="gap-0 overflow-hidden py-0">
-                  <div
-                    className="h-2 w-full"
-                    style={{ background: team.primaryColor }}
-                    aria-hidden
-                  />
-                  <CardContent className="flex flex-col items-start gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
-                    <TeamBadge team={team} size="xl" />
-                    <div className="min-w-0 flex-1 space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h1 className="text-3xl font-extrabold tracking-tight">
-                          {team.name}
-                        </h1>
-                        <Badge variant="secondary">{team.shortName}</Badge>
-                      </div>
-                      <p className="text-sm font-medium text-muted-foreground">
-                        {team.shortName} · {team.country || "International"}
-                      </p>
-                      {team.description && (
-                        <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                          {team.description}
-                        </p>
-                      )}
-                      <div className="pt-2">
-                        <ShareButtons title={`${team.name} — Team Profile`} />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </>
-            }
             sidebar={
               <>
                 <TeamInfoWidget team={team} />
@@ -240,31 +205,85 @@ export function TeamPageContent({
               </>
             }
           >
-            <div className="space-y-5">
-              {/* Squad */}
-              <Card className="gap-0 py-0">
-                <CardHeader className="border-b px-5 sm:px-6">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Users className="size-4 text-emerald-600" />
-                    Squad
-                    <span className="ml-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                      {players.length}
-                    </span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-5 sm:p-6">
+            <div className="space-y-4">
+              <TeamBreadcrumbs name={team.name} />
+
+              {/* Dark navy hero — team profile card */}
+              <div className="overflow-hidden rounded-xl">
+                {/* Top bar — share */}
+                <div className="flex items-center justify-between gap-2 bg-[#0f1729] px-4 py-2 sm:px-6">
+                  <span className="text-xs font-bold uppercase tracking-wide text-white/50">{team.country || "International"}</span>
+                  <ShareButtons title={`${team.name} — Team Profile`} />
+                </div>
+
+                {/* Hero body — team-colored gradient with badge + name */}
+                <div
+                  className="px-4 py-6 sm:px-6 sm:py-8"
+                  style={{ background: `linear-gradient(135deg, ${team.primaryColor} 0%, ${team.primaryColor}99 50%, #0f1729 100%)` }}
+                >
+                  <div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
+                    {/* Team badge */}
+                    <div className="grid h-20 w-20 place-items-center rounded-full bg-white/10 ring-4 ring-white/20 sm:h-24 sm:w-24">
+                      <TeamBadge team={team} size="xl" />
+                    </div>
+
+                    {/* Name + info */}
+                    <div className="flex-1 text-center sm:text-left">
+                      <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                        <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">{team.name}</h1>
+                        <span className="rounded bg-white/20 px-2 py-0.5 text-xs font-bold uppercase text-white">{team.shortName}</span>
+                      </div>
+                      <p className="mt-1 text-sm text-white/70">
+                        {team.country || "International"} · {players.length} players
+                      </p>
+                      {team.description && (
+                        <p className="mt-2 max-w-xl text-sm text-white/50">{team.description}</p>
+                      )}
+                    </div>
+
+                    {/* Color swatches */}
+                    <div className="flex gap-2">
+                      <span className="h-6 w-6 rounded-full border-2 border-white/30" style={{ background: team.primaryColor }} title="Primary" />
+                      <span className="h-6 w-6 rounded-full border-2 border-white/30" style={{ background: team.accentColor }} title="Accent" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Status strip */}
+                <div className="bg-[#162244] px-4 py-2.5 text-center sm:px-6">
+                  <p className="text-sm font-semibold text-white/90">
+                    {players.length} players · {recentMatches.length} recent matches
+                  </p>
+                </div>
+              </div>
+
+              {/* Tabbed layout — Squad / Results / Info */}
+              <Tabs defaultValue="squad" className="w-full">
+                <TabsList className="flex w-full justify-start gap-0 rounded-none border-b border-border bg-transparent p-0">
+                  <TabsTrigger value="squad" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none">
+                    <Users className="h-4 w-4" />
+                    Squad ({players.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="results" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none">
+                    <CalendarClock className="h-4 w-4" />
+                    Results
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* Squad tab */}
+                <TabsContent value="squad" className="mt-4">
                   {players.length === 0 ? (
-                    <p className="py-6 text-center text-sm text-muted-foreground">
+                    <Card className="p-6 text-center text-sm text-muted-foreground">
                       No players in this squad yet.
-                    </p>
+                    </Card>
                   ) : (
                     <div className="space-y-6">
                       {grouped.map((grp) => (
                         <div key={grp.label}>
-                          <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                          <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-muted-foreground">
                             {grp.label} ({grp.list.length})
                           </h3>
-                          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                             {grp.list.map((p) => (
                               <PlayerCard key={p.id} player={p} />
                             ))}
@@ -273,31 +292,24 @@ export function TeamPageContent({
                       ))}
                     </div>
                   )}
-                </CardContent>
-              </Card>
+                </TabsContent>
 
-              {/* Recent matches */}
-              <div>
-                <h2 className="mb-3 flex items-center gap-2 text-lg font-bold">
-                  <CalendarClock className="size-5 text-emerald-600" />
-                  Recent Matches
-                </h2>
-                {recentMatches.length === 0 ? (
-                  <Card>
-                    <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                {/* Results tab */}
+                <TabsContent value="results" className="mt-4">
+                  {recentMatches.length === 0 ? (
+                    <Card className="p-6 text-center text-sm text-muted-foreground">
                       No recent matches for this team.
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="space-y-2">
-                    {recentMatches.map((m) => (
-                      <MatchRow key={m.id} match={m} />
-                    ))}
-                  </div>
-                )}
-              </div>
+                    </Card>
+                  ) : (
+                    <div className="space-y-2">
+                      {recentMatches.map((m) => (
+                        <MatchRow key={m.id} match={m} />
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
 
-              {/* Back to teams */}
               <a
                 href="/?view=teams"
                 className="inline-flex w-fit items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"

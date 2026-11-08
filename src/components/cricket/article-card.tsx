@@ -219,7 +219,16 @@ export function ArticleCard({
                 .map((tag, i) => (
                   <span
                     key={i}
-                    className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      if (typeof window !== "undefined") {
+                        window.location.href = `/?view=news&tag=${encodeURIComponent(tag)}`
+                      }
+                    }}
+                    className="cursor-pointer rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-emerald-100 hover:text-emerald-700 dark:hover:bg-emerald-900/40 dark:hover:text-emerald-400"
                   >
                     {tag}
                   </span>

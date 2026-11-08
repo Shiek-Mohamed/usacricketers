@@ -20,7 +20,8 @@ function parsePagination(req: NextRequest) {
   const category = searchParams.get("category") || undefined
   const featured = searchParams.get("featured") === "true" ? true : undefined
   const q = searchParams.get("q")?.trim() || undefined
-  return { page, pageSize, category, featured, q }
+  const tag = searchParams.get("tag")?.trim() || undefined
+  return { page, pageSize, category, featured, q, tag }
 }
 
 export async function GET(req: NextRequest) {
@@ -43,26 +44,24 @@ export async function GET(req: NextRequest) {
     return res
   }
 
-  const { page, pageSize, category, featured, q } = parsePagination(req)
+  const { page, pageSize, category, featured, q, tag } = parsePagination(req)
 
   // Category filtering is now array-aware: an article's `category` column
   // holds a JSON-array string (e.g. ["feature","interview"]); we filter
   // where the parsed array includes the requested category.
   const where: Prisma.ArticleWhereInput = {
     published: true,
-    // Scheduled publishing: articles with publishedAt in the future are
-    // not yet visible to the public. They'll appear automatically once the
-    // publishedAt time arrives — no cron job needed, just a query filter.
-    // (publishedAt has a @default(now()) so it's never NULL — no OR needed.)
     publishedAt: { lte: new Date() },
   }
   if (category) {
-    // Match both storage formats: plain string ("interview" from seed) and
-    // JSON array ("[\"interview\"]" from the importer). A simple substring
-    // match on the category name covers both.
     where.category = { contains: category }
   }
   if (featured) where.featured = true
+  if (tag) {
+    // Tags are stored as a comma-separated string. Match articles whose
+    // tags field contains the requested tag (case-insensitive via contains).
+    where.tags = { contains: tag }
+  }
   if (q) {
     where.OR = [
       { title: { contains: q } },
@@ -73,7 +72,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Cache the page result so repeated list loads don't re-hit the DB.
-  const cacheKey = `articles:list:p=${page}:s=${pageSize}:c=${category ?? ""}:f=${featured ? 1 : 0}:q=${q ?? ""}`
+  const cacheKey = `articles:list:p=${page}:s=${pageSize}:c=${category ?? ""}:f=${featured ? 1 : 0}:q=${q ?? ""}:t=${tag ?? ""}`
   const result = await cacheWrap(cacheKey, async () => {
     const [items, total] = await Promise.all([
       db.article.findMany({

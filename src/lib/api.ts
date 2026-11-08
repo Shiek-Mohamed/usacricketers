@@ -150,6 +150,7 @@ export const api = {
       page?: number
       pageSize?: number
       q?: string
+      tag?: string
     }) => {
       const qs = new URLSearchParams()
       if (params?.category) qs.set("category", params.category)
@@ -157,6 +158,7 @@ export const api = {
       if (params?.page) qs.set("page", String(params.page))
       if (params?.pageSize) qs.set("pageSize", String(params.pageSize))
       if (params?.q) qs.set("q", params.q)
+      if (params?.tag) qs.set("tag", params.tag)
       const q = qs.toString()
       return fetch(`/api/articles${q ? `?${q}` : ""}`).then(
         jsonOrThrow<PaginatedArticles>

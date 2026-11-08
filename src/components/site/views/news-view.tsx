@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
-import { Newspaper, Search, ChevronLeft, ChevronRight } from "lucide-react"
+import { Newspaper, Search, ChevronLeft, ChevronRight, Tag } from "lucide-react"
 import { InnerPageLayout } from "@/components/site/inner-layout"
 import { CustomSidebarBlocks } from "@/components/site/custom-sidebar-blocks"
 import { NewsletterWidget, RecentResultsWidget } from "@/components/site/sidebar-widgets"
@@ -43,10 +43,14 @@ export function NewsView() {
   const [category, setCategory] = useState<string>("all")
   const [q, setQ] = useState("")
   const [debouncedQ, setDebouncedQ] = useState("")
-  // Lazy init: read page from URL on mount (deep-link support).
+  // Lazy init: read page + tag from URL on mount (deep-link support).
   const [page, setPage] = useState(() => {
     if (typeof window === "undefined") return 1
     return Math.max(1, parseInt(new URLSearchParams(window.location.search).get("page") || "1", 10) || 1)
+  })
+  const [activeTag, setActiveTag] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null
+    return new URLSearchParams(window.location.search).get("tag") || null
   })
 
   const apiCategory = category && category !== "all" ? category : undefined
@@ -64,6 +68,7 @@ export function NewsView() {
   const { data, loading } = useArticles({
     category: apiCategory,
     q: debouncedQ || undefined,
+    tag: activeTag || undefined,
     page,
     pageSize: PAGE_SIZE,
   })
@@ -79,6 +84,14 @@ export function NewsView() {
   function onSearch(v: string) {
     setQ(v)
     goToPage(1)
+  }
+  function clearTag() {
+    setActiveTag(null)
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href)
+      url.searchParams.delete("tag")
+      window.history.pushState(null, "", url)
+    }
   }
 
   // Sync page with browser URL/history so the back button works across
@@ -109,6 +122,20 @@ export function NewsView() {
       header={
         /* Page header — h1 + subtitle + category pills + search box */
         <div className="space-y-4">
+          {activeTag && (
+            <div className="flex items-center gap-2 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 dark:border-emerald-800 dark:bg-emerald-950/40">
+              <Tag className="h-4 w-4 text-emerald-600" />
+              <span className="text-sm font-medium text-emerald-800 dark:text-emerald-400">
+                Filtered by tag: <strong>{activeTag}</strong>
+              </span>
+              <button
+                onClick={clearTag}
+                className="ml-auto rounded-full px-2 py-0.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 dark:text-emerald-400 dark:hover:bg-emerald-900/40"
+              >
+                ✕ Clear
+              </button>
+            </div>
+          )}
           <div>
             <h1 className="flex items-center gap-2 text-2xl font-extrabold tracking-tight">
               <Newspaper className="h-6 w-6 text-red-600" />

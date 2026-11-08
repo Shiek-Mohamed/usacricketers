@@ -64,6 +64,7 @@ export const useArticles = (params?: {
   page?: number
   pageSize?: number
   q?: string
+  tag?: string
 }) =>
   useFetch<PaginatedArticles>(() => api.articles.list(params), [
     params?.category,
@@ -71,6 +72,7 @@ export const useArticles = (params?: {
     params?.page,
     params?.pageSize,
     params?.q,
+    params?.tag,
   ])
 export const useArticle = (id: string | null) =>
   useFetch<Article>(() => (id ? api.articles.get(id) : Promise.reject()), [id])

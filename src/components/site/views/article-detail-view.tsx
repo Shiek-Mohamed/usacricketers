@@ -375,16 +375,22 @@ export function ArticleDetailView() {
           <ArticleMarkdown content={article.content} />
         </div>
 
-        {/* Tags */}
+        {/* Tags — clickable, navigate to the news view filtered by tag */}
         {tags.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 border-t pt-4">
             <span className="text-xs font-semibold text-muted-foreground">
               Tags:
             </span>
             {tags.map((t) => (
-              <Badge key={t} variant="secondary">
-                {t}
-              </Badge>
+              <button key={t} onClick={() => {
+                if (typeof window !== "undefined") {
+                  window.location.href = `/?view=news&tag=${encodeURIComponent(t)}`
+                }
+              }}>
+                <Badge variant="secondary" className="cursor-pointer transition-colors hover:bg-emerald-100 hover:text-emerald-700 dark:hover:bg-emerald-900/40 dark:hover:text-emerald-400">
+                  {t}
+                </Badge>
+              </button>
             ))}
           </div>
         )}

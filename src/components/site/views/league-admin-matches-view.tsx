@@ -150,6 +150,7 @@ export function LeagueAdminMatchesView() {
   // dialog state
   const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [wizardStep, setWizardStep] = useState(1)
   const [form, setForm] = useState<MatchForm>(emptyMatchForm())
   const [saving, setSaving] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -247,6 +248,7 @@ export function LeagueAdminMatchesView() {
   function openCreate() {
     setEditingId(null)
     setForm(emptyMatchForm())
+    setWizardStep(1)
     setOpen(true)
   }
 
@@ -262,6 +264,8 @@ export function LeagueAdminMatchesView() {
       city: m.city,
       startDate: toDatetimeLocal(m.startDate),
     })
+    // Editing skips the wizard — show all fields at once
+    setWizardStep(0)
     setOpen(true)
   }
 
@@ -586,7 +590,7 @@ export function LeagueAdminMatchesView() {
         </Card>
       )}
 
-      {/* Create / Edit dialog */}
+      {/* Create / Edit dialog — 3-step wizard for new matches, flat form for edits */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -595,6 +599,27 @@ export function LeagueAdminMatchesView() {
               {editingId ? "Edit Match" : "New Match"}
             </DialogTitle>
           </DialogHeader>
+
+          {/* Wizard step indicator — only for new matches */}
+          {wizardStep > 0 && !editingId && (
+            <div className="flex items-center gap-2 py-2">
+              {[1, 2, 3].map((s) => (
+                <div key={s} className="flex flex-1 items-center gap-2">
+                  <div className={cn(
+                    "grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold transition-colors",
+                    wizardStep >= s ? "bg-emerald-600 text-white" : "bg-muted text-muted-foreground",
+                  )}>
+                    {wizardStep > s ? "✓" : s}
+                  </div>
+                  <span className={cn("text-xs font-bold", wizardStep >= s ? "text-foreground" : "text-muted-foreground")}>
+                    {s === 1 ? "Teams" : s === 2 ? "Schedule" : "Format"}
+                  </span>
+                  {s < 3 && <div className={cn("h-0.5 flex-1 rounded-full", wizardStep > s ? "bg-emerald-600" : "bg-muted")} />}
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="grid gap-3 py-2">
             {teams.length < 2 ? (
               <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
@@ -603,187 +628,144 @@ export function LeagueAdminMatchesView() {
               </p>
             ) : null}
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label htmlFor="m-team1" className="text-xs">
-                  Team 1
-                </Label>
-                <Select
-                  value={form.team1Id}
-                  onValueChange={(v) => set("team1Id", v)}
-                  disabled={saving}
-                >
-                  <SelectTrigger id="m-team1" className="w-full">
-                    <SelectValue placeholder="Pick team…" />
-                  </SelectTrigger>
-                  <SelectContent className={cn("max-h-72", SCROLLBAR)}>
-                    {teams.map((t) => (
-                      <SelectItem
-                        key={t.id}
-                        value={t.id}
-                        disabled={t.id === form.team2Id}
-                      >
-                        <span className="flex items-center gap-2">
-                          <TeamBadge team={t} size="sm" />
-                          <span>
-                            {t.shortName}{" "}
-                            <span className="text-muted-foreground">
-                              · {t.name}
-                            </span>
-                          </span>
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="m-team2" className="text-xs">
-                  Team 2
-                </Label>
-                <Select
-                  value={form.team2Id}
-                  onValueChange={(v) => set("team2Id", v)}
-                  disabled={saving}
-                >
-                  <SelectTrigger id="m-team2" className="w-full">
-                    <SelectValue placeholder="Pick team…" />
-                  </SelectTrigger>
-                  <SelectContent className={cn("max-h-72", SCROLLBAR)}>
-                    {teams.map((t) => (
-                      <SelectItem
-                        key={t.id}
-                        value={t.id}
-                        disabled={t.id === form.team1Id}
-                      >
-                        <span className="flex items-center gap-2">
-                          <TeamBadge team={t} size="sm" />
-                          <span>
-                            {t.shortName}{" "}
-                            <span className="text-muted-foreground">
-                              · {t.name}
-                            </span>
-                          </span>
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+            {/* Step 1: Teams — shown for wizard step 1 OR when editing (wizardStep=0) */}
+            {(wizardStep === 1 || wizardStep === 0) && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="m-team1" className="text-sm font-bold">Team 1</Label>
+                    <Select value={form.team1Id} onValueChange={(v) => set("team1Id", v)} disabled={saving}>
+                      <SelectTrigger id="m-team1" className="w-full"><SelectValue placeholder="Pick team…" /></SelectTrigger>
+                      <SelectContent className={cn("max-h-72", SCROLLBAR)}>
+                        {teams.map((t) => (
+                          <SelectItem key={t.id} value={t.id} disabled={t.id === form.team2Id}>
+                            <span className="flex items-center gap-2"><TeamBadge team={t} size="sm" /><span>{t.shortName} <span className="text-muted-foreground">· {t.name}</span></span></span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="m-team2" className="text-sm font-bold">Team 2</Label>
+                    <Select value={form.team2Id} onValueChange={(v) => set("team2Id", v)} disabled={saving}>
+                      <SelectTrigger id="m-team2" className="w-full"><SelectValue placeholder="Pick team…" /></SelectTrigger>
+                      <SelectContent className={cn("max-h-72", SCROLLBAR)}>
+                        {teams.map((t) => (
+                          <SelectItem key={t.id} value={t.id} disabled={t.id === form.team1Id}>
+                            <span className="flex items-center gap-2"><TeamBadge team={t} size="sm" /><span>{t.shortName} <span className="text-muted-foreground">· {t.name}</span></span></span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                {form.team1Id && form.team2Id && form.team1Id === form.team2Id && (
+                  <p className="text-xs font-bold text-red-600">⚠ Select two different teams</p>
+                )}
+              </>
+            )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label htmlFor="m-format" className="text-xs">
-                  Format
-                </Label>
-                <Select
-                  value={form.format}
-                  onValueChange={(v) => set("format", v)}
-                  disabled={saving}
-                >
-                  <SelectTrigger id="m-format" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FORMATS.map((f) => (
-                      <SelectItem key={f} value={f}>
-                        {f}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="m-status" className="text-xs">
-                  Status
-                </Label>
-                <Select
-                  value={form.status}
-                  onValueChange={(v) => set("status", v)}
-                  disabled={saving}
-                >
-                  <SelectTrigger id="m-status" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MATCH_STATUSES.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {s.charAt(0).toUpperCase() + s.slice(1)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+            {/* Step 2: Schedule — shown for wizard step 2 OR when editing */}
+            {(wizardStep === 2 || wizardStep === 0) && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="m-start" className="text-sm font-bold">Start Date & Time</Label>
+                    <Input id="m-start" type="datetime-local" value={form.startDate} onChange={(e) => set("startDate", e.target.value)} disabled={saving} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="m-matchno" className="text-sm font-bold">Match No.</Label>
+                    <Input id="m-matchno" value={form.matchNo} onChange={(e) => set("matchNo", e.target.value)} placeholder="e.g. 1st Match" disabled={saving} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="m-venue" className="text-sm font-bold">Venue</Label>
+                    <Input id="m-venue" value={form.venue} onChange={(e) => set("venue", e.target.value)} placeholder="e.g. Grand Prairie Stadium" disabled={saving} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="m-city" className="text-sm font-bold">City</Label>
+                    <Input id="m-city" value={form.city} onChange={(e) => set("city", e.target.value)} placeholder="e.g. Dallas" disabled={saving} />
+                  </div>
+                </div>
+              </>
+            )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label htmlFor="m-matchno" className="text-xs">
-                  Match No.
-                </Label>
-                <Input
-                  id="m-matchno"
-                  value={form.matchNo}
-                  onChange={(e) => set("matchNo", e.target.value)}
-                  placeholder="e.g. 1st Match"
-                  disabled={saving}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="m-start" className="text-xs">
-                  Start date / time
-                </Label>
-                <Input
-                  id="m-start"
-                  type="datetime-local"
-                  value={form.startDate}
-                  onChange={(e) => set("startDate", e.target.value)}
-                  disabled={saving}
-                />
-              </div>
-            </div>
+            {/* Step 3: Format — shown for wizard step 3 OR when editing */}
+            {(wizardStep === 3 || wizardStep === 0) && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="m-format" className="text-sm font-bold">Format</Label>
+                    <Select value={form.format} onValueChange={(v) => set("format", v)} disabled={saving}>
+                      <SelectTrigger id="m-format" className="w-full"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {FORMATS.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="m-status" className="text-sm font-bold">Status</Label>
+                    <Select value={form.status} onValueChange={(v) => set("status", v)} disabled={saving}>
+                      <SelectTrigger id="m-status" className="w-full"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {MATCH_STATUSES.map((s) => <SelectItem key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label htmlFor="m-venue" className="text-xs">
-                  Venue
-                </Label>
-                <Input
-                  id="m-venue"
-                  value={form.venue}
-                  onChange={(e) => set("venue", e.target.value)}
-                  placeholder="e.g. Grand Prairie Stadium"
-                  disabled={saving}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="m-city" className="text-xs">
-                  City
-                </Label>
-                <Input
-                  id="m-city"
-                  value={form.city}
-                  onChange={(e) => set("city", e.target.value)}
-                  placeholder="e.g. Dallas"
-                  disabled={saving}
-                />
-              </div>
-            </div>
+                {/* Summary preview — only on step 3 */}
+                {wizardStep === 3 && (
+                  <div className="rounded-md border bg-muted/30 p-3">
+                    <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">Match Summary</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {teams.find((t) => t.id === form.team1Id)?.shortName ?? "?"} vs {teams.find((t) => t.id === form.team2Id)?.shortName ?? "?"}
+                      {" · "}
+                      {form.format}
+                      {" · "}
+                      {form.matchNo || "Untitled"}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {form.venue || "Venue TBD"}{form.city ? `, ${form.city}` : ""}
+                      {" · "}
+                      {new Date(form.startDate).toLocaleDateString()}
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={saving || teams.length < 2}
-              className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Saving…
+
+          {/* Footer — changes based on wizard step */}
+          <DialogFooter className="gap-2">
+            {wizardStep > 1 && !editingId ? (
+              <Button variant="outline" onClick={() => setWizardStep(wizardStep - 1)} disabled={saving}>
+                ← Back
+              </Button>
+            ) : (
+              <Button variant="outline" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+            )}
+            {wizardStep < 3 && !editingId ? (
+              <Button
+                onClick={() => setWizardStep(wizardStep + 1)}
+                disabled={saving || (wizardStep === 1 && (!form.team1Id || !form.team2Id || form.team1Id === form.team2Id))}
+                className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
+              >
+                Next →
+              </Button>
+            ) : (
+              <Button
+                onClick={handleSubmit}
+                disabled={saving || teams.length < 2}
+                className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Saving…
                 </>
               ) : editingId ? (
                 "Save Changes"
@@ -791,6 +773,7 @@ export function LeagueAdminMatchesView() {
                 "Create Match"
               )}
             </Button>
+          )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

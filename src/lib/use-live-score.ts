@@ -30,6 +30,7 @@ import type { LiveMatchState } from "./scoring"
 export function useLiveScore(matchId: string | null, token: string | null) {
   const [liveState, setLiveState] = useState<LiveMatchState | null>(null)
   const [connected, setConnected] = useState(false)
+  const [reconnecting, setReconnecting] = useState(false)
   // Tracks whether we've received the initial state snapshot after
   // subscribing. Without this, the scorer sees a flash of the setup screen
   // every time it navigates away + back (liveState is null for the brief
@@ -37,6 +38,10 @@ export function useLiveScore(matchId: string | null, token: string | null) {
   const [stateReceived, setStateReceived] = useState(false)
   const socketRef = useRef<Socket | null>(null)
   const tokenRef = useRef<string | null>(token)
+  // Buffer for the latest state when disconnected — on reconnect, the
+  // buffered state is flushed so no scoring data is lost during brief
+  // network outages (common at cricket grounds with spotty WiFi).
+  const bufferedStateRef = useRef<LiveMatchState | null>(null)
 
   // Keep the latest token available to pushState/clearState without forcing
   // a socket reconnect on every token change.
@@ -46,11 +51,6 @@ export function useLiveScore(matchId: string | null, token: string | null) {
 
   useEffect(() => {
     if (!matchId) return
-    // Reset for the new match — we haven't received its state yet.
-    // Deferred to a microtask so it's not synchronous setState-in-effect
-    // (the react-hooks rule flags that). The reset is a one-shot and is
-    // harmless if it runs after unmount (React 18+ no-ops setState on
-    // unmounted components).
     queueMicrotask(() => {
       setStateReceived(false)
       setLiveState(null)
@@ -59,23 +59,35 @@ export function useLiveScore(matchId: string | null, token: string | null) {
     const socket = io("/?XTransformPort=3003", {
       transports: ["websocket", "polling"],
       reconnection: true,
-      reconnectionAttempts: 10,
+      reconnectionAttempts: Infinity, // never give up — scorers need persistence
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000, // cap backoff at 5 seconds
       timeout: 10000,
     })
     socketRef.current = socket
 
     socket.on("connect", () => {
       setConnected(true)
+      setReconnecting(false)
       socket.emit("subscribe", matchId)
+      // Flush buffered state if any was queued while disconnected
+      if (bufferedStateRef.current) {
+        const tok = tokenRef.current
+        if (tok) {
+          socket.emit("operator:state", { matchId, state: bufferedStateRef.current, token: tok })
+        }
+        bufferedStateRef.current = null
+      }
     })
-    socket.on("disconnect", () => setConnected(false))
+    socket.on("disconnect", () => {
+      setConnected(false)
+      setReconnecting(true)
+    })
+    socket.io.on("reconnect_attempt", () => setReconnecting(true))
+    socket.io.on("reconnect_failed", () => setReconnecting(true))
     socket.on("state", (payload: { matchId: string; state: unknown }) => {
       if (payload.matchId === matchId) {
         setLiveState((payload.state as LiveMatchState | null) ?? null)
-        // Mark that we've received the initial snapshot — the scorer can
-        // now safely decide whether to show the setup screen (state was
-        // genuinely null) or the scoring interface.
         setStateReceived(true)
       }
     })
@@ -84,17 +96,27 @@ export function useLiveScore(matchId: string | null, token: string | null) {
       socket.emit("unsubscribe", matchId)
       socket.disconnect()
       socketRef.current = null
+      bufferedStateRef.current = null
     }
   }, [matchId])
 
-  /** Operator: broadcast a new full state to all subscribers. */
+  /** Operator: broadcast a new full state to all subscribers.
+   *  If the socket is disconnected, the state is buffered and flushed
+   *  on reconnect — no scoring data is lost during network outages. */
   const pushState = useCallback(
     (state: LiveMatchState) => {
       const socket = socketRef.current
       if (!socket || !matchId) return
       const tok = tokenRef.current
       if (!tok) return
-      socket.emit("operator:state", { matchId, state, token: tok })
+      if (socket.connected) {
+        socket.emit("operator:state", { matchId, state, token: tok })
+      } else {
+        // Buffer the latest state — will be flushed on reconnect.
+        // Only the latest matters since pushState sends the FULL state
+        // (not incremental balls), so intermediate states are redundant.
+        bufferedStateRef.current = state
+      }
     },
     [matchId]
   )
@@ -104,8 +126,11 @@ export function useLiveScore(matchId: string | null, token: string | null) {
     if (!socket || !matchId) return
     const tok = tokenRef.current
     if (!tok) return
-    socket.emit("operator:clear", { matchId, token: tok })
+    bufferedStateRef.current = null
+    if (socket.connected) {
+      socket.emit("operator:clear", { matchId, token: tok })
+    }
   }, [matchId])
 
-  return { liveState, connected, stateReceived, pushState, clearState }
+  return { liveState, connected, reconnecting, stateReceived, pushState, clearState }
 }

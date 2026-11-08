@@ -512,6 +512,129 @@ function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label:
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Match Preview — recent form + head-to-head for upcoming matches            */
+/* -------------------------------------------------------------------------- */
+
+function MatchPreview({ match, recent }: { match: Match; recent: Match[] }) {
+  const t1 = match.team1
+  const t2 = match.team2
+
+  // Compute recent form (last 5 completed matches for each team)
+  function getForm(teamId: string): { result: "W" | "L" | "T" | "N"; match: Match }[] {
+    return recent
+      .filter((m) => m.status === "completed" && (m.team1Id === teamId || m.team2Id === teamId))
+      .slice(0, 5)
+      .map((m) => {
+        const isTeam1 = m.team1Id === teamId
+        const team = isTeam1 ? m.team1 : m.team2
+        const opp = isTeam1 ? m.team2 : m.team1
+        const result = (m.result || "").toLowerCase()
+        if (result.includes("tie") || result.includes("tied")) return { result: "T" as const, match: m }
+        if (!result) return { result: "N" as const, match: m }
+        const won = result.includes(team?.shortName?.toLowerCase() ?? "___") ||
+                    result.includes(team?.name?.toLowerCase() ?? "___")
+        return { result: won ? "W" as const : "L" as const, match: m }
+      })
+  }
+
+  const t1Form = getForm(match.team1Id)
+  const t2Form = getForm(match.team2Id)
+
+  // Head-to-head: matches between these two teams
+  const h2h = recent.filter((m) =>
+    m.status === "completed" &&
+    ((m.team1Id === match.team1Id && m.team2Id === match.team2Id) ||
+     (m.team1Id === match.team2Id && m.team2Id === match.team1Id))
+  )
+  const t1Wins = h2h.filter((m) => {
+    const r = (m.result || "").toLowerCase()
+    return r.includes(t1?.shortName?.toLowerCase() ?? "___") || r.includes(t1?.name?.toLowerCase() ?? "___")
+  }).length
+  const t2Wins = h2h.filter((m) => {
+    const r = (m.result || "").toLowerCase()
+    return r.includes(t2?.shortName?.toLowerCase() ?? "___") || r.includes(t2?.name?.toLowerCase() ?? "___")
+  }).length
+
+  if (t1Form.length === 0 && t2Form.length === 0) return null
+
+  return (
+    <Card className="overflow-hidden p-0">
+      <div className="border-b bg-muted/30 px-4 py-2.5">
+        <h3 className="flex items-center gap-1.5 font-display text-sm font-bold uppercase tracking-wide">
+          <Trophy className="h-4 w-4 text-emerald-600" /> Match Preview
+        </h3>
+      </div>
+      <div className="grid grid-cols-2 divide-x divide-border/40">
+        {/* Team 1 form */}
+        <div className="p-4">
+          <div className="mb-3 flex items-center gap-2">
+            {t1 && <TeamBadge team={t1} size="sm" />}
+            <span className="font-display text-sm font-bold">{t1?.shortName}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {t1Form.length > 0 ? (
+              t1Form.map((f, i) => (
+                <span
+                  key={i}
+                  className={cn(
+                    "grid h-7 w-7 place-items-center rounded text-xs font-bold",
+                    f.result === "W" && "bg-emerald-600 text-white",
+                    f.result === "L" && "bg-red-500 text-white",
+                    f.result === "T" && "bg-amber-500 text-white",
+                    f.result === "N" && "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {f.result}
+                </span>
+              ))
+            ) : (
+              <span className="text-xs text-muted-foreground">No recent matches</span>
+            )}
+          </div>
+        </div>
+        {/* Team 2 form */}
+        <div className="p-4">
+          <div className="mb-3 flex items-center gap-2">
+            {t2 && <TeamBadge team={t2} size="sm" />}
+            <span className="font-display text-sm font-bold">{t2?.shortName}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {t2Form.length > 0 ? (
+              t2Form.map((f, i) => (
+                <span
+                  key={i}
+                  className={cn(
+                    "grid h-7 w-7 place-items-center rounded text-xs font-bold",
+                    f.result === "W" && "bg-emerald-600 text-white",
+                    f.result === "L" && "bg-red-500 text-white",
+                    f.result === "T" && "bg-amber-500 text-white",
+                    f.result === "N" && "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {f.result}
+                </span>
+              ))
+            ) : (
+              <span className="text-xs text-muted-foreground">No recent matches</span>
+            )}
+          </div>
+        </div>
+      </div>
+      {/* Head-to-head */}
+      {h2h.length > 0 && (
+        <div className="border-t px-4 py-3 text-center">
+          <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Head-to-Head: </span>
+          <span className="text-sm font-bold text-emerald-600">{t1?.shortName} {t1Wins}</span>
+          <span className="text-sm text-muted-foreground"> — </span>
+          <span className="text-sm font-bold text-red-500">{t2Wins} {t2?.shortName}</span>
+          <span className="text-xs text-muted-foreground"> ({h2h.length} matches)</span>
+        </div>
+      )}
+    </Card>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
 /*  WinViz — win probability bar based on current match state                   */
 /* -------------------------------------------------------------------------- */
 
@@ -946,6 +1069,11 @@ export function MatchPageContent({ match, recent }: { match: Match; recent: Matc
             <div className="space-y-4">
               <MatchBreadcrumbs match={match} />
               <MatchScorebox match={match} />
+
+              {/* Match Preview — shown only for upcoming matches */}
+              {match.status === "upcoming" && recent.length > 0 && (
+                <MatchPreview match={match} recent={recent} />
+              )}
               {/* 6-tab Wisden-style layout — solid block active tabs */}
               <Tabs defaultValue="commentary" className="w-full">
                 <TabsList className="flex w-full justify-start gap-0 rounded-none border-b border-border bg-transparent p-0">

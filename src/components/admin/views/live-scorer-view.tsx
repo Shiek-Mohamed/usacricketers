@@ -130,7 +130,7 @@ export function LiveScorerView() {
   }, [scorerToken])
 
   const token = scorerToken ?? adminToken
-  const { liveState, connected, stateReceived, pushState } = useLiveScore(id, token)
+  const { liveState, connected, reconnecting, stateReceived, pushState } = useLiveScore(id, token)
 
   // localStorage backup — MUST be called before any early returns so
   // React's rules-of-hooks are satisfied. Saves the live state to
@@ -781,7 +781,7 @@ export function LiveScorerView() {
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <ConnectionPill connected={connected} />
+            <ConnectionPill connected={connected} reconnecting={reconnecting} />
             {liveState && (
               <Badge
                 className={cn(
@@ -1201,7 +1201,7 @@ function FormatBadge({ format }: { format: string }) {
   )
 }
 
-function ConnectionPill({ connected }: { connected: boolean }) {
+function ConnectionPill({ connected, reconnecting }: { connected: boolean; reconnecting?: boolean }) {
   return (
     <span
       className={cn(
@@ -1217,7 +1217,7 @@ function ConnectionPill({ connected }: { connected: boolean }) {
           connected ? "bg-emerald-600" : "bg-amber-500 animate-pulse"
         )}
       />
-      {connected ? "Connected" : "Connecting…"}
+      {connected ? "Connected" : reconnecting ? "Reconnecting…" : "Connecting…"}
     </span>
   )
 }

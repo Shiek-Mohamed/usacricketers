@@ -495,28 +495,28 @@ export function MatchPageContent({ match, recent }: { match: Match; recent: Matc
               <MatchScorebox match={match} />
               {/* 6-tab Wisden-style layout */}
               <Tabs defaultValue="commentary" className="w-full">
-                <TabsList className="flex w-full justify-start gap-0 rounded-none border-b bg-transparent p-0">
-                  <TabsTrigger value="commentary" className="gap-1.5 rounded-none border-b-2 border-transparent bg-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-transparent data-[state=active]:text-emerald-700 data-[state=active]:shadow-none">
-                    <MessageSquare className="h-3.5 w-3.5" />
+                <TabsList className="flex w-full justify-start gap-1 rounded-none border-b-2 border-border bg-transparent p-0">
+                  <TabsTrigger value="commentary" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50/50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-none dark:data-[state=active]:bg-emerald-950/30">
+                    <MessageSquare className="h-4 w-4" />
                     Commentary
                   </TabsTrigger>
-                  <TabsTrigger value="squads" className="gap-1.5 rounded-none border-b-2 border-transparent bg-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-transparent data-[state=active]:text-emerald-700 data-[state=active]:shadow-none">
-                    <Users className="h-3.5 w-3.5" />
+                  <TabsTrigger value="squads" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50/50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-none dark:data-[state=active]:bg-emerald-950/30">
+                    <Users className="h-4 w-4" />
                     Squads
                   </TabsTrigger>
-                  <TabsTrigger value="scorecard" className="gap-1.5 rounded-none border-b-2 border-transparent bg-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-transparent data-[state=active]:text-emerald-700 data-[state=active]:shadow-none">
+                  <TabsTrigger value="scorecard" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50/50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-none dark:data-[state=active]:bg-emerald-950/30">
                     Scorecard
                   </TabsTrigger>
-                  <TabsTrigger value="winviz" className="gap-1.5 rounded-none border-b-2 border-transparent bg-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-transparent data-[state=active]:text-emerald-700 data-[state=active]:shadow-none">
-                    <TrendingUp className="h-3.5 w-3.5" />
+                  <TabsTrigger value="winviz" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50/50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-none dark:data-[state=active]:bg-emerald-950/30">
+                    <TrendingUp className="h-4 w-4" />
                     WinViz
                   </TabsTrigger>
-                  <TabsTrigger value="graphs" className="gap-1.5 rounded-none border-b-2 border-transparent bg-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-transparent data-[state=active]:text-emerald-700 data-[state=active]:shadow-none">
-                    <BarChart3 className="h-3.5 w-3.5" />
+                  <TabsTrigger value="graphs" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50/50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-none dark:data-[state=active]:bg-emerald-950/30">
+                    <BarChart3 className="h-4 w-4" />
                     Graphs
                   </TabsTrigger>
-                  <TabsTrigger value="info" className="gap-1.5 rounded-none border-b-2 border-transparent bg-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-transparent data-[state=active]:text-emerald-700 data-[state=active]:shadow-none">
-                    <Info className="h-3.5 w-3.5" />
+                  <TabsTrigger value="info" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50/50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-none dark:data-[state=active]:bg-emerald-950/30">
+                    <Info className="h-4 w-4" />
                     Match Info
                   </TabsTrigger>
                 </TabsList>

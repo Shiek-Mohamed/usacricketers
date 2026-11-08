@@ -75,102 +75,121 @@ function MatchHeaderCard({ match }: { match: Match }) {
   const t1Innings = sc?.innings?.filter((i) => i.teamId === match.team1Id) ?? []
   const t2Innings = sc?.innings?.filter((i) => i.teamId === match.team2Id) ?? []
 
+  // Compute a status summary line (like Wisden's "X leads by N runs...")
+  const statusLine = (() => {
+    if (match.status === "completed" && match.result) return match.result
+    if (match.status === "upcoming") return "Match yet to begin"
+    if (!sc || (t1Innings.length === 0 && t2Innings.length === 0)) return "Innings setup in progress"
+    // For live matches, compute a lead/chase summary
+    const lastInn = sc.innings?.[sc.innings.length - 1]
+    if (!lastInn) return "Live — scoring in progress"
+    return `Live — ${lastInn.totalRuns}/${lastInn.totalWickets} (${lastInn.totalOvers} ov)`
+  })()
+
   return (
-    <Card className={`overflow-hidden border-2 p-0 ${live ? "border-red-500/60 ring-2 ring-red-500/20" : "border-border"}`}>
-      {/* Header bar — format + match title + series on left, status on right */}
-      <div className="flex items-center justify-between gap-2 border-b border-border/40 bg-muted/30 px-4 py-2.5 sm:px-6">
+    <div className={`overflow-hidden rounded-xl ${live ? "ring-2 ring-red-500/40" : ""}`}>
+      {/* Top bar — format + match no + series on left, status badge on right */}
+      <div className="flex items-center justify-between gap-2 bg-[#0f1729] px-4 py-2 sm:px-6">
         <div className="flex items-center gap-2 min-w-0">
           <FormatPill format={match.format} />
-          <span className="truncate text-sm font-bold">
-            {match.matchNo}
-          </span>
-          <span className="hidden text-xs text-muted-foreground sm:inline">
-            {match.series?.shortName || match.series?.name || ""}
-          </span>
+          <span className="truncate text-sm font-bold text-white/90">{match.matchNo}</span>
+          <span className="hidden text-xs text-white/50 sm:inline">{match.series?.shortName || match.series?.name || ""}</span>
         </div>
-        <StatusPill status={match.status} />
+        {live ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+            </span>
+            Live
+          </span>
+        ) : (
+          <StatusPill status={match.status} />
+        )}
       </div>
 
-      {/* Team rows — stacked, no inner borders, prominent scores.
-          Each row is wrapped in an `<a href="/teams/${team.id}">` so the
-          team badge + name deep-link to the SSR team profile (full page
-          navigation — what we want for SEO + shareability). */}
-      <div className="divide-y divide-border/40">
-        {[t1, t2].map((team, idx) => {
-          if (!team) return null
-          const innings = idx === 0 ? t1Innings : t2Innings
-          return (
-            <a
-              key={team.id}
-              href={`/teams/${team.id}`}
-              className="flex items-center justify-between gap-3 px-4 py-4 transition-colors hover:bg-accent/30 sm:px-6"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <TeamBadge team={team} size="lg" />
-                <div className="min-w-0">
-                  <div className="truncate text-base font-bold sm:text-lg">
-                    {team.name}
-                  </div>
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {team.shortName}
-                  </div>
-                </div>
-              </div>
-              <div className="shrink-0 text-right">
-                {innings.length > 0 ? (
-                  innings.map((inn, i) => (
-                    <div
-                      key={i}
-                      className="text-xl font-extrabold tabular-nums sm:text-2xl"
-                    >
-                      {inn.totalRuns}/{inn.totalWickets}
-                      <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                        ({inn.totalOvers} ov)
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-sm text-muted-foreground">
-                    Yet to bat
-                  </div>
-                )}
-              </div>
-            </a>
-          )
-        })}
-      </div>
+      {/* Hero scoreboard — dark navy gradient with symmetric team layout */}
+      <div className="bg-gradient-to-b from-[#1e2a5e] to-[#0f1729] px-4 py-6 sm:px-6 sm:py-8">
+        {/* Venue + date — small, centered */}
+        <div className="mb-5 text-center text-xs text-white/50">
+          {match.venue}{match.city ? `, ${match.city}` : ""} · {formatMatchDate(match.startDate)}
+        </div>
 
-      {/* Footer — toss + venue + date */}
-      <div className="border-t border-border/40 px-4 py-3 sm:px-6">
+        {/* Two teams symmetric — crests + scores + "vs" */}
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-6">
+          {/* Team 1 (left) */}
+          <TeamHeroSide team={t1} innings={t1Innings} align="left" />
+
+          {/* VS divider */}
+          <div className="flex flex-col items-center gap-1">
+            <div className="text-xs font-bold uppercase tracking-widest text-white/30">vs</div>
+          </div>
+
+          {/* Team 2 (right) */}
+          <TeamHeroSide team={t2} innings={t2Innings} align="right" />
+        </div>
+
+        {/* Toss info */}
         {match.tossWinnerId && match.tossDecision && (() => {
           const winner = match.tossWinnerId === match.team1Id ? match.team1 : match.tossWinnerId === match.team2Id ? match.team2 : undefined
           if (!winner) return null
           return (
-            <div className="mb-2 text-xs font-medium text-foreground">
+            <div className="mt-5 text-center text-xs font-medium text-white/60">
               {winner.name} won the toss and elected to {match.tossDecision === "bat" ? "bat" : "bowl"}
             </div>
           )
         })()}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          {match.venue && (
-            <span className="inline-flex items-center gap-1">
-              <MapPin className="h-3.5 w-3.5" />
-              {match.venue}
-              {match.city ? `, ${match.city}` : ""}
-            </span>
-          )}
-          <span className="inline-flex items-center gap-1">
-            <CalendarDays className="h-3.5 w-3.5" />
-            {formatMatchDate(match.startDate)} · {formatMatchTime(match.startDate)}
-          </span>
-        </div>
-        {!sc && (
-          <div className="mt-2 text-sm text-muted-foreground">
-            Match yet to begin — scorecard will be available once play starts.
-          </div>
-        )}
       </div>
-    </Card>
+
+      {/* Status strip — lighter shade, one-line summary */}
+      <div className="bg-[#162244] px-4 py-2.5 text-center sm:px-6">
+        <p className="text-sm font-semibold text-white/90">{statusLine}</p>
+      </div>
+    </div>
+  )
+}
+
+/** One team's side of the hero scoreboard — crest + name + score. */
+function TeamHeroSide({
+  team,
+  innings,
+  align,
+}: {
+  team?: Match["team1"]
+  innings: { totalRuns: number; totalWickets: number; totalOvers: string }[]
+  align: "left" | "right"
+}) {
+  if (!team) return <div />
+  const hasScore = innings.length > 0
+  return (
+    <a
+      href={`/teams/${team.id}`}
+      className={`flex flex-col gap-2 ${align === "left" ? "items-start text-left" : "items-end text-right"}`}
+    >
+      {/* Crest in a white circle */}
+      <div className="grid h-12 w-12 place-items-center rounded-full bg-white/10 ring-2 ring-white/20 sm:h-14 sm:w-14">
+        <TeamBadge team={team} size="md" />
+      </div>
+      {/* Team short name */}
+      <div className="text-xs font-bold uppercase tracking-wide text-white/70 sm:text-sm">
+        {team.shortName}
+      </div>
+      {/* Score — massive numerals */}
+      {hasScore ? (
+        <div className="text-white">
+          {innings.map((inn, i) => (
+            <div key={i} className="text-2xl font-extrabold tabular-nums sm:text-4xl">
+              {inn.totalRuns}/{inn.totalWickets}
+            </div>
+          ))}
+          <div className="text-xs font-normal text-white/50">
+            ({innings[0].totalOvers} ov)
+          </div>
+        </div>
+      ) : (
+        <div className="text-sm text-white/40">Yet to bat</div>
+      )}
+    </a>
   )
 }
 
@@ -830,14 +849,21 @@ export function MatchDetailView() {
           </div>
         )}
 
-        {/* Tabbed layout — Live (default for live matches) + Scorecard */}
+        {/* Tabbed layout — segmented pill bar (Wisden-style) */}
         <Tabs defaultValue={defaultTab} className="w-full">
-          <TabsList className="w-full sm:w-auto">
-            <TabsTrigger value="live" className="gap-1.5" disabled={!isLive && effectiveCommentary.length === 0}>
+          <TabsList className="flex w-full gap-1 rounded-full bg-muted p-1 sm:w-auto">
+            <TabsTrigger
+              value="live"
+              className="gap-1.5 rounded-full data-[state=active]:bg-[#1e2a5e] data-[state=active]:text-white data-[state=active]:shadow-sm"
+              disabled={!isLive && effectiveCommentary.length === 0}
+            >
               <Radio className="h-3.5 w-3.5" />
-              Live
+              Commentary
             </TabsTrigger>
-            <TabsTrigger value="scorecard" className="gap-1.5">
+            <TabsTrigger
+              value="scorecard"
+              className="gap-1.5 rounded-full data-[state=active]:bg-[#1e2a5e] data-[state=active]:text-white data-[state=active]:shadow-sm"
+            >
               Scorecard
             </TabsTrigger>
           </TabsList>

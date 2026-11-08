@@ -806,8 +806,8 @@ export function LiveScorerView() {
             </div>
             {liveState && (
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={handleUndo} className="gap-1" disabled={history.length === 0}>
-                  <Undo2 className="h-3.5 w-3.5" /> Undo
+                <Button variant="outline" onClick={handleUndo} className="gap-1.5 h-11 px-4 text-sm font-bold transition-transform active:scale-95 sm:h-9 sm:px-3 sm:text-xs" disabled={history.length === 0}>
+                  <Undo2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" /> Undo
                 </Button>
                 {/* Test-only: captain can declare the current innings closed
                     without being all out. Hidden for limited-overs matches. */}
@@ -859,9 +859,9 @@ export function LiveScorerView() {
                     persist(liveState)
                     toast.success("Scorecard saved")
                   }}
-                  className="gap-1"
+                  className="gap-1.5 h-11 px-4 text-sm font-bold transition-transform active:scale-95 sm:h-9 sm:px-3 sm:text-xs"
                 >
-                  <Save className="h-3.5 w-3.5" /> Save
+                  <Save className="h-4 w-4 sm:h-3.5 sm:w-3.5" /> Save
                 </Button>
                 {/* DLS Calculator — shown for limited-overs matches when
                     Team 2 is batting (innings 2+). Auto-fills from the
@@ -1730,57 +1730,69 @@ function BallPad({
   disabled?: boolean
 }) {
   return (
-    <div className="rounded-lg border p-3">
-      <div className="mb-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+    <div className="rounded-xl border p-3 sm:p-4">
+      <div className="mb-3 text-xs font-bold uppercase tracking-wide text-muted-foreground">
         Score this ball
       </div>
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-        {RUN_BUTTONS.map((r) => (
-          <Button
-            key={r}
-            variant={r === 4 || r === 6 ? "default" : "outline"}
-            className={cn(
-              "h-12 text-lg font-extrabold tabular-nums",
-              r === 4 && "bg-emerald-600 hover:bg-emerald-700",
-              r === 6 && "bg-purple-600 hover:bg-purple-700"
-            )}
-            disabled={disabled}
-            onClick={() => onBall({ kind: "run", runs: r })}
-          >
-            {r}
-          </Button>
-        ))}
+      {/* Run buttons — 3 columns on mobile (big touch targets), 6 on desktop */}
+      <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-6 sm:gap-2">
+        {RUN_BUTTONS.map((r) => {
+          const isDot = r === 0
+          const isBoundary = r === 4 || r === 6
+          return (
+            <Button
+              key={r}
+              variant={isBoundary ? "default" : "outline"}
+              className={cn(
+                "h-16 text-2xl font-extrabold tabular-nums transition-transform active:scale-95 sm:h-12 sm:text-lg",
+                isDot && "text-muted-foreground",
+                r === 4 && "bg-sky-600 text-white hover:bg-sky-700",
+                r === 6 && "bg-fuchsia-600 text-white hover:bg-fuchsia-700",
+              )}
+              disabled={disabled}
+              onClick={() => onBall({ kind: "run", runs: r })}
+            >
+              {isDot ? "•" : r}
+            </Button>
+          )
+        })}
       </div>
-      <div className="mt-2 grid grid-cols-3 gap-2">
-        <Button variant="outline" className="h-10 gap-1" disabled={disabled} onClick={() => onBall({ kind: "wide" })}>
+      {/* Extras + Wicket — bigger buttons for touch */}
+      <div className="mt-2.5 grid grid-cols-3 gap-2.5 sm:gap-2">
+        <Button
+          variant="outline"
+          className="h-14 gap-1 text-sm font-bold transition-transform active:scale-95 sm:h-10"
+          disabled={disabled}
+          onClick={() => onBall({ kind: "wide" })}
+        >
           Wide
         </Button>
-        <Button variant="outline" className="h-10 gap-1" disabled={disabled} onClick={() => onBall({ kind: "noball" })}>
+        <Button
+          variant="outline"
+          className="h-14 gap-1 text-sm font-bold transition-transform active:scale-95 sm:h-10"
+          disabled={disabled}
+          onClick={() => onBall({ kind: "noball" })}
+        >
           No Ball
         </Button>
         <Button
           variant="default"
-          className="h-10 gap-1 bg-red-600 hover:bg-red-700"
+          className="h-14 gap-1 bg-red-600 text-sm font-bold hover:bg-red-700 transition-transform active:scale-95 sm:h-10"
           disabled={disabled}
           onClick={onWicket}
         >
           Wicket
         </Button>
       </div>
-      <p className="mt-2 text-xs text-muted-foreground">
-        Tap a run number, an extra, or Wicket. The Wicket button opens a
-        dialog to pick dismissal type + fielder(s) involved.
-        <br />
-        <span className="mt-1 inline-block">
-          Keyboard shortcuts:{" "}
-          <code className="rounded bg-muted px-1 py-0.5">0–6</code> runs ·{" "}
-          <code className="rounded bg-muted px-1 py-0.5">.</code> dot ·{" "}
-          <code className="rounded bg-muted px-1 py-0.5">w</code> wicket ·{" "}
-          <code className="rounded bg-muted px-1 py-0.5">e</code> swap ends ·{" "}
-          <code className="rounded bg-muted px-1 py-0.5">u</code> undo ·{" "}
-          <code className="rounded bg-muted px-1 py-0.5">d</code> declare ·{" "}
-          <code className="rounded bg-muted px-1 py-0.5">s</code> save
-        </span>
+      {/* Keyboard shortcuts — hidden on small screens (touch doesn't need them) */}
+      <p className="mt-3 hidden text-xs text-muted-foreground sm:block">
+        Keyboard:{" "}
+        <code className="rounded bg-muted px-1 py-0.5">0–6</code> runs ·{" "}
+        <code className="rounded bg-muted px-1 py-0.5">.</code> dot ·{" "}
+        <code className="rounded bg-muted px-1 py-0.5">w</code> wicket ·{" "}
+        <code className="rounded bg-muted px-1 py-0.5">e</code> swap ·{" "}
+        <code className="rounded bg-muted px-1 py-0.5">u</code> undo ·{" "}
+        <code className="rounded bg-muted px-1 py-0.5">s</code> save
       </p>
     </div>
   )

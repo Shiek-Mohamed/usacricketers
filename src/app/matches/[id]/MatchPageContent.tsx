@@ -483,12 +483,6 @@ export function MatchPageContent({ match, recent }: { match: Match; recent: Matc
       <main className="flex-1 w-full">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6">
           <InnerPageLayout
-            header={
-              <>
-                <MatchBreadcrumbs match={match} />
-                <MatchScorebox match={match} />
-              </>
-            }
             sidebar={
               <>
                 {recent.length > 0 && <RecentResultsWidget matches={recent} />}
@@ -497,6 +491,8 @@ export function MatchPageContent({ match, recent }: { match: Match; recent: Matc
             }
           >
             <div className="space-y-4">
+              <MatchBreadcrumbs match={match} />
+              <MatchScorebox match={match} />
               {/* 6-tab Wisden-style layout */}
               <Tabs defaultValue="commentary" className="w-full">
                 <TabsList className="flex w-full justify-start gap-0 rounded-none border-b bg-transparent p-0">

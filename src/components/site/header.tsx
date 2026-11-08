@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useAppStore } from "@/lib/store"
 import { useTheme } from "next-themes"
+import { useNotifications } from "@/lib/use-notifications"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -35,6 +36,8 @@ import {
   ChevronLeft,
   ChevronRight,
   RotateCw,
+  Bell,
+  BellRing,
 } from "lucide-react"
 import type { ViewKey } from "@/lib/types"
 
@@ -99,6 +102,7 @@ export function Header() {
   const view = useAppStore((s) => s.view)
   const [open, setOpen] = useState(false)
   const { theme, setTheme } = useTheme()
+  const { enabled: notifEnabled, requestPermission: enableNotifs, disable: disableNotifs } = useNotifications()
   const [mounted, setMounted] = useState(false)
   // One-time "mounted" flag for next-themes (avoids hydration mismatch
   // when rendering the sun/moon icon). The setState-in-effect rule flags
@@ -379,6 +383,20 @@ export function Header() {
               }}
             />
           </div>
+          {/* Notification toggle — bell icon */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => (notifEnabled ? disableNotifs() : enableNotifs())}
+            className={cn(
+              "hover:bg-white/10",
+              notifEnabled ? "text-emerald-400 hover:text-emerald-300" : "text-white/70 hover:text-white",
+            )}
+            aria-label={notifEnabled ? "Disable notifications" : "Enable notifications"}
+            title={notifEnabled ? "Notifications on — click to disable" : "Get notified when matches go live"}
+          >
+            {notifEnabled ? <BellRing className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
+          </Button>
           <Button
             variant="ghost"
             size="icon"

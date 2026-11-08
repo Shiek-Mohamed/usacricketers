@@ -371,9 +371,9 @@ export function AdminLeagueAdminsView() {
               {editingId ? "Edit League Admin" : "New League Admin"}
             </DialogTitle>
           </DialogHeader>
-          <div className="grid gap-3 py-2">
-            <div className="grid gap-1.5">
-              <Label htmlFor="la-username">Username</Label>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label htmlFor="la-username" className="text-sm font-bold text-foreground">Username</Label>
               <Input
                 id="la-username"
                 value={form.username}
@@ -385,18 +385,18 @@ export function AdminLeagueAdminsView() {
                 autoComplete="off"
               />
               {editingId ? (
-                <p className="text-[11px] text-muted-foreground">
-                  Username cannot be changed after creation.
+                <p className="text-xs text-muted-foreground">
+                  🔒 Username cannot be changed after creation.
                 </p>
               ) : (
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Used by the league admin to sign in (via the &ldquo;League
                   Admin Sign In&rdquo; button).
                 </p>
               )}
             </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="la-name">Display name</Label>
+            <div className="grid gap-2">
+              <Label htmlFor="la-name" className="text-sm font-bold text-foreground">Display name</Label>
               <Input
                 id="la-name"
                 value={form.name}
@@ -406,10 +406,10 @@ export function AdminLeagueAdminsView() {
                 placeholder="e.g. Arizona Cricket Association"
               />
             </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="la-email">
+            <div className="grid gap-2">
+              <Label htmlFor="la-email" className="text-sm font-bold text-foreground">
                 Email{" "}
-                <span className="font-normal text-red-600">*</span>
+                <span className="font-bold text-red-600">*</span>
               </Label>
               <Input
                 id="la-email"
@@ -423,11 +423,11 @@ export function AdminLeagueAdminsView() {
                 required
               />
             </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="la-password">
+            <div className="grid gap-2">
+              <Label htmlFor="la-password" className="text-sm font-bold text-foreground">
                 Password{" "}
                 {editingId && (
-                  <span className="font-normal text-muted-foreground">
+                  <span className="font-medium text-muted-foreground">
                     (leave blank to keep current)
                   </span>
                 )}
@@ -444,7 +444,7 @@ export function AdminLeagueAdminsView() {
               />
             </div>
 
-            <label className="flex w-fit items-center gap-2 pt-1 text-sm font-medium">
+            <label className="flex w-fit items-center gap-2 pt-1 text-sm font-bold text-foreground">
               <Switch
                 checked={form.active}
                 onCheckedChange={(c) =>
@@ -452,15 +452,17 @@ export function AdminLeagueAdminsView() {
                 }
               />
               Active
-              <span className="text-[11px] font-normal text-muted-foreground">
+              <span className="text-xs font-normal text-muted-foreground">
                 (inactive league admins cannot sign in)
               </span>
             </label>
 
-            {/* Managed-leagues multi-select */}
-            <div className="grid gap-2 pt-2">
-              <Label>Managed leagues</Label>
-              <p className="text-[11px] text-muted-foreground">
+            {/* Managed-leagues multi-select — section header */}
+            <div className="grid gap-2 rounded-lg border bg-muted/30 p-3 pt-2">
+              <div className="flex items-center gap-1.5">
+                <Label className="text-sm font-bold text-foreground">Managed leagues</Label>
+              </div>
+              <p className="text-xs text-muted-foreground">
                 The leagues this admin can manage (create matches, add teams,
                 assign scorers). They can also create NEW leagues from their
                 portal — those auto-assign to them.
@@ -511,7 +513,7 @@ export function AdminLeagueAdminsView() {
                   </ul>
                 )}
               </div>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs font-medium text-muted-foreground">
                 {form.managedSeriesIds.length} selected
               </p>
             </div>

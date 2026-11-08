@@ -19,6 +19,8 @@ import { ShareButtons } from "@/components/site/share-buttons"
 import { LiveMatchSection } from "@/components/site/live-match-section"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { ChartContainer, type ChartConfig } from "@/components/ui/chart"
+import { Bar, BarChart, XAxis, YAxis, Cell, ResponsiveContainer } from "recharts"
 import {
   ChevronRight,
   ChevronDown,
@@ -510,15 +512,294 @@ function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label:
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Coming Soon placeholder for WinViz / Graphs                                */
+/*  WinViz — win probability bar based on current match state                   */
 /* -------------------------------------------------------------------------- */
 
-function ComingSoon({ title, icon: Icon, description }: { title: string; icon: React.ElementType; description: string }) {
+function WinVizView({ match }: { match: Match }) {
+  const sc = match.scorecard
+  const t1 = match.team1
+  const t2 = match.team2
+
+  // Compute win probability from the match state
+  const probs = computeWinProbability(match, sc)
+
+  if (!probs) {
+    return (
+      <Card className="flex flex-col items-center justify-center gap-2 p-10 text-center">
+        <TrendingUp className="h-10 w-10 text-muted-foreground/40" />
+        <h3 className="font-display text-sm font-bold uppercase tracking-wide">WinViz</h3>
+        <p className="max-w-xs text-sm text-muted-foreground">
+          Win probability will appear here once the match is live or completed.
+        </p>
+      </Card>
+    )
+  }
+
   return (
-    <Card className="flex flex-col items-center justify-center gap-2 p-10 text-center">
-      <Icon className="h-10 w-10 text-muted-foreground/40" />
-      <h3 className="font-display text-sm font-bold uppercase tracking-wide">{title}</h3>
-      <p className="max-w-xs text-sm text-muted-foreground">{description}</p>
+    <div className="space-y-4">
+      <Card className="overflow-hidden p-0">
+        <div className="border-b bg-muted/30 px-4 py-2.5">
+          <h3 className="flex items-center gap-1.5 font-display text-sm font-bold uppercase tracking-wide">
+            <TrendingUp className="h-4 w-4 text-emerald-600" /> Win Probability
+          </h3>
+        </div>
+        <div className="p-4">
+          {/* Probability bar */}
+          <div className="flex h-12 overflow-hidden rounded-lg">
+            {probs.t1 > 0 && (
+              <div
+                className="flex items-center justify-center transition-all duration-500"
+                style={{ width: `${probs.t1}%`, background: t1?.primaryColor || "#1e2a5e" }}
+              >
+                <span className="text-sm font-bold text-white">{probs.t1}%</span>
+              </div>
+            )}
+            {probs.draw > 0 && (
+              <div
+                className="flex items-center justify-center bg-muted transition-all duration-500"
+                style={{ width: `${probs.draw}%` }}
+              >
+                <span className="text-sm font-bold text-muted-foreground">{probs.draw}%</span>
+              </div>
+            )}
+            {probs.t2 > 0 && (
+              <div
+                className="flex items-center justify-center transition-all duration-500"
+                style={{ width: `${probs.t2}%`, background: t2?.primaryColor || "#94a3b8" }}
+              >
+                <span className="text-sm font-bold text-white">{probs.t2}%</span>
+              </div>
+            )}
+          </div>
+          {/* Team labels */}
+          <div className="mt-3 flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <span className="h-3 w-3 rounded-full" style={{ background: t1?.primaryColor || "#1e2a5e" }} />
+              <span className="text-sm font-bold">{t1?.shortName}</span>
+            </div>
+            {probs.draw > 0 && (
+              <span className="text-xs text-muted-foreground">Draw</span>
+            )}
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-bold">{t2?.shortName}</span>
+              <span className="h-3 w-3 rounded-full" style={{ background: t2?.primaryColor || "#94a3b8" }} />
+            </div>
+          </div>
+        </div>
+      </Card>
+      <p className="text-center text-xs text-muted-foreground">
+        Win probability is calculated from the current match situation — runs scored, wickets remaining, and overs left. It updates as the match progresses.
+      </p>
+    </div>
+  )
+}
+
+/** Simplified win probability model based on match state. */
+function computeWinProbability(match: Match, sc: Scorecard | null):
+  | { t1: number; t2: number; draw: number }
+  | null {
+  if (!sc || sc.innings.length === 0) return null
+  if (match.status === "completed" && match.result) {
+    // Completed match — assign 100% to the winner
+    if (match.result.includes(match.team1?.shortName ?? "___") && !match.result.includes("tie")) {
+      return { t1: 100, t2: 0, draw: 0 }
+    }
+    if (match.result.includes(match.team2?.shortName ?? "___") && !match.result.includes("tie")) {
+      return { t1: 0, t2: 100, draw: 0 }
+    }
+    return { t1: 50, t2: 50, draw: 0 } // tie/no result
+  }
+
+  const isTest = match.format === "Test"
+  const innings = sc.innings
+  const lastInn = innings[innings.length - 1]
+  const firstInn = innings[0]
+
+  if (innings.length === 1) {
+    // 1st innings in progress — roughly 50/50 with slight edge to batting team
+    const runs = lastInn.totalRuns
+    const wickets = lastInn.totalWickets
+    const overs = parseFloat(lastInn.totalOvers) || 0
+    const maxOvers = match.format === "T20" || match.format === "T20I" ? 20 : match.format === "ODI" || match.format === "ODI" ? 50 : 90
+    // Simple heuristic: more runs + fewer wickets = better position
+    const progress = overs / maxOvers // 0 to 1
+    const wicketPenalty = wickets * 8 // each wicket costs ~8% confidence
+    const runBonus = Math.min(runs / (maxOvers * 5), 1) * 20 // strong total gives bonus
+    const battingAdvantage = Math.max(0, Math.min(25, runBonus - wicketPenalty * progress))
+    const drawChance = isTest ? Math.max(5, 40 - overs * 0.4) : 0
+    const remaining = 100 - drawChance
+    const battingTeam = lastInn.teamId === match.team1Id ? "t1" : "t2"
+    const battingProb = remaining / 2 + battingAdvantage
+    const bowlingProb = remaining - battingProb
+    if (battingTeam === "t1") return { t1: Math.round(battingProb), t2: Math.round(bowlingProb), draw: Math.round(drawChance) }
+    return { t1: Math.round(bowlingProb), t2: Math.round(battingProb), draw: Math.round(drawChance) }
+  }
+
+  if (innings.length >= 2) {
+    // 2nd innings — chasing team's probability based on target + wickets + balls left
+    const target = (firstInn.totalRuns ?? 0) + 1
+    const chasingRuns = lastInn.totalRuns
+    const chasingWickets = lastInn.totalWickets
+    const chasingOvers = parseFloat(lastInn.totalOvers) || 0
+    const maxOvers = match.format === "T20" || match.format === "T20I" ? 20 : match.format === "ODI" || match.format === "ODI" ? 50 : 90
+    const ballsRemaining = Math.max(0, (maxOvers - chasingOvers) * 6)
+    const runsNeeded = target - chasingRuns
+    const wicketsInHand = 10 - chasingWickets
+
+    if (runsNeeded <= 0) {
+      // Chase complete — chasing team wins
+      const chaser = lastInn.teamId === match.team1Id ? "t1" : "t2"
+      return chaser === "t1" ? { t1: 100, t2: 0, draw: 0 } : { t1: 0, t2: 100, draw: 0 }
+    }
+    if (ballsRemaining <= 0 || wicketsInHand <= 0) {
+      // Can't chase — batting team (first innings) wins
+      const firstTeam = firstInn.teamId === match.team1Id ? "t1" : "t2"
+      return firstTeam === "t1" ? { t1: 100, t2: 0, draw: isTest ? 0 : 0 } : { t1: 0, t2: 100, draw: 0 }
+    }
+
+    const requiredRR = (runsNeeded / ballsRemaining) * 6
+    const currentRR = chasingOvers > 0 ? chasingRuns / chasingOvers : 0
+    // Win probability: based on RRR vs CRR + wickets in hand
+    const rrRatio = currentRR > 0 ? requiredRR / currentRR : 2
+    const chaseProb = Math.max(0, Math.min(100,
+      (wicketsInHand / 10) * 60 + (1 / rrRatio) * 40
+    ))
+    const drawChance = isTest ? Math.max(0, 30 - innings.length * 10) : 0
+    const remaining = 100 - drawChance
+    const chaser = lastInn.teamId === match.team1Id ? "t1" : "t2"
+    const chaserProb = Math.round(chaseProb * remaining / 100)
+    const setterProb = remaining - chaserProb
+    if (chaser === "t1") return { t1: chaserProb, t2: setterProb, draw: Math.round(drawChance) }
+    return { t1: setterProb, t2: chaserProb, draw: Math.round(drawChance) }
+  }
+
+  return null
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Graphs — Run Rate Worm (Manhattan chart)                                   */
+/* --------------------------------------------------------------------------- */
+
+function GraphsView({ match }: { match: Match }) {
+  const sc = match.scorecard
+  if (!sc || sc.innings.length === 0) {
+    return (
+      <Card className="flex flex-col items-center justify-center gap-2 p-10 text-center">
+        <BarChart3 className="h-10 w-10 text-muted-foreground/40" />
+        <h3 className="font-display text-sm font-bold uppercase tracking-wide">Graphs</h3>
+        <p className="max-w-xs text-sm text-muted-foreground">
+          Graphs will appear here once the match begins and overs are bowled.
+        </p>
+      </Card>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {sc.innings.map((inn, i) => {
+        const team = inn.teamId === match.team1Id ? match.team1 : match.team2
+        return (
+          <RunRateWorm
+            key={i}
+            innings={inn}
+            teamName={team?.name ?? "Team"}
+            teamShort={team?.shortName ?? ""}
+            teamColor={team?.primaryColor ?? "#1e2a5e"}
+            commentary={sc.commentary ?? []}
+            teamId={inn.teamId}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+function RunRateWorm({
+  innings,
+  teamName,
+  teamShort,
+  teamColor,
+  commentary,
+  teamId,
+}: {
+  innings: Scorecard["innings"][0]
+  teamName: string
+  teamShort: string
+  teamColor: string
+  commentary: { id: string; over: string; text: string; kind: string }[]
+  teamId: string
+}) {
+  // Compute runs per over from commentary data
+  const ballKinds = new Set(["run", "boundary", "six", "wicket", "extra", "dot"])
+  const overRuns = new Map<number, number>()
+
+  for (const c of commentary) {
+    const overNum = parseInt(c.over?.split(".")[0] || "0", 10)
+    if (overNum < 1) continue
+    if (!ballKinds.has(c.kind)) continue
+    const m = c.text.match(/^(\d+)/)
+    const runs = m ? Number(m[1]) : 0
+    overRuns.set(overNum, (overRuns.get(overNum) ?? 0) + runs)
+  }
+
+  const data = Array.from(overRuns.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([over, runs]) => ({ over: `Ov ${over}`, runs }))
+
+  if (data.length === 0) {
+    return (
+      <Card className="p-6 text-center text-sm text-muted-foreground">
+        No over-by-over data available for {teamName} yet.
+      </Card>
+    )
+  }
+
+  const chartConfig: ChartConfig = {
+    runs: { label: "Runs", color: teamColor },
+  }
+
+  // Color bars: wicket overs in red, maiden (0 runs) in gray, else team color
+  const maxRuns = Math.max(...data.map((d) => d.runs), 6)
+
+  return (
+    <Card className="overflow-hidden p-0">
+      <div className="border-b bg-muted/30 px-4 py-2.5">
+        <h3 className="flex items-center gap-1.5 font-display text-sm font-bold uppercase tracking-wide">
+          <BarChart3 className="h-4 w-4 text-emerald-600" />
+          {teamShort} — Run Rate Worm
+        </h3>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {teamName} · {innings.totalRuns}/{innings.totalWickets} ({innings.totalOvers} ov)
+        </p>
+      </div>
+      <div className="p-4">
+        <ChartContainer config={chartConfig} className="h-[200px] w-full">
+          <BarChart data={data} margin={{ top: 8, right: 8, bottom: 8, left: -16 }}>
+            <XAxis
+              dataKey="over"
+              tickLine={false}
+              axisLine={false}
+              tick={{ fontSize: 10 }}
+              interval="preserveStartEnd"
+            />
+            <YAxis
+              tickLine={false}
+              axisLine={false}
+              tick={{ fontSize: 10 }}
+              domain={[0, maxRuns]}
+              width={28}
+            />
+            <Bar dataKey="runs" radius={[3, 3, 0, 0]}>
+              {data.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={entry.runs === 0 ? "#d1d5db" : teamColor}
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ChartContainer>
+      </div>
     </Card>
   )
 }
@@ -605,22 +886,14 @@ export function MatchPageContent({ match, recent }: { match: Match; recent: Matc
                   )}
                 </TabsContent>
 
-                {/* WinViz tab — coming soon */}
+                {/* WinViz tab — win probability */}
                 <TabsContent value="winviz" className="mt-4">
-                  <ComingSoon
-                    title="WinViz"
-                    icon={TrendingUp}
-                    description="Win probability visualization — coming soon. This will show real-time win probability for each team based on the match situation."
-                  />
+                  <WinVizView match={match} />
                 </TabsContent>
 
-                {/* Graphs tab — coming soon */}
+                {/* Graphs tab — run rate worm */}
                 <TabsContent value="graphs" className="mt-4">
-                  <ComingSoon
-                    title="Graphs"
-                    icon={BarChart3}
-                    description="Run rate worms, partnership charts, and scoring visualizations — coming soon."
-                  />
+                  <GraphsView match={match} />
                 </TabsContent>
 
                 {/* Match Info tab */}

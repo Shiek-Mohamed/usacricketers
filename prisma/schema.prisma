@@ -131,6 +131,12 @@ model Match {
   umpires     String   @default("")
   tvUmpire    String   @default("")
   referee     String   @default("")
+  // Toss — who won the toss and what they elected to do. Optional (a match
+  // can start without a toss recorded). tossWinnerId is a team id (team1Id
+  // or team2Id); tossDecision is "bat" or "bowl". Stored as plain strings
+  // (no FK relation) so historical matches don't break if a team is deleted.
+  tossWinnerId String?  // team id of the toss winner
+  tossDecision String?  // "bat" or "bowl"
   scorecard   String   @default("") // JSON
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

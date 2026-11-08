@@ -172,6 +172,9 @@ export interface Match {
   umpires: string
   tvUmpire: string
   referee: string
+  // Toss — optional. tossWinnerId is a team id; tossDecision is "bat" or "bowl".
+  tossWinnerId: string | null
+  tossDecision: string | null
   scorecard: Scorecard | null
   team1?: Team
   team2?: Team

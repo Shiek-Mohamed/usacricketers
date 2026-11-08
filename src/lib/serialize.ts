@@ -87,6 +87,8 @@ export function serializeMatch(
     umpires: m.umpires,
     tvUmpire: m.tvUmpire,
     referee: m.referee,
+    tossWinnerId: m.tossWinnerId,
+    tossDecision: m.tossDecision,
     scorecard: parseScorecard(m.scorecard),
     team1: m.team1 ? serializeTeam(m.team1) : undefined,
     team2: m.team2 ? serializeTeam(m.team2) : undefined,

@@ -59,8 +59,22 @@ export function MiniScorecard({ match }: { match: Match }) {
       <div className="px-3 pb-2 text-[11px] text-muted-foreground">
         {match.result || `${match.venue}, ${formatMatchDate(match.startDate)}`}
       </div>
+      {match.tossWinnerId && match.tossDecision && (
+        <div className="px-3 pb-2 text-[11px] font-medium text-muted-foreground">
+          {tossText(match)}
+        </div>
+      )}
     </a>
   )
+}
+
+/** Build the standard "X won the toss and elected to bat/bowl" string. */
+export function tossText(match: Match): string {
+  if (!match.tossWinnerId || !match.tossDecision) return ""
+  const winner = match.tossWinnerId === match.team1Id ? match.team1 : match.tossWinnerId === match.team2Id ? match.team2 : undefined
+  if (!winner) return ""
+  const choice = match.tossDecision === "bat" ? "bat" : "bowl"
+  return `${winner.name} won the toss and elected to ${choice}`
 }
 
 function TeamLine({

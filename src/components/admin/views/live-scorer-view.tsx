@@ -884,6 +884,8 @@ export function LiveScorerView() {
               onStart={startInnings}
               tokenReady={!!token}
               connected={connected}
+              matchId={match?.id}
+              token={token}
             />
           ) : (
             <div className="mt-4 space-y-5">
@@ -1199,6 +1201,8 @@ function SetupPanel({
   onStart,
   tokenReady,
   connected,
+  matchId,
+  token,
 }: {
   t1: Player["team"] | undefined
   t2: Player["team"] | undefined
@@ -1207,11 +1211,35 @@ function SetupPanel({
   onStart: (battingFirstId: string, strikerId: string, nonStrikerId: string, bowlerId: string) => void
   tokenReady: boolean
   connected: boolean
+  matchId?: string
+  token?: string | null
 }) {
   const [battingFirstId, setBattingFirstId] = useState(t1?.id ?? "")
   const [strikerId, setStrikerId] = useState("")
   const [nonStrikerId, setNonStrikerId] = useState("")
   const [bowlerId, setBowlerId] = useState("")
+  const [tossWinnerId, setTossWinnerId] = useState("")
+  const [tossDecision, setTossDecision] = useState("")
+
+  // When the toss winner + decision are both set, auto-fill the batting-first
+  // team: if the winner chose "bat", they bat first; if "bowl", the other
+  // team bats first. Also persist the toss to the match record.
+  function applyToss(winnerId: string, decision: string) {
+    if (!winnerId || !decision || !t1 || !t2) return
+    const battingFirst = decision === "bat" ? winnerId : (winnerId === t1.id ? t2.id : t1.id)
+    setBattingFirstId(battingFirst)
+    setStrikerId("")
+    setNonStrikerId("")
+    setBowlerId("")
+    // Persist the toss to the match record (best-effort — don't block start)
+    if (matchId && token) {
+      fetch(`/api/matches/${matchId}/toss`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ tossWinnerId: winnerId, tossDecision: decision }),
+      }).catch(() => {})
+    }
+  }
 
   const battingPlayers =
     battingFirstId === t1?.id ? t1Players : battingFirstId === t2?.id ? t2Players : []
@@ -1230,6 +1258,41 @@ function SetupPanel({
           <h3 className="text-sm font-bold uppercase tracking-wide">
             Start live innings
           </h3>
+        </div>
+        {/* Toss section */}
+        <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/40 dark:bg-amber-900/10">
+          <div className="mb-2 flex items-center gap-1.5">
+            <span className="text-xs font-bold uppercase tracking-wide text-amber-700 dark:text-amber-400">Toss</span>
+            <span className="text-[10px] text-muted-foreground">(optional)</span>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Select
+              value={tossWinnerId}
+              onValueChange={(v) => {
+                setTossWinnerId(v)
+                if (tossDecision) applyToss(v, tossDecision)
+              }}
+            >
+              <SelectTrigger className="w-full"><SelectValue placeholder="Won by" /></SelectTrigger>
+              <SelectContent>
+                {t1 && <SelectItem value={t1.id}>{t1.name}</SelectItem>}
+                {t2 && <SelectItem value={t2.id}>{t2.name}</SelectItem>}
+              </SelectContent>
+            </Select>
+            <Select
+              value={tossDecision}
+              onValueChange={(v) => {
+                setTossDecision(v)
+                if (tossWinnerId) applyToss(tossWinnerId, v)
+              }}
+            >
+              <SelectTrigger className="w-full"><SelectValue placeholder="Elected to" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="bat">Bat</SelectItem>
+                <SelectItem value="bowl">Bowl</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">

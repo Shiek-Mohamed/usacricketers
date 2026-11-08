@@ -41,6 +41,8 @@ export async function PUT(
       umpires: body.umpires === undefined ? undefined : body.umpires,
       tvUmpire: body.tvUmpire === undefined ? undefined : body.tvUmpire,
       referee: body.referee === undefined ? undefined : body.referee,
+      tossWinnerId: body.tossWinnerId === undefined ? undefined : (body.tossWinnerId || null),
+      tossDecision: body.tossDecision === undefined ? undefined : (body.tossDecision || null),
       scorecard:
         typeof body.scorecard === "string"
           ? body.scorecard

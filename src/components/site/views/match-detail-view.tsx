@@ -140,8 +140,17 @@ function MatchHeaderCard({ match }: { match: Match }) {
         })}
       </div>
 
-      {/* Footer — venue + date with icons */}
+      {/* Footer — toss + venue + date */}
       <div className="border-t border-border/40 px-4 py-3 sm:px-6">
+        {match.tossWinnerId && match.tossDecision && (() => {
+          const winner = match.tossWinnerId === match.team1Id ? match.team1 : match.tossWinnerId === match.team2Id ? match.team2 : undefined
+          if (!winner) return null
+          return (
+            <div className="mb-2 text-xs font-medium text-foreground">
+              {winner.name} won the toss and elected to {match.tossDecision === "bat" ? "bat" : "bowl"}
+            </div>
+          )
+        })()}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
           {match.venue && (
             <span className="inline-flex items-center gap-1">

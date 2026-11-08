@@ -109,73 +109,76 @@ function inningsTotal(match: Match, teamId: string): string {
   return `${last.totalRuns}/${last.totalWickets}`
 }
 
-/** Compact horizontal live-match bar (cricket.com.au-style live strip).
- *  Mobile-first: everything fits in one row on a 375px (iPhone SE) viewport.
- *  - Badges + scores are `shrink-0` (never compressed).
- *  - Team short-name spans are `min-w-0 truncate` so they clip instead of
- *    pushing siblings past the card boundary.
- *  - Gaps + font sizes scale up at the `sm:` breakpoint.
+/** Prominent live-match card — dark navy gradient (matches the match page
+ *  hero). Shows LIVE badge, both teams + scores, format, and a CTA to view
+ *  the match page. Renders as `<a href="/matches/${id}">` for SEO + deep-link.
  */
 function LiveMatchStrip({ match }: { match: Match }) {
   const t1 = match.team1
   const t2 = match.team2
   const t1Score = inningsTotal(match, match.team1Id)
   const t2Score = inningsTotal(match, match.team2Id)
-  // Render as a real `<a href="/matches/${id}">` so the strip deep-links to
-  // the SSR match page (full page navigation — what we want for SEO +
-  // shareability). The SPA `?view=match-detail&id=xxx` flow still works for
-  // legacy links.
   const href = `/matches/${match.id}`
   return (
     <a
       href={href}
-      className="group flex w-full items-center gap-1.5 overflow-hidden rounded-lg border bg-card px-2.5 py-2 text-left shadow-sm transition-shadow hover:shadow-md sm:gap-2 sm:px-4 sm:py-2.5"
+      className="group block w-full overflow-hidden rounded-xl bg-gradient-to-b from-[#1e2a5e] to-[#0f1729] p-4 text-left shadow-lg transition-shadow hover:shadow-xl sm:p-5"
     >
-      {/* Live indicator */}
-      <span className="flex shrink-0 items-center gap-1">
-        <span className="relative flex h-2 w-2">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-red-600" />
-        </span>
-        <span className="text-[10px] font-bold uppercase tracking-wide text-red-600">
-          Live
-        </span>
-      </span>
-      <FormatPill format={match.format} />
-      {/* Match metadata — hidden below `sm` to save horizontal real estate */}
-      <span className="hidden min-w-0 truncate text-xs text-muted-foreground sm:inline">
-        {match.matchNo}
-        {match.series?.shortName ? ` · ${match.series.shortName}` : ""}
-      </span>
-      {/* Teams + scores — pushed right; truncates names instead of overflowing */}
-      <div className="ml-auto flex min-w-0 items-center justify-end gap-1.5 sm:gap-3">
-        <div className="flex min-w-0 items-center gap-1 sm:gap-1.5">
-          {t1 && <TeamBadge team={t1} size="sm" />}
-          <span className="min-w-0 truncate text-xs font-bold sm:text-sm">
-            {t1?.shortName}
-          </span>
-          {t1Score && (
-            <span className="shrink-0 text-xs font-extrabold tabular-nums sm:text-sm">
-              {t1Score}
+      {/* Top row — LIVE badge + format + match info */}
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
             </span>
+            Live
+          </span>
+          <FormatPill format={match.format} />
+          <span className="hidden text-xs text-white/50 sm:inline">
+            {match.matchNo}{match.series?.shortName ? ` · ${match.series.shortName}` : ""}
+          </span>
+        </div>
+        <span className="text-xs font-bold text-white/40 transition-colors group-hover:text-white/70">
+          View Match →
+        </span>
+      </div>
+
+      {/* Teams + scores — centered, symmetric */}
+      <div className="flex items-center justify-center gap-4 sm:gap-8">
+        {/* Team 1 */}
+        <div className="flex flex-col items-center gap-1">
+          {t1 && (
+            <div className="grid h-10 w-10 place-items-center rounded-full bg-white/10 ring-2 ring-white/20 sm:h-12 sm:w-12">
+              <TeamBadge team={t1} size="sm" />
+            </div>
+          )}
+          <span className="text-xs font-bold uppercase tracking-wide text-white/70 sm:text-sm">{t1?.shortName}</span>
+          {t1Score ? (
+            <span className="text-lg font-extrabold tabular-nums text-white sm:text-2xl">{t1Score}</span>
+          ) : (
+            <span className="text-xs text-white/40">Yet to bat</span>
           )}
         </div>
-        <span className="shrink-0 text-[10px] font-medium text-muted-foreground sm:text-xs">
-          v
-        </span>
-        <div className="flex min-w-0 items-center gap-1 sm:gap-1.5">
-          {t2 && <TeamBadge team={t2} size="sm" />}
-          <span className="min-w-0 truncate text-xs font-bold sm:text-sm">
-            {t2?.shortName}
-          </span>
-          {t2Score && (
-            <span className="shrink-0 text-xs font-extrabold tabular-nums sm:text-sm">
-              {t2Score}
-            </span>
+
+        {/* VS */}
+        <span className="text-sm font-bold uppercase tracking-widest text-white/30">vs</span>
+
+        {/* Team 2 */}
+        <div className="flex flex-col items-center gap-1">
+          {t2 && (
+            <div className="grid h-10 w-10 place-items-center rounded-full bg-white/10 ring-2 ring-white/20 sm:h-12 sm:w-12">
+              <TeamBadge team={t2} size="sm" />
+            </div>
+          )}
+          <span className="text-xs font-bold uppercase tracking-wide text-white/70 sm:text-sm">{t2?.shortName}</span>
+          {t2Score ? (
+            <span className="text-lg font-extrabold tabular-nums text-white sm:text-2xl">{t2Score}</span>
+          ) : (
+            <span className="text-xs text-white/40">Yet to bat</span>
           )}
         </div>
       </div>
-      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
     </a>
   )
 }

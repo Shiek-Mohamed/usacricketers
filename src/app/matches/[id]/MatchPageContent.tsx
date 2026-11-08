@@ -325,7 +325,7 @@ function OverBlock({
           ))}
         </div>
         {/* Summary */}
-        <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">
+        <span className="hidden shrink-0 text-sm text-muted-foreground sm:inline">
           {runsInOver > 0 && `${runsInOver} run${runsInOver > 1 ? "s" : ""}`}
           {hasWicket && runsInOver > 0 && " · "}
           {hasWicket && "W"}
@@ -352,7 +352,7 @@ function BallCommentaryCard({ entry }: { entry: { id: string; over: string; text
   const ballKinds = new Set(["run", "boundary", "six", "wicket", "extra", "dot"])
   const isBall = ballKinds.has(entry.kind)
   return (
-    <div className="flex items-start gap-3 rounded-md bg-card p-2.5">
+    <div className="flex items-start gap-3 rounded-md bg-card p-3">
       {isBall ? (
         <BallChip kind={entry.kind} text={entry.text} size="md" />
       ) : (
@@ -360,12 +360,12 @@ function BallCommentaryCard({ entry }: { entry: { id: string; over: string; text
       )}
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-xs font-bold text-foreground">
+          <span className="text-sm font-bold text-foreground">
             {entry.text.split("—")[0]?.trim() || entry.kind.toUpperCase()}
           </span>
-          <span className="shrink-0 text-xs text-muted-foreground">{entry.over}</span>
+          <span className="shrink-0 text-sm text-muted-foreground">{entry.over}</span>
         </div>
-        <p className="mt-0.5 text-xs text-muted-foreground">{entry.text}</p>
+        <p className="mt-1 text-sm text-foreground">{entry.text}</p>
       </div>
     </div>
   )
@@ -454,9 +454,9 @@ function MatchInfoView({ match }: { match: Match }) {
 function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value?: string | null }) {
   if (!value) return null
   return (
-    <div className="flex items-center gap-2 px-4 py-2.5">
+    <div className="flex items-center gap-2 px-4 py-3">
       <Icon className="h-4 w-4 shrink-0 text-muted-foreground/60" />
-      <span className="w-32 shrink-0 text-xs font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="w-36 shrink-0 text-sm font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
       <span className="text-sm font-medium text-foreground">{value}</span>
     </div>
   )
@@ -471,7 +471,7 @@ function ComingSoon({ title, icon: Icon, description }: { title: string; icon: R
     <Card className="flex flex-col items-center justify-center gap-2 p-10 text-center">
       <Icon className="h-10 w-10 text-muted-foreground/40" />
       <h3 className="font-display text-sm font-bold uppercase tracking-wide">{title}</h3>
-      <p className="max-w-xs text-xs text-muted-foreground">{description}</p>
+      <p className="max-w-xs text-sm text-muted-foreground">{description}</p>
     </Card>
   )
 }

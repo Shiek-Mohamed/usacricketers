@@ -137,6 +137,7 @@ model Match {
   // (no FK relation) so historical matches don't break if a team is deleted.
   tossWinnerId String?  // team id of the toss winner
   tossDecision String?  // "bat" or "bowl"
+  weather     String?  // e.g. "Sunny, 28°C" — set by admin/scorer before match
   scorecard   String   @default("") // JSON
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

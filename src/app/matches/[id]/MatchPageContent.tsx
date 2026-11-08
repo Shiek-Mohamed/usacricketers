@@ -34,6 +34,7 @@ import {
   MessageSquare,
   BarChart3,
   TrendingUp,
+  CloudRain,
 } from "lucide-react"
 
 function MatchBreadcrumbs({ match }: { match: Match }) {
@@ -425,7 +426,7 @@ function SquadCard({
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Match Info — venue, date, toss, officials                                  */
+/*  Match Info — venue, date, series, weather, toss                            */
 /* -------------------------------------------------------------------------- */
 
 function MatchInfoView({ match }: { match: Match }) {
@@ -438,18 +439,13 @@ function MatchInfoView({ match }: { match: Match }) {
         </h3>
       </div>
       <div className="divide-y divide-border/40">
-        <InfoRow icon={Trophy} label="Series" value={match.series?.name} />
-        <InfoRow icon={Award} label="Format" value={match.format} />
-        <InfoRow icon={CalendarDays} label="Season" value={match.series?.season} />
         <InfoRow icon={MapPin} label="Venue" value={match.venue ? `${match.venue}${match.city ? `, ${match.city}` : ""}` : null} />
-        <InfoRow icon={CalendarDays} label="Date" value={`${formatMatchDate(match.startDate)} · ${formatMatchTime(match.startDate)}`} />
+        <InfoRow icon={CalendarDays} label="Date & Time" value={`${formatMatchDate(match.startDate)} · ${formatMatchTime(match.startDate)}`} />
+        <InfoRow icon={Trophy} label="Series" value={match.series?.name} />
+        <InfoRow icon={CloudRain} label="Weather" value={match.weather} />
         {tossWinner && match.tossDecision && (
           <InfoRow icon={Trophy} label="Toss" value={`${tossWinner.name} won the toss and elected to ${match.tossDecision === "bat" ? "bat" : "bowl"}`} />
         )}
-        <InfoRow icon={User} label="Player of the Match" value={match.manOfMatch} />
-        <InfoRow icon={Users} label="Umpires" value={match.umpires} />
-        <InfoRow icon={Users} label="TV Umpire" value={match.tvUmpire} />
-        <InfoRow icon={Shield} label="Match Referee" value={match.referee} />
       </div>
     </Card>
   )

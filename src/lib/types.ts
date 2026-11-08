@@ -175,6 +175,7 @@ export interface Match {
   // Toss — optional. tossWinnerId is a team id; tossDecision is "bat" or "bowl".
   tossWinnerId: string | null
   tossDecision: string | null
+  weather: string | null
   scorecard: Scorecard | null
   team1?: Team
   team2?: Team

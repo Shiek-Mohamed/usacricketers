@@ -89,6 +89,7 @@ export function serializeMatch(
     referee: m.referee,
     tossWinnerId: m.tossWinnerId,
     tossDecision: m.tossDecision,
+    weather: m.weather,
     scorecard: parseScorecard(m.scorecard),
     team1: m.team1 ? serializeTeam(m.team1) : undefined,
     team2: m.team2 ? serializeTeam(m.team2) : undefined,

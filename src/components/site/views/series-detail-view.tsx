@@ -83,8 +83,8 @@ export function SeriesDetailView() {
         </Button>
 
         {/* Dark navy hero — series profile card */}
-        <div className="overflow-hidden rounded-xl">
-          <div className="flex items-center justify-between gap-2 bg-[#0f1729] px-4 py-2 sm:px-6">
+        <div className="overflow-hidden rounded-xl dark:ring-1 dark:ring-white/10">
+          <div className="flex items-center justify-between gap-2 bg-[#0f1729] dark:bg-[#0d1525] dark:bg-[#0d1525] px-4 py-2 sm:px-6">
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold uppercase tracking-wide text-white/50">{series.format}</span>
               <StatusPill status={series.status} />
@@ -92,7 +92,7 @@ export function SeriesDetailView() {
             <span className="text-xs text-white/50">{series.season}</span>
           </div>
 
-          <div className="bg-gradient-to-b from-[#1e2a5e] to-[#0f1729] px-4 py-6 sm:px-6 sm:py-8">
+          <div className="bg-gradient-to-b from-[#1e2a5e] to-[#0f1729] dark:from-[#1e2a5e] dark:to-[#1a2540] dark:from-[#1e2a5e] dark:to-[#1a2540] px-4 py-6 sm:px-6 sm:py-8">
             <div className="flex flex-col items-center gap-3 text-center sm:flex-row sm:gap-4 sm:text-left">
               <div className="grid h-16 w-16 place-items-center rounded-full bg-white/10 ring-4 ring-white/20">
                 <Trophy className="h-8 w-8 text-amber-400" />
@@ -113,7 +113,7 @@ export function SeriesDetailView() {
             </div>
           </div>
 
-          <div className="bg-[#162244] px-4 py-2.5 text-center sm:px-6">
+          <div className="bg-[#162244] dark:bg-[#1a2540] dark:bg-[#1a2540] px-4 py-2.5 text-center sm:px-6">
             <p className="text-sm font-semibold text-white/90">
               {formatMatchDate(series.startDate)} — {formatMatchDate(series.endDate)}
             </p>

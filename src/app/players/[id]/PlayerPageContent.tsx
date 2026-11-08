@@ -198,9 +198,9 @@ export function PlayerPageContent({
               <PlayerBreadcrumbs name={player.name} />
 
               {/* Dark navy hero — player profile card */}
-              <div className="overflow-hidden rounded-xl">
+              <div className="overflow-hidden rounded-xl dark:ring-1 dark:ring-white/10">
                 {/* Top bar — team color + share */}
-                <div className="flex items-center justify-between gap-2 bg-[#0f1729] px-4 py-2 sm:px-6">
+                <div className="flex items-center justify-between gap-2 bg-[#0f1729] dark:bg-[#0d1525] px-4 py-2 sm:px-6">
                   <div className="flex items-center gap-2">
                     {player.team && (
                       <a href={`/teams/${player.team.id}`} className="flex items-center gap-1.5">
@@ -214,7 +214,7 @@ export function PlayerPageContent({
                 </div>
 
                 {/* Hero body — dark gradient with photo + name */}
-                <div className="bg-gradient-to-b from-[#1e2a5e] to-[#0f1729] px-4 py-6 sm:px-6 sm:py-8">
+                <div className="bg-gradient-to-b from-[#1e2a5e] to-[#0f1729] dark:from-[#1e2a5e] dark:to-[#1a2540] px-4 py-6 sm:px-6 sm:py-8">
                   <div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
                     {/* Player photo / avatar */}
                     {player.imageUrl ? (
@@ -264,7 +264,7 @@ export function PlayerPageContent({
                 </div>
 
                 {/* Status strip — quick stats summary */}
-                <div className="bg-[#162244] px-4 py-2.5 text-center sm:px-6">
+                <div className="bg-[#162244] dark:bg-[#1a2540] px-4 py-2.5 text-center sm:px-6">
                   <p className="text-sm font-semibold text-white/90">
                     {player.battingStats?.matches ?? 0} matches · {player.battingStats?.runs ?? 0} runs · {player.battingStats?.wickets ?? player.bowlingStats?.wickets ?? 0} wickets
                   </p>

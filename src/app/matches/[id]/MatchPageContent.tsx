@@ -91,7 +91,7 @@ function MatchScorebox({ match }: { match: Match }) {
   return (
     <div className={`overflow-hidden rounded-xl ${live ? "ring-2 ring-red-500/40" : ""}`}>
       {/* Top bar — format + match no + share + status */}
-      <div className="flex items-center justify-between gap-2 bg-[#0f1729] px-4 py-2 sm:px-6">
+      <div className="flex items-center justify-between gap-2 bg-[#0f1729] dark:bg-[#0d1525] px-4 py-2 sm:px-6">
         <div className="flex items-center gap-2 min-w-0">
           <FormatPill format={match.format} />
           <span className="truncate font-display text-sm font-bold uppercase tracking-wide text-white/90">{match.matchNo}</span>
@@ -116,7 +116,7 @@ function MatchScorebox({ match }: { match: Match }) {
       </div>
 
       {/* Hero scoreboard — dark navy gradient with symmetric team layout */}
-      <div className="bg-gradient-to-b from-[#1e2a5e] to-[#0f1729] px-4 py-6 sm:px-6 sm:py-8">
+      <div className="bg-gradient-to-b from-[#1e2a5e] to-[#0f1729] dark:from-[#1e2a5e] dark:to-[#1a2540] px-4 py-6 sm:px-6 sm:py-8">
         {/* Venue + date — small, centered */}
         <div className="mb-5 text-center text-xs text-white/50">
           {match.venue}{match.city ? `, ${match.city}` : ""} · {formatMatchDate(match.startDate)}
@@ -147,7 +147,7 @@ function MatchScorebox({ match }: { match: Match }) {
       </div>
 
       {/* Status strip — one-line summary */}
-      <div className="bg-[#162244] px-4 py-2.5 text-center sm:px-6">
+      <div className="bg-[#162244] dark:bg-[#1a2540] px-4 py-2.5 text-center sm:px-6">
         <p className="text-sm font-semibold text-white/90">{statusLine}</p>
       </div>
 

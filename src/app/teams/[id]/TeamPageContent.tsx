@@ -209,9 +209,9 @@ export function TeamPageContent({
               <TeamBreadcrumbs name={team.name} />
 
               {/* Dark navy hero — team profile card */}
-              <div className="overflow-hidden rounded-xl">
+              <div className="overflow-hidden rounded-xl dark:ring-1 dark:ring-white/10">
                 {/* Top bar — share */}
-                <div className="flex items-center justify-between gap-2 bg-[#0f1729] px-4 py-2 sm:px-6">
+                <div className="flex items-center justify-between gap-2 bg-[#0f1729] dark:bg-[#0d1525] px-4 py-2 sm:px-6">
                   <span className="text-xs font-bold uppercase tracking-wide text-white/50">{team.country || "International"}</span>
                   <ShareButtons title={`${team.name} — Team Profile`} />
                 </div>
@@ -250,7 +250,7 @@ export function TeamPageContent({
                 </div>
 
                 {/* Status strip */}
-                <div className="bg-[#162244] px-4 py-2.5 text-center sm:px-6">
+                <div className="bg-[#162244] dark:bg-[#1a2540] px-4 py-2.5 text-center sm:px-6">
                   <p className="text-sm font-semibold text-white/90">
                     {players.length} players · {recentMatches.length} recent matches
                   </p>

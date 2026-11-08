@@ -151,7 +151,7 @@ function MatchCard({ match }: { match: Match }) {
     return (
       <a
         href={href}
-        className="group flex w-[280px] shrink-0 flex-col gap-3 rounded-xl bg-gradient-to-b from-[#1e2a5e] to-[#0f1729] p-4 shadow-lg transition-shadow hover:shadow-xl"
+        className="group flex w-[280px] shrink-0 flex-col gap-3 rounded-xl bg-gradient-to-b from-[#1e2a5e] to-[#0f1729] dark:from-[#1e2a5e] dark:to-[#1a2540] dark:from-[#1e2a5e] dark:to-[#1a2540] p-4 shadow-lg transition-shadow hover:shadow-xl"
       >
         <div className="flex items-center justify-between">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
@@ -229,7 +229,7 @@ function LiveMatchStrip({ match }: { match: Match }) {
   return (
     <a
       href={href}
-      className="group block w-full overflow-hidden rounded-xl bg-gradient-to-b from-[#1e2a5e] to-[#0f1729] p-4 text-left shadow-lg transition-shadow hover:shadow-xl sm:p-5"
+      className="group block w-full overflow-hidden rounded-xl bg-gradient-to-b from-[#1e2a5e] to-[#0f1729] dark:from-[#1e2a5e] dark:to-[#1a2540] dark:from-[#1e2a5e] dark:to-[#1a2540] p-4 text-left shadow-lg transition-shadow hover:shadow-xl sm:p-5"
     >
       {/* Top row — LIVE badge + format + match info */}
       <div className="mb-3 flex items-center justify-between gap-2">

@@ -28,6 +28,7 @@ import { AdminShell } from "@/components/admin/admin-shell"
 import { ScorerShell } from "@/components/admin/scorer-shell"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -1220,6 +1221,20 @@ function SetupPanel({
   const [bowlerId, setBowlerId] = useState("")
   const [tossWinnerId, setTossWinnerId] = useState("")
   const [tossDecision, setTossDecision] = useState("")
+  // Quick-add player state — lets the scorer create a player on-the-fly
+  // if someone isn't in the team roster (late arrival, missing from CMS).
+  const [showAddPlayer, setShowAddPlayer] = useState(false)
+  const [addPlayerName, setAddPlayerName] = useState("")
+  const [addPlayerTeam, setAddPlayerTeam] = useState("")
+  const [addPlayerRole, setAddPlayerRole] = useState("Batsman")
+  const [addingPlayer, setAddingPlayer] = useState(false)
+  // Locally created players (merged with the prop data so dropdowns update
+  // without needing a refetch from the parent).
+  const [extraPlayers, setExtraPlayers] = useState<Player[]>([])
+
+  // Merge prop players with locally-created ones.
+  const allT1Players = [...t1Players, ...extraPlayers.filter((p) => p.teamId === t1?.id)]
+  const allT2Players = [...t2Players, ...extraPlayers.filter((p) => p.teamId === t2?.id)]
 
   // When the toss winner + decision are both set, auto-fill the batting-first
   // team: if the winner chose "bat", they bat first; if "bowl", the other
@@ -1242,13 +1257,40 @@ function SetupPanel({
   }
 
   const battingPlayers =
-    battingFirstId === t1?.id ? t1Players : battingFirstId === t2?.id ? t2Players : []
+    battingFirstId === t1?.id ? allT1Players : battingFirstId === t2?.id ? allT2Players : []
   const bowlingPlayers =
     battingFirstId === t1?.id
-      ? t2Players
+      ? allT2Players
       : battingFirstId === t2?.id
-        ? t1Players
+        ? allT1Players
         : []
+
+  // Quick-add a player to a team — creates via API, adds to local state,
+  // and auto-selects them in the specified slot (striker/non-striker/bowler).
+  async function quickAddPlayer(name: string, teamId: string, role: string, slot?: "striker" | "nonStriker" | "bowler") {
+    if (!name.trim() || !teamId || !token) return
+    setAddingPlayer(true)
+    try {
+      const res = await fetch("/api/players", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: name.trim(), teamId, role, battingStyle: "Right-hand bat", bowlingStyle: role === "Bowler" ? "Right-arm medium" : "" }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const player: Player = await res.json()
+      setExtraPlayers((prev) => [...prev, player])
+      if (slot === "striker") setStrikerId(player.id)
+      else if (slot === "nonStriker") setNonStrikerId(player.id)
+      else if (slot === "bowler") setBowlerId(player.id)
+      setAddPlayerName("")
+      setShowAddPlayer(false)
+      toast.success(`${player.name} added`)
+    } catch (e) {
+      toast.error("Failed to add player", { description: String(e) })
+    } finally {
+      setAddingPlayer(false)
+    }
+  }
 
   return (
     <div className="mt-5 space-y-4">
@@ -1383,6 +1425,70 @@ function SetupPanel({
             </Select>
           </div>
         </div>
+
+        {/* Quick add player — for when a batsman/bowler isn't in the roster */}
+        <div className="mt-3 rounded-md border border-dashed border-border p-3">
+          {!showAddPlayer ? (
+            <button
+              onClick={() => {
+                setShowAddPlayer(true)
+                setAddPlayerTeam(battingFirstId || t1?.id || "")
+              }}
+              className="flex items-center gap-1.5 text-sm font-bold text-emerald-600 hover:text-emerald-700"
+            >
+              <Plus className="h-4 w-4" />
+              Add player not in list
+            </button>
+          ) : (
+            <div className="space-y-2">
+              <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
+                <Input
+                  value={addPlayerName}
+                  onChange={(e) => setAddPlayerName(e.target.value)}
+                  placeholder="Player name"
+                  className="h-9"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && addPlayerName.trim() && addPlayerTeam) {
+                      quickAddPlayer(addPlayerName, addPlayerTeam, addPlayerRole)
+                    }
+                  }}
+                />
+                <Select value={addPlayerTeam} onValueChange={setAddPlayerTeam}>
+                  <SelectTrigger className="h-9 w-36"><SelectValue placeholder="Team" /></SelectTrigger>
+                  <SelectContent>
+                    {t1 && <SelectItem value={t1.id}>{t1.shortName}</SelectItem>}
+                    {t2 && <SelectItem value={t2.id}>{t2.shortName}</SelectItem>}
+                  </SelectContent>
+                </Select>
+                <Select value={addPlayerRole} onValueChange={setAddPlayerRole}>
+                  <SelectTrigger className="h-9 w-32"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Batsman">Batsman</SelectItem>
+                    <SelectItem value="Bowler">Bowler</SelectItem>
+                    <SelectItem value="All-rounder">All-rounder</SelectItem>
+                    <SelectItem value="Wicket-keeper">WK</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  size="sm"
+                  className="h-9 gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
+                  disabled={!addPlayerName.trim() || !addPlayerTeam || addingPlayer}
+                  onClick={() => quickAddPlayer(addPlayerName, addPlayerTeam, addPlayerRole)}
+                >
+                  {addingPlayer ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                  Add
+                </Button>
+              </div>
+              <button
+                onClick={() => { setShowAddPlayer(false); setAddPlayerName("") }}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+
         <Button
           className="mt-4 w-full gap-1.5 bg-red-600 text-white hover:bg-red-700"
           disabled={!battingFirstId || !strikerId || !nonStrikerId || !bowlerId || strikerId === nonStrikerId || !connected || !tokenReady}

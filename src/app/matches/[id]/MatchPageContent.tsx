@@ -20,6 +20,7 @@ import { LiveMatchSection } from "@/components/site/live-match-section"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart"
+import { cn } from "@/lib/utils"
 import { Bar, BarChart, Line, LineChart, XAxis, YAxis, Cell, ResponsiveContainer, CartesianGrid } from "recharts"
 import {
   ChevronRight,

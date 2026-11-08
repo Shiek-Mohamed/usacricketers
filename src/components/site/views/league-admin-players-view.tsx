@@ -186,13 +186,13 @@ export function LeagueAdminPlayersView() {
 
       {/* Player grid */}
       {loading ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 pt-4 pl-2 sm:grid-cols-2 sm:pl-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-24 w-full rounded-lg" />
           ))}
         </div>
       ) : filteredPlayers.length > 0 ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 pt-4 pl-2 sm:grid-cols-2 sm:pl-4">
           {filteredPlayers.map((player) => {
             const team = teamFor(player.teamId)
             return (

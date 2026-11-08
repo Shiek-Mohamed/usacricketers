@@ -501,10 +501,6 @@ export function MatchPageContent({ match, recent }: { match: Match; recent: Matc
             }
           >
             <div className="space-y-4">
-              {match.status === "live" && (
-                <LiveMatchSection matchId={match.id} />
-              )}
-
               {/* 6-tab Wisden-style layout */}
               <Tabs defaultValue="commentary" className="w-full">
                 <TabsList className="flex w-full justify-start gap-0 rounded-none border-b bg-transparent p-0">

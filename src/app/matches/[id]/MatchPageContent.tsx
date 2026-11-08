@@ -224,23 +224,24 @@ function ScoreHeroSide({
 /* -------------------------------------------------------------------------- */
 
 function BallChip({ kind, text, size = "sm" }: { kind: string; text: string; size?: "sm" | "md" }) {
+  // All chips use the SAME dimensions regardless of ball type — consistency
   const dim = size === "md" ? "h-9 w-9 text-sm" : "h-7 w-7 text-xs"
-  if (kind === "wicket") return <span className={`grid ${dim} shrink-0 place-items-center rounded-full bg-red-600 font-bold text-white`}>W</span>
-  if (kind === "six") return <span className={`grid ${dim} shrink-0 place-items-center rounded-full bg-fuchsia-600 font-bold text-white`}>6</span>
-  if (kind === "boundary") return <span className={`grid ${dim} shrink-0 place-items-center rounded-full bg-sky-600 font-bold text-white`}>4</span>
+  const base = `grid ${dim} shrink-0 place-items-center rounded-full font-bold`
+  if (kind === "wicket") return <span className={`${base} bg-red-600 text-white`}>W</span>
+  if (kind === "six") return <span className={`${base} bg-fuchsia-600 text-white`}>6</span>
+  if (kind === "boundary") return <span className={`${base} bg-sky-600 text-white`}>4</span>
   if (kind === "extra") {
     const t = text.toLowerCase()
     const label = t.includes("wide") ? "wd" : t.includes("no ball") ? "nb" : "+"
-    return <span className={`grid ${dim} shrink-0 place-items-center rounded-full bg-amber-500 font-bold text-amber-950`}>{label}</span>
+    return <span className={`${base} bg-amber-500 text-amber-950`}>{label}</span>
   }
   if (kind === "run") {
     const m = text.match(/^(\d+)/)
     const r = m ? m[1] : "0"
-    // Scoring balls: white circle with gray border + dark number (Wisden style)
-    return <span className={`grid ${dim} shrink-0 place-items-center rounded-full border border-gray-300 bg-white font-bold text-gray-700`}>{r}</span>
+    return <span className={`${base} border border-gray-300 bg-white text-gray-700`}>{r}</span>
   }
-  // Dot ball: dark gray filled circle with tiny lighter center dot
-  return <span className={`grid ${dim} shrink-0 place-items-center rounded-full bg-gray-300`}><span className="h-1.5 w-1.5 rounded-full bg-gray-500" /></span>
+  // Dot ball — same size, gray fill with center dot
+  return <span className={`${base} bg-gray-200`}><span className="h-1.5 w-1.5 rounded-full bg-gray-500" /></span>
 }
 
 /* -------------------------------------------------------------------------- */
@@ -356,7 +357,7 @@ function OverBlock({
           <span className="text-sm text-muted-foreground">
             {runsInOver > 0 && `${runsInOver} run${runsInOver > 1 ? "s" : ""}`}
             {hasWicket && runsInOver > 0 && " · "}
-            {hasWicket && "W"}
+            {hasWicket && <span className="font-bold text-red-600">W</span>}
             {bowler && ` · ${bowler}`}
           </span>
           <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`} />
@@ -539,29 +540,29 @@ export function MatchPageContent({ match, recent }: { match: Match; recent: Matc
             <div className="space-y-4">
               <MatchBreadcrumbs match={match} />
               <MatchScorebox match={match} />
-              {/* 6-tab Wisden-style layout */}
+              {/* 6-tab Wisden-style layout — solid block active tabs */}
               <Tabs defaultValue="commentary" className="w-full">
-                <TabsList className="flex w-full justify-start gap-1 rounded-none border-b-2 border-border bg-transparent p-0">
-                  <TabsTrigger value="commentary" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50/50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-none dark:data-[state=active]:bg-emerald-950/30">
+                <TabsList className="flex w-full justify-start gap-0 rounded-none border-b border-border bg-transparent p-0">
+                  <TabsTrigger value="commentary" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none">
                     <MessageSquare className="h-4 w-4" />
                     Commentary
                   </TabsTrigger>
-                  <TabsTrigger value="squads" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50/50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-none dark:data-[state=active]:bg-emerald-950/30">
+                  <TabsTrigger value="squads" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none">
                     <Users className="h-4 w-4" />
                     Squads
                   </TabsTrigger>
-                  <TabsTrigger value="scorecard" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50/50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-none dark:data-[state=active]:bg-emerald-950/30">
+                  <TabsTrigger value="scorecard" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none">
                     Scorecard
                   </TabsTrigger>
-                  <TabsTrigger value="winviz" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50/50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-none dark:data-[state=active]:bg-emerald-950/30">
+                  <TabsTrigger value="winviz" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none">
                     <TrendingUp className="h-4 w-4" />
                     WinViz
                   </TabsTrigger>
-                  <TabsTrigger value="graphs" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50/50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-none dark:data-[state=active]:bg-emerald-950/30">
+                  <TabsTrigger value="graphs" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none">
                     <BarChart3 className="h-4 w-4" />
                     Graphs
                   </TabsTrigger>
-                  <TabsTrigger value="info" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50/50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-none dark:data-[state=active]:bg-emerald-950/30">
+                  <TabsTrigger value="info" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none">
                     <Info className="h-4 w-4" />
                     Match Info
                   </TabsTrigger>

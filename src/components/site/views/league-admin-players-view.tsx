@@ -302,19 +302,19 @@ function PlayerCard({
           <div className="mt-1.5 flex items-center gap-2 text-sm">
             {team && <span className="font-bold uppercase tracking-wide" style={{ color: teamColor }}>{team.shortName}</span>}
             <span className="text-muted-foreground/50">·</span>
-            <span className="truncate text-muted-foreground">{player.role}</span>
+            <span className="truncate text-foreground">{player.role}</span>
           </div>
           {/* Batting / bowling style */}
-          <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+          <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-foreground">
             {player.battingStyle && (
               <span className="inline-flex items-center gap-1">
-                <span className="font-semibold uppercase tracking-wide text-muted-foreground/60">Bat:</span>
+                <span className="font-semibold uppercase tracking-wide text-foreground/70">Bat:</span>
                 {player.battingStyle.replace(" bat", "")}
               </span>
             )}
             {player.bowlingStyle && (
               <span className="inline-flex items-center gap-1">
-                <span className="font-semibold uppercase tracking-wide text-muted-foreground/60">Bowl:</span>
+                <span className="font-semibold uppercase tracking-wide text-foreground/70">Bowl:</span>
                 {player.bowlingStyle}
               </span>
             )}

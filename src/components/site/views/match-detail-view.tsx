@@ -115,8 +115,8 @@ function MatchHeaderCard({ match }: { match: Match }) {
           {match.venue}{match.city ? `, ${match.city}` : ""} · {formatMatchDate(match.startDate)}
         </div>
 
-        {/* Two teams symmetric — crests + scores + "vs" */}
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-6">
+        {/* Two teams centered as a group — crests + scores + "vs" */}
+        <div className="flex items-center justify-center gap-6 sm:gap-12">
           {/* Team 1 (left) */}
           <TeamHeroSide team={t1} innings={t1Innings} align="left" />
 

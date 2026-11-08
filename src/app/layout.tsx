@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Rajdhani } from "next/font/google";
+import { Geist, Geist_Mono, Raleway } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
@@ -15,16 +15,15 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Rajdhani — a semi-condensed, technical/sporty font. Modern, slightly
-// squared letterforms — a middle ground between "tech dashboard" and
-// "sports broadcast". Less condensed than Barlow/Teko, so it reads cleaner
-// at small sizes while still feeling sporty. Loaded alongside Geist (body).
-// To swap fonts later, only this import needs to change — components use
-// the generic `font-display` Tailwind class.
-const displayFont = Rajdhani({
+// Raleway — an elegant, clean sans-serif with a slightly rounded feel.
+// Great for sports/news headlines: reads well at large sizes, has strong
+// weights (up to 800) for bold headlines, and pairs cleanly with Geist
+// (body). Loaded alongside Geist — components use the generic `font-display`
+// Tailwind class, so swapping fonts only requires changing this import.
+const displayFont = Raleway({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {

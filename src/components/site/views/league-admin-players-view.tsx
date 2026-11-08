@@ -324,27 +324,29 @@ function PlayerCard({
           </div>
         </div>
       </button>
-      {/* Actions — edit + delete side by side */}
+      {/* Actions — edit + delete side by side with labels */}
       <div className="flex shrink-0 items-center gap-1">
         <Button
           variant="ghost"
-          size="icon"
-          className="h-9 w-9 opacity-60 transition-opacity group-hover:opacity-100"
+          size="sm"
+          className="h-9 gap-1.5 px-2 opacity-60 transition-opacity group-hover:opacity-100"
           aria-label="Edit player"
           title="Edit player"
           onClick={onEdit}
         >
           <Pencil className="h-4 w-4" />
+          <span className="text-xs font-bold uppercase tracking-wide">Edit</span>
         </Button>
         <Button
           variant="ghost"
-          size="icon"
-          className="h-9 w-9 text-destructive opacity-60 transition-opacity group-hover:opacity-100 hover:text-destructive"
+          size="sm"
+          className="h-9 gap-1.5 px-2 text-destructive opacity-60 transition-opacity group-hover:opacity-100 hover:text-destructive"
           aria-label="Delete player"
           title="Delete player"
           onClick={onDelete}
         >
           <Trash2 className="h-4 w-4" />
+          <span className="text-xs font-bold uppercase tracking-wide">Delete</span>
         </Button>
       </div>
     </Card>

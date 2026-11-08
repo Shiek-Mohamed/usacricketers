@@ -265,10 +265,13 @@ function CommentaryAccordion({ scorecard, match }: { scorecard: Scorecard; match
   }))
 
   // Group commentary by over number. Newest first.
+  // Skip over 0 — those are pre-match info messages ("innings begins"),
+  // not actual overs. Cricket overs start from 1.
   const ballKinds = new Set(["run", "boundary", "six", "wicket", "extra", "dot"])
   const overMap = new Map<number, typeof commentary>()
   for (const c of commentary) {
     const overNum = parseInt(c.over?.split(".")[0] || "0", 10)
+    if (overNum < 1) continue // skip info/pre-match entries
     if (!overMap.has(overNum)) overMap.set(overNum, [])
     overMap.get(overNum)!.push(c)
   }

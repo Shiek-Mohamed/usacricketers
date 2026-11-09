@@ -145,6 +145,18 @@ export function LiveScorerView() {
   // History stack for undo
   const [history, setHistory] = useState<LiveMatchState[]>([])
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Tracks the last bowler — used to enforce the cricket rule that a bowler
+  // cannot bowl two consecutive overs. Updated whenever the bowlerId changes
+  // from a value to null (which happens at over end in the scoring engine).
+  const lastBowlerRef = useRef<string | null>(null)
+
+  // Track the last bowler: when bowlerId goes from a value to null (over end),
+  // capture the previous value so we can prevent consecutive-over bowling.
+  useEffect(() => {
+    if (liveState?.bowlerId) {
+      lastBowlerRef.current = liveState.bowlerId
+    }
+  }, [liveState?.bowlerId])
   // Wicket-dialog open state — the Wicket button opens a modal that lets the
   // admin pick dismissal type + fielder(s) involved, then sends the structured
   // wicket BallEvent to applyBall via handleBall.
@@ -621,6 +633,15 @@ export function LiveScorerView() {
 
   function pickNextBowler(playerId: string) {
     if (!liveState) return
+    // Cricket rule: a bowler cannot bowl two consecutive overs.
+    // The previous bowler is tracked in lastBowlerRef (updated whenever
+    // bowlerId changes from a value to null at over end).
+    if (playerId === lastBowlerRef.current) {
+      toast.error("A bowler cannot bowl two consecutive overs", {
+        description: "Pick a different bowler for this over.",
+      })
+      return
+    }
     const bowlingPlayers = playersByTeam[liveState.innings[liveState.currentInnings].bowlingTeamId] ?? []
     const p = bowlingPlayers.find((x) => x.id === playerId)
     if (!p) return
@@ -978,7 +999,9 @@ export function LiveScorerView() {
               {needBowler && (
                 <Picker
                   title="Next bowler"
-                  players={playersByTeam[currentInnings!.bowlingTeamId] ?? []}
+                  players={(playersByTeam[currentInnings!.bowlingTeamId] ?? []).filter(
+                    (p) => p.id !== lastBowlerRef.current
+                  )}
                   placeholder="Select bowler for next over"
                   confirmLabel="Set bowler"
                   onPick={pickNextBowler}

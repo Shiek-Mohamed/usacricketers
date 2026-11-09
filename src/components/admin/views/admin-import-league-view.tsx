@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
@@ -17,6 +18,7 @@ import {
 import {
   Upload,
   FileJson,
+  FileSpreadsheet,
   CheckCircle2,
   XCircle,
   Loader2,
@@ -26,6 +28,8 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { useAppStore } from "@/lib/store"
+import { api } from "@/lib/api"
+import { parseCsvImport, previewCsvImport } from "@/lib/csv-import"
 import type { ImportedLeagueData, Series } from "@/lib/types"
 
 /** Mirror of the API response from POST /api/admin/import-league. */
@@ -86,6 +90,22 @@ export function AdminImportLeagueView() {
   const [importing, setImporting] = useState(false)
   const [summary, setSummary] = useState<ImportSummary | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
+
+  // CSV import state
+  const [csvMode, setCsvMode] = useState(false)
+  const [csvLeagueName, setCsvLeagueName] = useState("")
+  const [csvSeason, setCsvSeason] = useState(String(new Date().getFullYear()))
+  const [csvFormat, setCsvFormat] = useState("T20")
+  const [csvTeams, setCsvTeams] = useState("")
+  const [csvPlayers, setCsvPlayers] = useState("")
+  const [csvMatches, setCsvMatches] = useState("")
+  const [csvPreview, setCsvPreview] = useState<{
+    teamCount: number
+    playerCount: number
+    matchCount: number
+    sampleTeams: string[]
+    sampleMatches: string[]
+  } | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -223,17 +243,207 @@ export function AdminImportLeagueView() {
   // ── Render ────────────────────────────────────────────────────────
   return (
     <AdminShell title="Import League">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <FileJson className="h-4 w-4 text-emerald-600" />
-            Import a league from JSON
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <p className="text-sm text-muted-foreground">
-            Upload a JSON file matching the{" "}
-            <code className="rounded bg-muted px-1 py-0.5 text-xs">
+      {/* Mode toggle: JSON vs CSV */}
+      <div className="flex gap-2">
+        <Button
+          variant={!csvMode ? "default" : "outline"}
+          size="sm"
+          className="gap-1.5"
+          onClick={() => setCsvMode(false)}
+        >
+          <FileJson className="h-3.5 w-3.5" /> JSON Import
+        </Button>
+        <Button
+          variant={csvMode ? "default" : "outline"}
+          size="sm"
+          className="gap-1.5"
+          onClick={() => setCsvMode(true)}
+        >
+          <FileSpreadsheet className="h-3.5 w-3.5" /> CSV Import
+        </Button>
+      </div>
+
+      {/* CSV Import Mode */}
+      {csvMode && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+              Import from CSV (CricClubs / PlayCricket / Excel)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300">
+              <strong>How it works:</strong> Export your league data from CricClubs (or any platform)
+              as CSV files. Paste the CSV content into the boxes below. The importer auto-detects
+              column headers (e.g., "Team Name", "team_name", "teamname" all work).
+            </div>
+
+            {/* League info */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="grid gap-1.5">
+                <Label className="text-sm font-bold">League Name *</Label>
+                <Input value={csvLeagueName} onChange={(e) => setCsvLeagueName(e.target.value)} placeholder="Arizona Premier Cricket League" />
+              </div>
+              <div className="grid gap-1.5">
+                <Label className="text-sm font-bold">Season</Label>
+                <Input value={csvSeason} onChange={(e) => setCsvSeason(e.target.value)} placeholder="2025" />
+              </div>
+              <div className="grid gap-1.5">
+                <Label className="text-sm font-bold">Format</Label>
+                <Select value={csvFormat} onValueChange={setCsvFormat}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="T20">T20</SelectItem>
+                    <SelectItem value="ODI">ODI (50 over)</SelectItem>
+                    <SelectItem value="Test">Test</SelectItem>
+                    <SelectItem value="T10">T10</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* CSV text areas */}
+            <div className="grid gap-3">
+              <div className="grid gap-1.5">
+                <Label className="text-sm font-bold">Teams CSV (optional)</Label>
+                <textarea
+                  className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-xs font-mono"
+                  value={csvTeams}
+                  onChange={(e) => setCsvTeams(e.target.value)}
+                  placeholder={"Team Name,Short Name,Country\nAustralia,AUS,Australia\nIndia,IND,India"}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label className="text-sm font-bold">Players CSV (optional)</Label>
+                <textarea
+                  className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-xs font-mono"
+                  value={csvPlayers}
+                  onChange={(e) => setCsvPlayers(e.target.value)}
+                  placeholder={"Player Name,Team,Role,Batting Style\nVirat Kohli,India,Batsman,Right-hand bat\nJasprit Bumrah,India,Bowler,Right-hand bat"}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label className="text-sm font-bold">Matches CSV (optional)</Label>
+                <textarea
+                  className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-xs font-mono"
+                  value={csvMatches}
+                  onChange={(e) => setCsvMatches(e.target.value)}
+                  placeholder={"Team 1,Team 2,Date,Venue,Result,Format\nIndia,Australia,2025-03-09,Dubai,India won by 4 wickets,T20"}
+                />
+              </div>
+            </div>
+
+            {/* Preview + Import buttons */}
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                disabled={!csvLeagueName || (!csvTeams && !csvPlayers && !csvMatches)}
+                onClick={() => {
+                  try {
+                    const preview = previewCsvImport({
+                      leagueName: csvLeagueName,
+                      season: csvSeason,
+                      format: csvFormat,
+                      teamsCsv: csvTeams || undefined,
+                      playersCsv: csvPlayers || undefined,
+                      matchesCsv: csvMatches || undefined,
+                    })
+                    setCsvPreview(preview)
+                    if (preview.teamCount + preview.playerCount + preview.matchCount === 0) {
+                      toast.warning("No data parsed — check your CSV format")
+                    } else {
+                      toast.success(`Parsed: ${preview.teamCount} teams, ${preview.playerCount} players, ${preview.matchCount} matches`)
+                    }
+                  } catch (e) {
+                    toast.error("CSV parse failed", { description: String(e) })
+                  }
+                }}
+              >
+                <Info className="h-3.5 w-3.5" /> Preview
+              </Button>
+              <Button
+                size="sm"
+                className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
+                disabled={importing || !csvLeagueName || (!csvTeams && !csvPlayers && !csvMatches)}
+                onClick={async () => {
+                  setImporting(true)
+                  setImportError(null)
+                  try {
+                    const data = parseCsvImport({
+                      leagueName: csvLeagueName,
+                      season: csvSeason,
+                      format: csvFormat,
+                      teamsCsv: csvTeams || undefined,
+                      playersCsv: csvPlayers || undefined,
+                      matchesCsv: csvMatches || undefined,
+                    })
+                    const res = await fetch("/api/admin/import-league", {
+                      method: "POST",
+                      headers: withCSRF({ "Content-Type": "application/json" }),
+                      body: JSON.stringify(data),
+                    })
+                    if (!res.ok) {
+                      const err = await res.json().catch(() => ({}))
+                      throw new Error(err.error || `HTTP ${res.status}`)
+                    }
+                    const result = await res.json()
+                    setSummary(result)
+                    toast.success("League imported successfully!")
+                  } catch (e) {
+                    setImportError(String(e))
+                    toast.error("Import failed", { description: String(e) })
+                  } finally {
+                    setImporting(false)
+                  }
+                }}
+              >
+                {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                Import League
+              </Button>
+            </div>
+
+            {/* Preview results */}
+            {csvPreview && (
+              <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+                <div className="flex items-center gap-4 text-sm">
+                  <Badge variant="secondary">{csvPreview.teamCount} teams</Badge>
+                  <Badge variant="secondary">{csvPreview.playerCount} players</Badge>
+                  <Badge variant="secondary">{csvPreview.matchCount} matches</Badge>
+                </div>
+                {csvPreview.sampleTeams.length > 0 && (
+                  <div>
+                    <span className="text-xs font-bold uppercase text-muted-foreground">Sample teams: </span>
+                    <span className="text-xs">{csvPreview.sampleTeams.join(", ")}</span>
+                  </div>
+                )}
+                {csvPreview.sampleMatches.length > 0 && (
+                  <div>
+                    <span className="text-xs font-bold uppercase text-muted-foreground">Sample matches: </span>
+                    <span className="text-xs">{csvPreview.sampleMatches.join(", ")}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* JSON Import Mode (existing) */}
+      {!csvMode && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <FileJson className="h-4 w-4 text-emerald-600" />
+              Import a league from JSON
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <p className="text-sm text-muted-foreground">
+              Upload a JSON file matching the{" "}
+              <code className="rounded bg-muted px-1 py-0.5 text-xs">
               ImportedLeagueData
             </code>{" "}
             schema to import a league (Series), its teams, players, and
@@ -437,6 +647,7 @@ export function AdminImportLeagueView() {
           </div>
         </CardContent>
       </Card>
+      )}
 
       {/* Result card */}
       {(summary || importError) && (

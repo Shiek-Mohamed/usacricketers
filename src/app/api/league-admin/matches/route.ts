@@ -67,6 +67,9 @@ export async function POST(req: NextRequest) {
         startDate: body.startDate ? new Date(body.startDate) : new Date(),
         result: "",
         scorecard: "",
+        umpires: String(body.umpires || ""),
+        tvUmpire: String(body.tvUmpire || ""),
+        referee: String(body.referee || ""),
       },
       include: { team1: true, team2: true, series: true },
     })

@@ -97,6 +97,9 @@ interface MatchForm {
   venue: string
   city: string
   startDate: string // datetime-local value
+  umpires: string
+  tvUmpire: string
+  referee: string
 }
 
 function emptyMatchForm(): MatchForm {
@@ -115,6 +118,9 @@ function emptyMatchForm(): MatchForm {
     venue: "",
     city: "",
     startDate: local,
+    umpires: "",
+    tvUmpire: "",
+    referee: "",
   }
 }
 
@@ -263,6 +269,9 @@ export function LeagueAdminMatchesView() {
       venue: m.venue,
       city: m.city,
       startDate: toDatetimeLocal(m.startDate),
+      umpires: m.umpires || "",
+      tvUmpire: m.tvUmpire || "",
+      referee: m.referee || "",
     })
     // Editing skips the wizard — show all fields at once
     setWizardStep(0)
@@ -342,6 +351,9 @@ export function LeagueAdminMatchesView() {
         startDate: form.startDate
           ? new Date(form.startDate).toISOString()
           : undefined,
+        umpires: form.umpires || undefined,
+        tvUmpire: form.tvUmpire || undefined,
+        referee: form.referee || undefined,
       }
       if (editingId) {
         // PUT ignores seriesId (immutable), so we send the same payload.
@@ -686,6 +698,21 @@ export function LeagueAdminMatchesView() {
                   <div className="grid gap-2">
                     <Label htmlFor="m-city" className="text-sm font-bold">City</Label>
                     <Input id="m-city" value={form.city} onChange={(e) => set("city", e.target.value)} placeholder="e.g. Dallas" disabled={saving} />
+                  </div>
+                </div>
+                {/* Officials (optional) */}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="m-umpires" className="text-xs font-bold text-muted-foreground">Umpires (optional)</Label>
+                    <Input id="m-umpires" value={form.umpires} onChange={(e) => set("umpires", e.target.value)} placeholder="John Smith, Jane Doe" disabled={saving} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="m-tvumpire" className="text-xs font-bold text-muted-foreground">TV Umpire (optional)</Label>
+                    <Input id="m-tvumpire" value={form.tvUmpire} onChange={(e) => set("tvUmpire", e.target.value)} placeholder="John Smith" disabled={saving} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="m-referee" className="text-xs font-bold text-muted-foreground">Match Referee (optional)</Label>
+                    <Input id="m-referee" value={form.referee} onChange={(e) => set("referee", e.target.value)} placeholder="Jane Doe" disabled={saving} />
                   </div>
                 </div>
               </>

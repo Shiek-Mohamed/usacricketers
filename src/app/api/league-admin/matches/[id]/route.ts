@@ -52,7 +52,7 @@ export async function PUT(
   try {
     const body = await req.json()
     const data: Record<string, unknown> = {}
-    for (const k of ["format", "matchNo", "status", "venue", "city", "result", "scorecard"]) {
+    for (const k of ["format", "matchNo", "status", "venue", "city", "result", "scorecard", "umpires", "tvUmpire", "referee"]) {
       if (body[k] !== undefined) data[k] = String(body[k])
     }
     if (body.startDate) data.startDate = new Date(body.startDate)

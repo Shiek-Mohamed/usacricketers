@@ -16,7 +16,7 @@ import type { LiveMatchState } from "./scoring"
  * Value: `{ state: LiveMatchState, savedAt: number }`
  * Freshness: entries older than 4 hours are ignored (stale session).
  */
-const LOCAL_BACKUP_TTL_MS = 4 * 60 * 60 * 1000 // 4 hours
+const LOCAL_BACKUP_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours — matches can span a full day
 
 function saveLocalBackup(matchId: string, state: LiveMatchState) {
   if (typeof window === "undefined") return
@@ -32,7 +32,7 @@ function saveLocalBackup(matchId: string, state: LiveMatchState) {
   }
 }
 
-function loadLocalBackup(matchId: string): LiveMatchState | null {
+export function loadLocalBackup(matchId: string): LiveMatchState | null {
   if (typeof window === "undefined") return null
   try {
     const raw = window.localStorage.getItem(`live-score:${matchId}`)

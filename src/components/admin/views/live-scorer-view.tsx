@@ -67,9 +67,10 @@ import {
   Loader2,
   CloudRain,
   Check,
+  RotateCw,
 } from "lucide-react"
 import type { Player } from "@/lib/types"
-import { useLiveScoreBackup } from "@/lib/use-live-score-backup"
+import { useLiveScoreBackup, loadLocalBackup } from "@/lib/use-live-score-backup"
 import { calculateDLS, type DLSResult } from "@/lib/dls"
 
 /** Log a scoring action to the audit trail (non-fatal — fire and forget). */
@@ -901,7 +902,41 @@ export function LiveScorerView() {
               </p>
             </div>
           ) : showSetup ? (
-            <SetupPanel
+            <>
+              {/* Resume from backup — if a localStorage backup exists, offer
+                  to restore it instead of starting from scratch. */}
+              {id && token && (() => {
+                const backup = loadLocalBackup(id)
+                if (!backup) return null
+                const inn = backup.innings[backup.currentInnings]
+                return (
+                  <div className="mb-4 rounded-lg border-2 border-emerald-400 bg-emerald-50 p-4 dark:bg-emerald-950/40">
+                    <div className="mb-2 flex items-center gap-2">
+                      <RotateCw className="h-4 w-4 text-emerald-600" />
+                      <h3 className="text-sm font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+                        Resume Scoring Session
+                      </h3>
+                    </div>
+                    <p className="mb-3 text-sm text-emerald-800 dark:text-emerald-300">
+                      A previous scoring session was found for this match
+                      {inn ? ` — ${inn.teamShortName} ${inn.totalRuns}/${inn.totalWickets} (${inn.totalOvers} ov)` : ""}.
+                      Resume from where you left off, or start a new innings below.
+                    </p>
+                    <Button
+                      size="sm"
+                      className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
+                      onClick={() => {
+                        pushState(backup)
+                        toast.success("Scoring session restored!")
+                      }}
+                    >
+                      <RotateCw className="h-3.5 w-3.5" />
+                      Resume Scoring
+                    </Button>
+                  </div>
+                )
+              })()}
+              <SetupPanel
               t1={t1}
               t2={t2}
               t1Players={t1Players ?? []}
@@ -912,6 +947,7 @@ export function LiveScorerView() {
               matchId={match?.id}
               token={token}
             />
+            </>
           ) : (
             <div className="mt-4 space-y-5">
               {/* Live scoreboard summary */}

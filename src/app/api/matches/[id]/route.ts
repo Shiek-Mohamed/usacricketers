@@ -49,6 +49,7 @@ export async function PUT(
           : body.scorecard
           ? JSON.stringify(body.scorecard)
           : "",
+      liveStateJson: body.liveStateJson === undefined ? undefined : String(body.liveStateJson),
     },
     include: { team1: true, team2: true, series: true },
   })

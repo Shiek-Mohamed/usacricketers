@@ -488,6 +488,11 @@ export function LiveScorerView() {
           scorecard: stateToScorecard(state),
           status: state.status,
           result: state.result,
+          // Save the FULL LiveMatchState to the DB so scoring can be resumed
+          // even after the score-service restarts AND localStorage is cleared
+          // (e.g. different browser, overnight, weekend). The liveStateJson
+          // field stores the complete state including striker/bowler IDs.
+          liveStateJson: JSON.stringify(state),
         })
         refetch()
       } catch (e) {
@@ -924,12 +929,21 @@ export function LiveScorerView() {
             </div>
           ) : showSetup ? (
             <>
-              {/* Resume from backup — if a localStorage backup exists, offer
-                  to restore it instead of starting from scratch. */}
+              {/* Resume from backup — checks localStorage first, then the DB
+                  (liveStateJson field on the match record). This covers all
+                  scenarios: overnight, weekend, different browser, score-service
+                  restart, etc. */}
               {id && token && (() => {
-                const backup = loadLocalBackup(id)
+                // Try localStorage backup first (fastest, most complete)
+                const localBackup = loadLocalBackup(id)
+                // Fall back to DB-saved liveStateJson (survives browser clears)
+                const dbBackup = !localBackup && match?.liveStateJson
+                  ? (() => { try { return JSON.parse(match.liveStateJson) as LiveMatchState } catch { return null } })()
+                  : null
+                const backup = localBackup ?? dbBackup
                 if (!backup) return null
                 const inn = backup.innings[backup.currentInnings]
+                const source = localBackup ? "this browser" : "the database"
                 return (
                   <div className="mb-4 rounded-lg border-2 border-emerald-400 bg-emerald-50 p-4 dark:bg-emerald-950/40">
                     <div className="mb-2 flex items-center gap-2">
@@ -939,7 +953,7 @@ export function LiveScorerView() {
                       </h3>
                     </div>
                     <p className="mb-3 text-sm text-emerald-800 dark:text-emerald-300">
-                      A previous scoring session was found for this match
+                      A previous scoring session was found in {source}
                       {inn ? ` — ${inn.teamShortName} ${inn.totalRuns}/${inn.totalWickets} (${inn.totalOvers} ov)` : ""}.
                       Resume from where you left off, or start a new innings below.
                     </p>

@@ -19,7 +19,7 @@ const SCORER_SECRET =
 const INTERNAL_SECRET =
   process.env.INTERNAL_SECRET || "cric-cms-internal-change-me"
 
-const TOKEN_TTL_MS = 1000 * 60 * 60 * 12 // 12 hours
+const TOKEN_TTL_MS = 1000 * 60 * 60 * 48 // 48 hours — matches can span multiple days
 
 export interface ScorerTokenPayload {
   scorerId: string

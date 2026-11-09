@@ -177,6 +177,7 @@ export interface Match {
   tossDecision: string | null
   weather: string | null
   scorecard: Scorecard | null
+  liveStateJson: string
   team1?: Team
   team2?: Team
   series?: Series | null

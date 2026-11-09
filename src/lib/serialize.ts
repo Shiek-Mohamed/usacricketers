@@ -91,6 +91,7 @@ export function serializeMatch(
     tossDecision: m.tossDecision,
     weather: m.weather,
     scorecard: parseScorecard(m.scorecard),
+    liveStateJson: m.liveStateJson ?? "",
     team1: m.team1 ? serializeTeam(m.team1) : undefined,
     team2: m.team2 ? serializeTeam(m.team2) : undefined,
     series: m.series ? serializeSeries(m.series) : null,

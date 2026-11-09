@@ -187,6 +187,46 @@ export function LeagueHomepage({ data }: { data: LeagueHomepageData }) {
   return (
     <div className="min-w-0 bg-league-bg text-league-ink font-sans">
       {/* ------------------------------------------------------------ */}
+      {/* WISDEN-STYLE DARK HERO BANNER                                  */}
+      {/* ------------------------------------------------------------ */}
+      <div className="mx-auto w-full max-w-[1200px] px-3 pt-4 sm:px-5">
+        <div className="overflow-hidden rounded-xl dark:ring-1 dark:ring-white/10">
+          {/* Top bar */}
+          <div className="flex items-center justify-between gap-2 bg-[#0f1729] dark:bg-[#0d1525] px-4 py-2 sm:px-6">
+            <span className="text-xs font-bold uppercase tracking-wide text-white/50">{league.format || "Cricket"} · {season}</span>
+            <a href="/" className="text-xs font-bold text-white/40 hover:text-white/70">← Back to site</a>
+          </div>
+
+          {/* Hero body — dark gradient with league name */}
+          <div className="bg-gradient-to-b from-[#1e2a5e] to-[#0f1729] dark:from-[#1e2a5e] dark:to-[#1a2540] px-4 py-6 sm:px-6 sm:py-8">
+            <div className="flex flex-col items-center gap-3 text-center sm:flex-row sm:gap-4 sm:text-left">
+              <div className="grid h-16 w-16 place-items-center rounded-full bg-white/10 ring-4 ring-white/20">
+                <span className="font-display text-xl font-bold text-white">{leagueInitials}</span>
+              </div>
+              <div className="flex-1">
+                <h1 className="font-display text-2xl font-extrabold tracking-tight text-white sm:text-3xl">{leagueName}</h1>
+                <div className="mt-1 flex flex-wrap items-center justify-center gap-2 text-sm text-white/70 sm:justify-start">
+                  <span className="font-bold uppercase tracking-wide">{leagueShortName}</span>
+                  <span className="text-white/30">·</span>
+                  <span>{season}</span>
+                  <span className="text-white/30">·</span>
+                  <span>{recentResults.length + upcomingMatches.length + liveMatches.length} matches</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Status strip */}
+          <div className="bg-[#162244] dark:bg-[#1a2540] px-4 py-2.5 text-center sm:px-6">
+            <p className="text-sm font-semibold text-white/90">
+              {liveMatches.length > 0 && <span className="text-red-400">{liveMatches.length} live · </span>}
+              {recentResults.length} completed · {upcomingMatches.length} upcoming
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ------------------------------------------------------------ */}
       {/* SECTION 1: TOPLINE BAR                                         */}
       {/* ------------------------------------------------------------ */}
       <div className="bg-navy-dark text-[#b8c5d4] text-xs py-2">

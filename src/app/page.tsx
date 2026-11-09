@@ -32,6 +32,7 @@ import { SearchView } from "@/components/site/views/search-view"
 import { FeedbackView } from "@/components/site/views/feedback-view"
 import { DashboardView } from "@/components/admin/views/dashboard-view"
 import { AdminArticlesView } from "@/components/admin/views/articles-view"
+import { AdminArticleEditView } from "@/components/admin/views/admin-article-edit-view"
 import { AdminMatchesView } from "@/components/admin/views/matches-view"
 import { AdminPlayersView } from "@/components/admin/views/players-view"
 import { AdminTeamsView } from "@/components/admin/views/teams-view"
@@ -170,6 +171,8 @@ export default function Home() {
         return <DashboardView />
       case "admin-articles":
         return <AdminArticlesView />
+      case "admin-article-edit":
+        return <AdminArticleEditView />
       case "admin-matches":
         return <AdminMatchesView />
       case "admin-players":

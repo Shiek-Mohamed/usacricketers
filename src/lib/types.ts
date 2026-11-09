@@ -217,6 +217,7 @@ export type ViewKey =
   | "admin-login"
   | "admin-reset-password"
   | "admin-articles"
+  | "admin-article-edit"
   | "admin-matches"
   | "admin-players"
   | "admin-teams"

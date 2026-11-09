@@ -41,6 +41,10 @@ import {
   ArrowRight,
   Zap,
   Clock,
+  Radio,
+  Plus,
+  Pencil,
+  CalendarDays,
 } from "lucide-react"
 import type { ViewKey } from "@/lib/types"
 
@@ -104,15 +108,73 @@ export function DashboardView() {
 
   const recentArticles = (articles.data?.items ?? []).slice(0, 5)
   const recentMatches = (matches.data ?? []).slice(0, 5)
+  const liveMatches = (matches.data ?? []).filter((m) => m.status === "live")
   const loading =
     teams.loading ||
     players.loading ||
-    matches.loading ||
     series.loading ||
     articles.loading
 
   return (
     <AdminShell title="Dashboard">
+      {/* Live matches banner */}
+      {liveMatches.length > 0 && (
+        <div className="overflow-hidden rounded-xl bg-gradient-to-b from-[#1e2a5e] to-[#0f1729] dark:from-[#1e2a5e] dark:to-[#1a2540] dark:ring-1 dark:ring-white/10 p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+              </span>
+              Live Now
+            </span>
+            <span className="text-sm text-white/50">{liveMatches.length} match{liveMatches.length > 1 ? "es" : ""} in progress</span>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {liveMatches.map((m) => {
+              const sc = m.scorecard
+              const t1Score = sc?.innings?.filter((i) => i.teamId === m.team1Id).map((i) => `${i.totalRuns}/${i.totalWickets}`).join(" · ")
+              const t2Score = sc?.innings?.filter((i) => i.teamId === m.team2Id).map((i) => `${i.totalRuns}/${i.totalWickets}`).join(" · ")
+              return (
+                <a
+                  key={m.id}
+                  href={`/matches/${m.id}`}
+                  className="flex min-w-[200px] flex-1 items-center justify-between gap-3 rounded-lg bg-white/5 px-3 py-2 transition-colors hover:bg-white/10"
+                >
+                  <div className="text-center">
+                    <div className="text-xs font-bold uppercase text-white/70">{m.team1?.shortName}</div>
+                    {t1Score ? <div className="text-sm font-extrabold text-white">{t1Score}</div> : <div className="text-xs text-white/40">—</div>}
+                  </div>
+                  <span className="text-xs font-bold text-white/30">vs</span>
+                  <div className="text-center">
+                    <div className="text-xs font-bold uppercase text-white/70">{m.team2?.shortName}</div>
+                    {t2Score ? <div className="text-sm font-extrabold text-white">{t2Score}</div> : <div className="text-xs text-white/40">—</div>}
+                  </div>
+                </a>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Quick actions */}
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => navigate("admin-matches")}>
+          <Plus className="h-3.5 w-3.5" /> New Match
+        </Button>
+        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate("admin-players")}>
+          <UserSearch className="h-3.5 w-3.5" /> Add Player
+        </Button>
+        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate("admin-articles")}>
+          <Pencil className="h-3.5 w-3.5" /> Write Article
+        </Button>
+        {liveMatches.length > 0 && (
+          <Button size="sm" variant="outline" className="gap-1.5 border-red-300 text-red-700 hover:bg-red-50" onClick={() => navigate("live-scorer", liveMatches[0].id)}>
+            <Radio className="h-3.5 w-3.5" /> Score Live
+          </Button>
+        )}
+      </div>
+
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {stats.map((s) => {

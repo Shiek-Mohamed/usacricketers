@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useAppStore } from "@/lib/store"
 import { useArticles, useMatches } from "@/lib/use-data"
 import { ArticleCard } from "@/components/cricket/article-card"
 import { Input } from "@/components/ui/input"
@@ -40,7 +41,12 @@ function NewsSkeleton() {
 }
 
 export function NewsView() {
-  const [category, setCategory] = useState<string>("all")
+  // The category is stored in the app store's `id` field — set by footer/nav
+  // links and by the category pills below. This makes the store the single
+  // source of truth, so deep links like ?view=news&id=feature work and are
+  // shareable.
+  const category = useAppStore((s) => s.id) || "all"
+  const navigate = useAppStore((s) => s.navigate)
   const [q, setQ] = useState("")
   const [debouncedQ, setDebouncedQ] = useState("")
   // Lazy init: read page + tag from URL on mount (deep-link support).
@@ -78,7 +84,9 @@ export function NewsView() {
   const total = data?.total ?? 0
 
   function selectCategory(c: string) {
-    setCategory(c)
+    // Update the store so the URL reflects the category (?view=news&id=feature)
+    // and the footer/header active states stay in sync.
+    navigate("news", c === "all" ? null : c)
     goToPage(1)
   }
   function onSearch(v: string) {

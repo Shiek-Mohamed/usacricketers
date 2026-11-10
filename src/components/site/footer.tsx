@@ -5,7 +5,7 @@ import { Trophy, Users, CalendarDays, Newspaper, BarChart3, Activity, Mic, Image
 import type { ViewKey } from "@/lib/types"
 import { NewsletterSignup } from "@/components/site/newsletter-signup"
 
-const footerNav: { title: string; links: { label: string; view: ViewKey }[] }[] = [
+const footerNav: { title: string; links: { label: string; view: ViewKey; category?: string }[] }[] = [
   {
     title: "Cricket",
     links: [
@@ -27,10 +27,10 @@ const footerNav: { title: string; links: { label: string; view: ViewKey }[] }[] 
   {
     title: "News",
     links: [
-      { label: "Latest News", view: "news" },
-      { label: "Features", view: "news" },
-      { label: "Analysis", view: "news" },
-      { label: "Opinion", view: "news" },
+      { label: "Latest News", view: "news", category: "all" },
+      { label: "Features", view: "news", category: "feature" },
+      { label: "Analysis", view: "news", category: "analysis" },
+      { label: "Opinion", view: "news", category: "opinion" },
       { label: "Interviews", view: "interviews" },
       { label: "Photo Galleries", view: "photos" },
       { label: "Videos", view: "videos" },
@@ -93,7 +93,7 @@ export function Footer() {
                   return (
                     <li key={link.label}>
                       <button
-                        onClick={() => navigate(link.view)}
+                        onClick={() => navigate(link.view, link.category ?? null)}
                         className="inline-flex items-center gap-1.5 text-[13px] text-white/70 transition-colors duration-200 hover:text-amber-300"
                       >
                         <Icon className="h-3 w-3 transition-colors duration-200" />

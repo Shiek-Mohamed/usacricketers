@@ -33,9 +33,7 @@ import { SmartImage } from "@/components/site/smart-image"
 import {
   ChevronRight,
   Radio,
-  CalendarClock,
   Newspaper,
-  Trophy,
   Clock,
   User,
   ArrowRight,
@@ -432,16 +430,6 @@ export function HomeView() {
     return [...live, ...completed, ...upcoming].slice(0, 8)
   }, [matches])
 
-  // Keep these for the schedule section below
-  const completedMatches = useMemo(
-    () => matches.filter((m) => m.status === "completed").slice(0, 6),
-    [matches]
-  )
-  const upcomingMatches = useMemo(
-    () => matches.filter((m) => m.status === "upcoming").slice(0, 6),
-    [matches]
-  )
-
   const featuredItems = featuredArticles?.items ?? []
   const latestItems = allArticles?.items ?? []
 
@@ -505,63 +493,6 @@ export function HomeView() {
           </div>
         )}
       </section>
-
-      {/* AD SLOT — above Latest Results (rotating) */}
-      <BannerSlot placement="home-above-results" />
-
-      {/* Latest Results + Upcoming Matches — navy panel */}
-      {(completedMatches.length > 0 || upcomingMatches.length > 0) && (
-        <div className="rounded-xl bg-[#1e2a5e] p-4 sm:p-6 space-y-6 sm:space-y-8">
-          {/* Latest Results */}
-          {completedMatches.length > 0 && (
-            <section>
-              <SectionTitle
-                title="Latest Results"
-                icon={Trophy}
-                actionLabel="All matches"
-                onAction={() => navigate("matches")}
-                onDark
-              />
-              <div className="flex gap-3 overflow-x-auto pb-2 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/20">
-                {matchesLoading
-                  ? Array.from({ length: 4 }).map((_, i) => (
-                      <Skeleton
-                        key={i}
-                        className="h-40 w-72 shrink-0 rounded-lg"
-                      />
-                    ))
-                  : completedMatches.map((m) => (
-                      <div key={m.id} className="w-72 shrink-0">
-                        <MiniScorecard match={m} />
-                      </div>
-                    ))}
-              </div>
-            </section>
-          )}
-
-          {/* Upcoming Matches */}
-          {upcomingMatches.length > 0 && (
-            <section>
-              <SectionTitle
-                title="Upcoming Matches"
-                icon={CalendarClock}
-                actionLabel="Full schedule"
-                onAction={() => navigate("schedule")}
-                onDark
-              />
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {matchesLoading
-                  ? Array.from({ length: 4 }).map((_, i) => (
-                      <Skeleton key={i} className="h-40 rounded-lg" />
-                    ))
-                  : upcomingMatches.map((m) => (
-                      <MiniScorecard key={m.id} match={m} />
-                    ))}
-              </div>
-            </section>
-          )}
-        </div>
-      )}
 
       {/* AD SLOT — above Latest News (rotating) */}
       <BannerSlot placement="home-above-news" />

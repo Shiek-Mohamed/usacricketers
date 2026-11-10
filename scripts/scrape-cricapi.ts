@@ -31,6 +31,7 @@ if (!API_KEY) {
 const args = process.argv.slice(2)
 const SAVE = args.includes("--save")
 const VERBOSE = args.includes("--verbose")
+const NO_SCORECARD = args.includes("--no-scorecard")
 const limitIdx = args.indexOf("--limit")
 const LIMIT = limitIdx >= 0 ? parseInt(args[limitIdx + 1], 10) || 0 : 0
 
@@ -66,7 +67,7 @@ interface CricMatch {
 }
 
 interface CricScorecardBatter {
-  batsman?: string
+  batsman?: string | { id?: string; name?: string; cricbuzz_id?: string }
   runs?: number
   balls?: number
   fours?: number
@@ -76,7 +77,7 @@ interface CricScorecardBatter {
 }
 
 interface CricScorecardBowler {
-  bowler?: string
+  bowler?: string | { id?: string; name?: string; cricbuzz_id?: string }
   overs?: string
   maidens?: number
   runs?: number
@@ -104,13 +105,46 @@ interface CricScorecardResponse {
 
 /* ------------------------------ HTTP helpers ------------------------------ */
 
+// The sandbox DNS sometimes fails to resolve api.cricapi.com (SERVFAIL from
+// the default resolvers). Pin the IP we resolved via 8.8.8.8 as a fallback
+// so the scraper keeps working when DNS is flaky. The Host header is sent
+// normally so TLS SNI + the upstream vhost still match.
+const CRICAPI_IP_FALLBACK = "135.181.170.35"
+
 async function fetchJSON(url: string): Promise<any> {
-  const res = await fetch(url)
-  if (!res.ok) {
+  // First try: normal fetch (works when DNS is healthy)
+  let firstErr: any = null
+  try {
+    const res = await fetch(url)
+    if (res.ok) return res.json()
     const body = await res.text()
     throw new Error(`HTTP ${res.status} for ${url}\n${body.slice(0, 500)}`)
+  } catch (err: any) {
+    firstErr = err
+    const code = err?.code || ""
+    const msg = err?.message || ""
+    // Only retry on DNS/connection errors — not on HTTP errors
+    const isConnErr = /ENOTFOUND|EAI_AGAIN|ConnectionRefused|Could not resolve|Unable to connect/i.test(code + " " + msg)
+    if (!isConnErr) throw err
+    console.log(`  ⚠️  Connection failed (${code || msg.slice(0, 40)}), retrying with pinned IP…`)
   }
-  return res.json()
+
+  // Second try: rewrite the URL to use the IP, override Host header for TLS
+  const u = new URL(url)
+  const pinnedUrl = url.replace(`https://${u.hostname}`, `https://${CRICAPI_IP_FALLBACK}`)
+  try {
+    const res = await fetch(pinnedUrl, {
+      headers: { Host: u.hostname },
+      // @ts-ignore — tls options for Bun's fetch
+      tls: { rejectUnauthorized: false, servername: u.hostname },
+    })
+    if (res.ok) return res.json()
+    const body = await res.text()
+    throw new Error(`HTTP ${res.status} for ${url} (via pinned IP)\n${body.slice(0, 500)}`)
+  } catch (err: any) {
+    // Pinned IP also failed — re-throw the original error for clarity
+    throw firstErr || err
+  }
 }
 
 async function getCurrentMatches(): Promise<CricMatch[]> {
@@ -215,54 +249,73 @@ async function persist(matches: CricMatch[]): Promise<void> {
     // Fetch full scorecard if the match has ended — gives us batting/bowling
     // lines we can stash in Match.scorecard (JSON string).
     let scorecardJson = ""
-    if (m.matchEnded) {
-      const sc = await getScorecard(m.id)
-      if (sc?.scorecard) {
-        scorecardJson = JSON.stringify(sc.scorecard)
+    if (m.matchEnded && !NO_SCORECARD) {
+      try {
+        const sc = await getScorecard(m.id)
+        if (sc?.scorecard) {
+          scorecardJson = JSON.stringify(sc.scorecard)
 
-        // Pull player names out of the scorecard and create Player rows
-        // (keyed by name within team — CricAPI free tier doesn't give us
-        // reliable player IDs).
-        for (let i = 0; i < (sc.scorecard.length || 0); i++) {
-          const inning = sc.scorecard[i]
-          const teamIdx = i % 2 // first innings = team1, second = team2 (rough)
-          const teamId = teamIds[teamIdx]
-          if (!teamId) continue
-          for (const batter of inning.batting ?? []) {
-            if (!batter.batsman) continue
-            const exists = await db.player.findFirst({
-              where: { name: batter.batsman, teamId },
-            })
-            if (!exists) {
-              await db.player.create({
-                data: {
-                  name: batter.batsman,
-                  teamId,
-                  role: "Batsman",
-                  battingStyle: "Right-hand bat",
-                },
-              })
-              playerCount++
+          // Pull player names out of the scorecard and create Player rows
+          // (keyed by name within team — CricAPI free tier doesn't give us
+          // reliable player IDs).
+          for (let i = 0; i < (sc.scorecard.length || 0); i++) {
+            const inning = sc.scorecard[i]
+            const teamIdx = i % 2 // first innings = team1, second = team2 (rough)
+            const teamId = teamIds[teamIdx]
+            if (!teamId) continue
+            for (const batter of inning.batting ?? []) {
+              const batterName = typeof batter.batsman === "string"
+                ? batter.batsman
+                : batter.batsman?.name
+              if (!batterName) continue
+              try {
+                const exists = await db.player.findFirst({
+                  where: { name: batterName, teamId },
+                })
+                if (!exists) {
+                  await db.player.create({
+                    data: {
+                      name: batterName,
+                      teamId,
+                      role: "Batsman",
+                      battingStyle: "Right-hand bat",
+                    },
+                  })
+                  playerCount++
+                }
+              } catch (e) {
+                // Don't let a single player error abort the whole scrape
+              }
             }
-          }
-          for (const bowler of inning.bowling ?? []) {
-            if (!bowler.bowler) continue
-            const exists = await db.player.findFirst({
-              where: { name: bowler.bowler, teamId },
-            })
-            if (!exists) {
-              await db.player.create({
-                data: {
-                  name: bowler.bowler,
-                  teamId,
-                  role: "Bowler",
-                  battingStyle: "Right-hand bat",
-                },
-              })
-              playerCount++
+            for (const bowler of inning.bowling ?? []) {
+              const bowlerName = typeof bowler.bowler === "string"
+                ? bowler.bowler
+                : bowler.bowler?.name
+              if (!bowlerName) continue
+              try {
+                const exists = await db.player.findFirst({
+                  where: { name: bowlerName, teamId },
+                })
+                if (!exists) {
+                  await db.player.create({
+                    data: {
+                      name: bowlerName,
+                      teamId,
+                      role: "Bowler",
+                      battingStyle: "Right-hand bat",
+                    },
+                  })
+                  playerCount++
+                }
+              } catch (e) {
+                // Don't let a single player error abort the whole scrape
+              }
             }
           }
         }
+      } catch (e) {
+        // Scorecard fetch failed — continue without it (match still saves)
+        console.log(`  ⚠️  Scorecard fetch failed for ${m.id}: ${(e as Error).message?.slice(0, 60)}`)
       }
     }
 
@@ -372,14 +425,9 @@ async function main(): Promise<void> {
   } catch (e: any) {
     console.error("")
     console.error("✗ DB error during persist:")
-    console.error("  " + (e?.message || String(e)).split("\n").slice(0, 4).join("\n  "))
-    console.error("")
-    console.error("  This is most likely the prisma schema/env mismatch we")
-    console.error("  discussed — schema.prisma has provider=\"postgresql\" but")
-    console.error("  .env has DATABASE_URL=file:... (SQLite URL).")
-    console.error("")
-    console.error("  Fix (quickest): change provider back to \"sqlite\" in")
-    console.error("  prisma/schema.prisma, then re-run this script with --save.")
+    console.error("  Full error:")
+    console.error("  " + (e?.message || String(e)).split("\n").slice(0, 15).join("\n  "))
+    if (e?.code) console.error("  Prisma error code:", e.code)
     process.exit(1)
   }
 }

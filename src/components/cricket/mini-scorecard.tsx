@@ -91,7 +91,10 @@ function TeamLine({
     <div className="flex items-center justify-between gap-2">
       <div className="flex items-center gap-2 min-w-0">
         <TeamBadge team={team} size="sm" />
-        <span className="truncate text-sm font-medium">{team.shortName}</span>
+        {/* Show the full team name (not shortName — the badge already
+            shows the abbreviation, so "ENG" + "ENGL" was redundant).
+            truncate handles long names like "United States of America Women". */}
+        <span className="truncate text-sm font-medium">{team.name}</span>
       </div>
       <div className="flex items-center gap-1.5">
         {batting && (

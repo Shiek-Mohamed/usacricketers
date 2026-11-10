@@ -134,8 +134,11 @@ export function Header() {
   useEffect(() => {
     const syncFromBrowser = () => {
       const standalone = window.matchMedia("(display-mode: standalone)").matches
-      const mobile = window.innerWidth < 768
-      setShowPwaNav(standalone || mobile)
+      // Only show PWA nav buttons on sm+ screens (≥640px) or in standalone
+      // PWA mode. On small phones (<640px) the browser's own back/forward
+      // controls are used — showing 3 extra buttons here caused header overflow.
+      const showNav = window.innerWidth >= 640
+      setShowPwaNav(standalone || showNav)
       setCanGoBack(window.history.length > 1)
       setCanGoForward(window.history.length > 1)
     }
@@ -432,9 +435,10 @@ export function Header() {
                   onScore()
                 }
               }}
-              className="gap-1.5 text-xs font-bold bg-gradient-to-r from-emerald-600 to-emerald-500 text-white hover:from-emerald-700 hover:to-emerald-600 shadow-md shadow-emerald-900/20"
+              className="hidden sm:inline-flex gap-1.5 text-xs font-bold bg-gradient-to-r from-emerald-600 to-emerald-500 text-white hover:from-emerald-700 hover:to-emerald-600 shadow-md shadow-emerald-900/20 px-2 sm:px-3"
+              aria-label="Live Scoring"
             >
-              <span className="relative flex h-2 w-2">
+              <span className="relative flex h-2 w-2 shrink-0">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
               </span>

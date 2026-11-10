@@ -170,6 +170,26 @@ function fmtScore(s?: CricScore): string {
   return `${s.r}/${s.w} (${s.o} ov)`
 }
 
+/** Extract a human-readable match label from the CricAPI match name.
+ *  e.g. "India vs Australia, 3rd ODI, Series 2026" → "3rd ODI"
+ *       "India vs Australia, Final, Series 2026" → "Final" */
+function extractMatchNo(name: string): string {
+  // Try "Nth Match" / "Nst Match" etc.
+  const m1 = name.match(/(\d+(?:st|nd|rd|th)\s+(?:Match|ODI|T20I|T20|Test|Unofficial\s+ODI|Unofficial\s+Test))/i)
+  if (m1) return m1[1]
+  // Try Final / Semi-Final / Quarter-Final
+  const m2 = name.match(/\b(Final|Semi-Final|Quarter-Final|Eliminator)\b/i)
+  if (m2) return m2[1]
+  // Fall back to the segment after the first comma
+  const parts = name.split(",")
+  if (parts.length >= 2) {
+    const seg = parts[1].trim()
+    // Keep it short — truncate to 30 chars
+    return seg.length > 30 ? seg.slice(0, 29) + "…" : seg
+  }
+  return "Match"
+}
+
 function truncate(s: string, n: number): string {
   return s.length > n ? s.slice(0, n - 1) + "…" : s
 }
@@ -344,12 +364,18 @@ async function persist(matches: CricMatch[]): Promise<void> {
       .map((s) => `${s.inning}: ${fmtScore(s)}`)
       .join("  |  ")
 
-    // Check if match already exists (by CricAPI id — store as matchNo for dedup)
-    const existing = await db.match.findFirst({
-      where: { matchNo: `cricapi-${m.id}` },
-    })
-
+    // Check if match already exists — dedup by teams + start date (more
+    // robust than matchNo, which is now a clean display label).
     const startDate = m.dateTimeGMT ? new Date(m.dateTimeGMT) : new Date()
+    const cleanMatchNo = extractMatchNo(m.name)
+    const existing = await db.match.findFirst({
+      where: {
+        team1Id: teamIds[0],
+        team2Id: teamIds[1],
+        startDate: { gt: new Date(startDate.getTime() - 24 * 60 * 60 * 1000),
+                     lt: new Date(startDate.getTime() + 24 * 60 * 60 * 1000) },
+      },
+    })
 
     if (existing) {
       await db.match.update({
@@ -359,6 +385,9 @@ async function persist(matches: CricMatch[]): Promise<void> {
           result: result || scoreSummary,
           scorecard: scorecardJson || existing.scorecard,
           venue: m.venue || existing.venue,
+          // Update matchNo to the clean label if the existing one still has
+          // the old cricapi- prefix.
+          ...(existing.matchNo?.startsWith("cricapi-") ? { matchNo: cleanMatchNo } : {}),
         },
       })
     } else {
@@ -367,7 +396,7 @@ async function persist(matches: CricMatch[]): Promise<void> {
           team1Id: teamIds[0],
           team2Id: teamIds[1],
           format,
-          matchNo: `cricapi-${m.id}`,
+          matchNo: cleanMatchNo,
           status,
           venue: m.venue || "TBD",
           city: "",

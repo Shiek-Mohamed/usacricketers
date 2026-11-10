@@ -16,8 +16,6 @@
  * Requires CRICAPI_KEY in .env (free signup at https://cricapi.com).
  */
 
-import { config } from "dotenv"
-config() // load .env so process.env.CRICAPI_KEY is available
 
 const API_KEY = process.env.CRICAPI_KEY
 const API_BASE = "https://api.cricapi.com/v1"
@@ -227,7 +225,7 @@ function printMatchSummary(m: CricMatch): void {
  * ------------------------------------------------------------------------- */
 
 async function persist(matches: CricMatch[]): Promise<void> {
-  const { db } = await import("@/lib/db")
+  const { PrismaClient } = await import("@prisma/client"); const db = new PrismaClient()
 
   let teamCount = 0
   let matchCount = 0

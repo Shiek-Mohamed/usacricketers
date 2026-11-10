@@ -68,6 +68,10 @@ COPY --from=builder /app/migration ./migration
 # Copy the score-service mini-service
 COPY --from=builder /app/mini-services ./mini-services
 
+# Copy utility scripts (scraper, image fixer, match cleanup) — runnable on
+# the VM via `flyctl ssh console -C "cd /app && bun run scripts/..."`
+COPY --from=builder /app/scripts ./scripts
+
 # Set environment
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1

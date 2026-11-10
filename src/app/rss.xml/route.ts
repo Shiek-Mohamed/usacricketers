@@ -1,14 +1,28 @@
 import { db } from "@/lib/db"
 import { parseCategories } from "@/lib/types"
+import { headers } from "next/headers"
 
 export const dynamic = "force-dynamic"
+
+/** Resolve base URL at runtime from the request's host header. */
+async function getBaseUrl(): Promise<string> {
+  try {
+    const h = await headers()
+    const host = h.get("x-forwarded-host") || h.get("host")
+    if (host) {
+      const isLocal = host.includes("localhost") || host.includes("127.0.0.1")
+      return `${isLocal ? "http" : "https"}://${host}`
+    }
+  } catch {}
+  return process.env.NEXT_PUBLIC_BASE_URL || "https://usacricketers.fly.dev"
+}
 
 /**
  * /rss.xml — RSS 2.0 feed of the latest 25 published articles.
  * Readers can subscribe via RSS clients (Feedly, Inoreader, etc.).
  */
 export async function GET() {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
+  const baseUrl = await getBaseUrl()
 
   const articles = await db.article.findMany({
     where: { published: true },

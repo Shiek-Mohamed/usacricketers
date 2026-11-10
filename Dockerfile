@@ -16,6 +16,10 @@ COPY prisma ./prisma
 # validate the schema. Real values are set as runtime secrets on fly.io.
 ENV DATABASE_URL=postgresql://dummy:dummy@dummy:5432/dummy
 ENV DIRECT_URL=postgresql://dummy:dummy@dummy:5432/dummy
+# Set NEXT_PUBLIC_BASE_URL at build time so it's baked into the client bundle
+# correctly. Without this, the fallback (localhost:3000) gets baked in and
+# OG images / canonical URLs / sitemap all point to localhost in production.
+ENV NEXT_PUBLIC_BASE_URL=https://usacricketers.fly.dev
 RUN bun run prisma generate
 
 # Copy the rest of the source

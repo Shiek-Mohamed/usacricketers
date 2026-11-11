@@ -44,9 +44,15 @@ function articleHref(article: Article): string {
 export function ArticleCard({
   article,
   variant = "default",
+  showCategory = true,
+  showTags = true,
 }: {
   article: Article
   variant?: "default" | "featured" | "compact" | "horizontal"
+  /** Show the category badge (e.g., "NEWS") on the card. Default: true */
+  showCategory?: boolean
+  /** Show keyword tag chips below the excerpt. Default: true */
+  showTags?: boolean
 }) {
   const readMinutes = getReadTime(article)
   const href = articleHref(article)
@@ -166,8 +172,8 @@ export function ArticleCard({
               <Newspaper className="h-8 w-8" aria-hidden="true" />
             </div>
           )}
-          {/* Category badge overlaid on thumbnail */}
-          {article.categories[0] && (
+          {/* Category badge overlaid on thumbnail — hidden when showCategory=false */}
+          {showCategory && article.categories[0] && (
             <div className="absolute left-2 top-2">
               <span className="rounded bg-black/70 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white backdrop-blur-sm">
                 {article.categories[0]}
@@ -209,7 +215,7 @@ export function ArticleCard({
               </>
             )}
           </div>
-          {article.tags && (
+          {showTags && article.tags && (
             <div className="flex flex-wrap gap-1 pt-1">
               {article.tags
                 .split(",")

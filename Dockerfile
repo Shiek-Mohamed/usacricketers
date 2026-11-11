@@ -45,6 +45,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-cert
     rm -rf /var/lib/apt/lists/*
 RUN npm install -g bun
 
+# Install cheerio for the HTML-scraping import scripts (post importer, etc.)
+# The standalone build doesn't include cheerio, so we install it separately.
+RUN cd /app && npm install cheerio --no-save
+
 # Copy standalone Next.js build + static assets + public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static

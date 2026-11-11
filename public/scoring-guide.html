@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Live Scoring App — User Guide | USACricketers</title>
+<style>
+:root{--navy:#1e2a5e;--amber:#f59e0b;--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--muted:#64748b}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+.header{background:var(--navy);color:#fff;padding:2rem 1rem;text-align:center}
+.header h1{font-size:1.5rem;margin-bottom:.25rem}
+.header p{color:#94a3b8;font-size:.9rem}
+.container{max-width:800px;margin:0 auto;padding:2rem 1rem}
+h2{color:var(--navy);border-bottom:2px solid var(--amber);padding-bottom:.5rem;margin:2rem 0 1rem;font-size:1.25rem}
+h3{color:var(--text);margin:1.5rem 0 .5rem;font-size:1.05rem}
+p{margin:.5rem 0}
+table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.9rem}
+th,td{border:1px solid var(--border);padding:.5rem .75rem;text-align:left}
+th{background:var(--navy);color:#fff}
+tr:nth-child(even){background:#f1f5f9}
+code{background:#f1f5f9;padding:.15rem .4rem;border-radius:3px;font-family:monospace;font-size:.85rem}
+pre{background:#1e293b;color:#e2e8f0;padding:1rem;border-radius:8px;overflow-x:auto;margin:1rem 0;font-size:.85rem}
+blockquote{border-left:4px solid var(--amber);background:#fffbeb;padding:.75rem 1rem;margin:1rem 0;border-radius:0 4px 4px 0}
+blockquote p{margin:0}
+ul,ol{margin:.5rem 0 .5rem 1.5rem}
+li{margin:.25rem 0}
+.toc{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1rem 1.5rem;margin-bottom:2rem}
+.toc h3{margin-top:0;color:var(--navy)}
+.toc ol{margin:.5rem 0 0 1.5rem}
+.toc a{color:var(--navy);text-decoration:none}
+.toc a:hover{text-decoration:underline}
+.quick-ref{background:#1e293b;color:#e2e8f0;border-radius:8px;padding:1.5rem;margin:2rem 0}
+.quick-ref h3{color:var(--amber)}
+.quick-ref pre{background:transparent;color:inherit;padding:0;margin:.5rem 0}
+</style>
+</head>
+<body>
+<div class="header">
+<h1>Live Scoring App — User Guide</h1>
+<p>A complete guide for scorers, administrators, and viewers</p>
+</div>
+<div class="container">
+<p># Live Scoring App — User Guide</p>
+<p>A complete guide for scorers, administrators, and viewers of the USACricketers live scoring system.</p>
+<p>---</p>
+<h2>Table of Contents</h2>
+<ol>
+<li>[For Administrators: Creating Scorer Accounts](#1-for-administrators-creating-scorer-accounts)</li>
+<li>[For Scorers: Getting Started](#2-for-scorers-getting-started)</li>
+<li>[Match Day: Setting Up a Match](#3-match-day-setting-up-a-match)</li>
+<li>[Ball-by-Ball Scoring](#4-ball-by-ball-scoring)</li>
+<li>[Keyboard Shortcuts](#5-keyboard-shortcuts)</li>
+<li>[Wickets &amp; Dismissals](#6-wickets--dismissals)</li>
+<li>[Advanced Features](#7-advanced-features)</li>
+<li>[Undo &amp; Recovery](#8-undo--recovery)</li>
+<li>[For Viewers: Following Live Scores](#9-for-viewers-following-live-scores)</li>
+</ol>
+<p>---</p>
+<h2>1. For Administrators: Creating Scorer Accounts</h2>
+<p>Scorer accounts are created by <strong>site admins</strong> or <strong>league admins</strong>.</p>
+<h3>Site Admin Flow</h3>
+<ol>
+<li>Log in to the admin CMS at <code>https://usacricketers.fly.dev</code> → Admin</li>
+<li>In the sidebar, click <strong>Scorers</strong> (under System section)</li>
+<li>Click <strong>+ New Scorer</strong></li>
+<li>Fill in:</li>
+<ul>
+<li><strong>Username</strong> — unique, cannot be changed later (e.g., <code>johnscorer</code>)</li>
+<li><strong>Email</strong> — required, for notifications</li>
+<li><strong>Display name</strong> — shown on the scorer dashboard (e.g., <code>John Smith</code>)</li>
+<li><strong>Password</strong> — give to the scorer (they can't change it themselves)</li>
+<li><strong>Active</strong> — toggle on/off to enable/disable login</li>
+<li><strong>Tournaments</strong> — check the box(es) for the series this scorer can score</li>
+<li>Click <strong>Create Scorer</strong></li>
+</ul>
+</ol>
+<p>The scorer can now log in with their username + password and will only see matches in their assigned tournaments.</p>
+<h3>League Admin Flow</h3>
+<p>League admins follow the same flow but can only assign scorers to leagues they manage (via the League Admin dashboard).</p>
+<p>---</p>
+<h2>2. For Scorers: Getting Started</h2>
+<h3>Logging In</h3>
+<ol>
+<li>Visit <code>https://usacricketers.fly.dev</code></li>
+<li>Click the green <strong>Live Scoring</strong> button (top-right)</li>
+<li>On the landing page, click <strong>Sign in to score</strong></li>
+<li>Enter your <strong>username</strong> and <strong>password</strong></li>
+<li>Click <strong>Sign in</strong></li>
+</ol>
+<p>After login, you'll see your <strong>Scorer Dashboard</strong>:</p>
+<ul>
+<li><strong>Welcome header</strong> — your name + assigned tournaments</li>
+<li><strong>Live Now</strong> — matches currently in progress (red dot)</li>
+<li><strong>Upcoming</strong> — matches scheduled but not yet started</li>
+<li><strong>Recently Completed</strong> — last 5 finished matches</li>
+</ul>
+<p>Click any match to enter the scoring interface.</p>
+<h3>If You Don't See Any Matches</h3>
+<p>Your admin hasn't assigned you to the match's tournament. Contact your admin to add the tournament to your assignments.</p>
+<p>---</p>
+<h2>3. Match Day: Setting Up a Match</h2>
+<p>When you click a match, you'll see the <strong>Setup Screen</strong>:</p>
+<h3>Step 1: Record the Toss (Optional)</h3>
+<ul>
+<li><strong>Won by</strong> — select the team that won the toss</li>
+<li><strong>Elected to</strong> — select "bat" or "bowl"</li>
+<li>Setting both auto-selects the batting-first team</li>
+</ul>
+<h3>Step 2: Select Batting First</h3>
+<p>If you didn't record the toss, manually select which team bats first from the dropdown.</p>
+<h3>Step 3: Select Opening Players</h3>
+<ul>
+<li><strong>Striker</strong> — the batsman on strike (facing the first ball)</li>
+<li><strong>Non-striker</strong> — the batsman at the other end</li>
+<li><strong>Opening bowler</strong> — the bowler delivering the first over</li>
+</ul>
+<blockquote><p><strong>Player not in the list?</strong> Use the "Add player not in list" form below the dropdowns. Enter the player's name, select their team, pick a role (Batsman/Bowler/All-rounder/Wicket-keeper), and click Add. The player will appear in the dropdown.</p></blockquote>
+<h3>Step 4: Start the Innings</h3>
+<p>Click the red <strong>Start innings (set LIVE)</strong> button. This:</p>
+<ul>
+<li>Sets the match status to "live" (visible to all viewers)</li>
+<li>Begins the scoring session</li>
+<li>Broadcasts the initial state via real-time WebSocket</li>
+</ul>
+<blockquote><p><strong>Prerequisites</strong>: All four slots (striker, non-striker, bowler, batting-first) must be set, and the connection must show "Connected" (green pill).</p></blockquote>
+<p>---</p>
+<h2>4. Ball-by-Ball Scoring</h2>
+<p>Once the innings is live, you'll see the <strong>Scoring Interface</strong>:</p>
+<h3>Live Scoreboard (top)</h3>
+<p>| Element | Description |</p>
+<p>|---|---|</p>
+<p>| <strong>Score</strong> | <code>runs/wickets (overs.balls)</code> — e.g., <code>127/3 (15.2)</code> |</p>
+<p>| <strong>CRR</strong> | Current run rate |</p>
+<p>| <strong>RRR</strong> | Required run rate (if chasing) |</p>
+<p>| <strong>Balls left</strong> | Remaining balls in the innings (limited-overs) |</p>
+<p>| <strong>Striker</strong> | Name + runs(balls) — the batsman on strike |</p>
+<p>| <strong>Non-striker</strong> | Name + runs(balls) — the batsman at the other end |</p>
+<p>| <strong>Bowler</strong> | Name + overs-maidens-runs-wickets |</p>
+<p>| <strong>Free Hit</strong> | Amber badge (pulsing) when active (after a no-ball) |</p>
+<h3>Ball Pad (main scoring area)</h3>
+<p>Tap the appropriate button after each delivery:</p>
+<p>| Button | What it records |</p>
+<p>|---|---|</p>
+<p>| <strong>0 (•)</strong> | Dot ball — no runs |</p>
+<p>| <strong>1</strong> | Single — 1 run, strike rotates |</p>
+<p>| <strong>2</strong> | Two runs |</p>
+<p>| <strong>3</strong> | Three runs (rare) |</p>
+<p>| <strong>4</strong> | Boundary — 4 runs (sky blue) |</p>
+<p>| <strong>6</strong> | Six — 6 runs (fuchsia) |</p>
+<p>| <strong>Wide</strong> | +1 run, doesn't count as a ball |</p>
+<p>| <strong>No Ball</strong> | +1 run, doesn't count as a ball, <strong>free hit next ball</strong> |</p>
+<p>| <strong>Wicket</strong> | Opens the wicket dialog (see below) |</p>
+<h3>Automatic Behaviors</h3>
+<ul>
+<li><strong>Strike rotation</strong> — odd runs (1, 3) swap striker/non-striker automatically</li>
+<li><strong>End of over</strong> — strike swaps, bowler slot clears (pick the next bowler)</li>
+<li><strong>Maiden over</strong> — detected automatically (0 runs + 0 wickets in the over)</li>
+<li><strong>Bowler restriction</strong> — can't pick the same bowler for two consecutive overs</li>
+<li><strong>New batsman picker</strong> — appears automatically when a wicket falls</li>
+<li><strong>New bowler picker</strong> — appears automatically at the end of each over</li>
+<li><strong>Innings end</strong> — detected automatically (all-out, overs complete, or target reached)</li>
+<li><strong>Match end</strong> — detected automatically with result computed</li>
+</ul>
+<h3>Commentary Feed (right side)</h3>
+<p>Every ball is automatically logged with color-coded commentary:</p>
+<ul>
+<li>Red — wickets</li>
+<li>Purple — sixes</li>
+<li>Sky blue — fours</li>
+<li>Amber — extras (wides, no-balls)</li>
+<li>Emerald — runs and manual commentary</li>
+<li>Gray — dot balls and over summaries</li>
+</ul>
+<p>You can also add <strong>manual commentary</strong> in the blue text box below the ball pad, or record <strong>voice clips</strong> using the green Record button.</p>
+<p>---</p>
+<h2>5. Keyboard Shortcuts</h2>
+<p>For fast scoring on a laptop/desktop, use keyboard shortcuts:</p>
+<p>| Key | Action |</p>
+<p>|---|---|</p>
+<p>| <code>0</code> | Dot ball |</p>
+<p>| <code>1</code> | One run |</p>
+<p>| <code>2</code> | Two runs |</p>
+<p>| <code>3</code> | Three runs |</p>
+<p>| <code>4</code> | Four runs |</p>
+<p>| <code>6</code> | Six runs |</p>
+<p>| <code>.</code> or <code>-</code> | Dot ball (alternative) |</p>
+<p>| <code>w</code> | Open wicket dialog |</p>
+<p>| <code>e</code> | Swap ends (striker and non-striker) |</p>
+<p>| <code>u</code> | Undo last action |</p>
+<p>| <code>d</code> | Declare innings (Test matches only) |</p>
+<p>| <code>s</code> | Save scorecard manually |</p>
+<strong>Shortcuts are disabled when:</strong>
+<ul>
+<li>You're typing in a text input, textarea, or dropdown</li>
+<li>The wicket dialog is open</li>
+<li>No live innings is in progress</li>
+<li>Striker, non-striker, or bowler slot is empty</li>
+</ul>
+<p>---</p>
+<h2>6. Wickets &amp; Dismissals</h2>
+<p>When you tap <strong>Wicket</strong>, a dialog opens:</p>
+<h3>Step 1: Select Dismissal Type</h3>
+<p>| Type | How it works | Bowler credited? |</p>
+<p>|---|---|---|</p>
+<p>| <strong>Bowled</strong> | Bowler hits the stumps | Yes |</p>
+<p>| <strong>Caught</strong> | Fielder catches the ball | Yes |</p>
+<p>| <strong>LBW</strong> | Leg before wicket | Yes |</p>
+<p>| <strong>Run Out</strong> | Fielder breaks stumps while batsmen are running | No |</p>
+<p>| <strong>Stumped</strong> | Keeper breaks stumps while batsman is out of crease | Yes |</p>
+<p>| <strong>Hit Wicket</strong> | Batsman hits the stumps while playing a shot | Yes |</p>
+<p>| <strong>Retired Hurt</strong> | Batsman leaves injured (can return later) | No (not a dismissal) |</p>
+<p>| <strong>Retired Out</strong> | Batsman retires voluntarily (counts as out) | No |</p>
+<h3>Step 2: Select Fielder (if applicable)</h3>
+<ul>
+<li>For <strong>caught</strong>, <strong>stumped</strong>, and <strong>run out</strong> — select the fielder from the dropdown</li>
+<li>For <strong>stumped</strong> — the wicket-keeper is auto-prefilled</li>
+</ul>
+<h3>Step 3: Select Which Batsman (run out only)</h3>
+<ul>
+<li>For <strong>run out</strong> — choose whether the striker or non-striker is out</li>
+</ul>
+<h3>Step 4: Confirm</h3>
+<p>A live dismissal preview shows (e.g., <code>Smith c Jones b Cummins</code>). Click <strong>Confirm</strong> to record the wicket.</p>
+<h3>Free Hit Rule</h3>
+<p>When a <strong>free hit</strong> is active (after a no-ball), bowler-credited dismissals (bowled, caught, LBW, stumped, hit wicket) are <strong>rejected</strong> by the engine. The batsman survives. Use <strong>Run Out</strong> instead if a wicket falls on a free hit.</p>
+<p>---</p>
+<h2>7. Advanced Features</h2>
+<h3>Toolbar Buttons</h3>
+<p>| Button | When available | What it does |</p>
+<p>|---|---|---|</p>
+<p>| <strong>Undo</strong> | Always | Reverts the last action (up to 50 actions) |</p>
+<p>| <strong>Declare</strong> | Test matches only | Ends the current innings (declaration) |</p>
+<p>| <strong>Follow-on</strong> | Test matches, after innings 1, lead &gt;= 200 runs | Forces the opposing team to bat again immediately |</p>
+<p>| <strong>Super Over</strong> | Limited-overs, match tied, completed | Triggers a one-over-per-side tiebreaker |</p>
+<p>| <strong>Save</strong> | Always | Manually saves the scorecard to the database |</p>
+<p>| <strong>DLS</strong> | Limited-overs, innings 2+, live | Opens the Duckworth-Lewis-Stern rain calculator |</p>
+<h3>Changing Batsmen and Bowlers</h3>
+<ul>
+<li><strong>Swap Ends</strong> — swap striker and non-striker manually (button between the two batsman cells). Available anytime — useful when the auto strike-rotation disagrees with reality.</li>
+<li><strong>Change Batsman</strong> — at the end of an over, a change button appears next to each batsman. Use it to substitute (e.g., if a batsman retired hurt and is returning).</li>
+<li><strong>Change Bowler</strong> — at the end of each over, the bowler slot clears and a picker appears. Select the next bowler (can't be the same as the previous over).</li>
+</ul>
+<h3>DLS Calculator (Rain Interruptions)</h3>
+<ol>
+<li>Click <strong>DLS</strong> in the toolbar (appears during the second innings of a limited-overs match)</li>
+<li>The panel auto-fills Team 1 and Team 2 scores from the current match state</li>
+<li>Enter <strong>Revised overs for Team 2</strong> (the reduced overs after rain)</li>
+<li>Click <strong>Calculate</strong> — shows the revised target, resources %, and required run rate</li>
+<li>Click <strong>Apply Target to Match</strong> — broadcasts the revised target to all viewers</li>
+</ol>
+<p>The DLS calculator uses the <strong>Standard Edition</strong> (publicly available). For professional matches, an ICC-licensed Professional Edition may be required.</p>
+<h3>Voice Clips</h3>
+<ol>
+<li>Click the green <strong>Record</strong> button in the commentary area</li>
+<li>Speak your commentary (browser will request microphone access)</li>
+<li>Click <strong>Stop Recording</strong></li>
+<li>The audio clip uploads automatically and appears in the commentary feed as a playable audio player</li>
+</ol>
+<p>---</p>
+<h2>8. Undo and Recovery</h2>
+<h3>Undo</h3>
+<ul>
+<li>Click <strong>Undo</strong> in the toolbar (or press <code>u</code>)</li>
+<li>Reverts the last ball/action (up to 50 actions back)</li>
+<li>Works for: runs, wickets, extras, declarations, bowler changes</li>
+<li>Each undo is logged in the audit trail</li>
+</ul>
+<h3>Auto-Save and Recovery</h3>
+<p>The scoring app is designed for <strong>unreliable WiFi at cricket grounds</strong>:</p>
+<p>| Mechanism | How it works |</p>
+<p>|---|---|</p>
+<p>| <strong>WebSocket buffering</strong> | If the connection drops, scoring actions are buffered and flushed when reconnected — no data lost |</p>
+<p>| <strong>localStorage backup</strong> | Every state change is saved to your browser's localStorage (key: <code>live-score:{matchId}</code>) |</p>
+<p>| <strong>Database backup</strong> | The full match state is saved to the database every ~800ms (debounced) |</p>
+<p>| <strong>Resume session</strong> | If you close your browser or the score-service restarts, you'll see a "Resume Scoring Session" banner — click it to pick up where you left off |</p>
+<p>| <strong>Cross-browser resume</strong> | If you switch devices, the database backup restores the state — works up to 72 hours |</p>
+<h3>Manual Save</h3>
+<p>Click <strong>Save</strong> in the toolbar (or press <code>s</code>) to force-save the scorecard immediately. This updates the public match page with the latest scorecard.</p>
+<p>---</p>
+<h2>9. For Viewers: Following Live Scores</h2>
+<p>Viewers don't need an account — they follow live scores on the public site:</p>
+<h3>Match Detail Page</h3>
+<p>Visit <code>https://usacricketers.fly.dev/matches/{match-id}</code> — shows:</p>
+<ul>
+<li>Live scorecard with batting/bowling tables</li>
+<li>Commentary tab (ball-by-ball feed)</li>
+<li>Squads tab</li>
+<li>Match info tab</li>
+<li>Auto-updates in real-time via WebSocket</li>
+</ul>
+<h3>Live Blog View</h3>
+<p>Some matches have a dedicated live blog — shows:</p>
+<ul>
+<li>Full-screen ball-by-ball commentary feed</li>
+<li>Key moments sidebar (wickets, sixes, boundaries)</li>
+<li>Color-coded entries matching the scoring commentary</li>
+<li>Inline audio players for voice clips</li>
+<li>Automatic reconnection if the connection drops</li>
+</ul>
+<h3>Score Strip (Homepage)</h3>
+<p>The homepage carousel shows live match scores at the top, updating in real-time.</p>
+<p>---</p>
+<h2>Quick Reference Card</h2>
+<code>`</code>
+<p>SCORING SHORTCUTS</p>
+<p>-----------------</p>
+<p>0/./-  Dot ball        w  Wicket</p>
+<p>1      One run          e  Swap ends</p>
+<p>2      Two runs         u  Undo</p>
+<p>3      Three runs       d  Declare (Test)</p>
+<p>4      Four (boundary)  s  Save</p>
+<p>6      Six</p>
+<p>SETUP CHECKLIST</p>
+<p>---------------</p>
+<p>[ ] Record toss (optional)</p>
+<p>[ ] Select batting-first team</p>
+<p>[ ] Select striker</p>
+<p>[ ] Select non-striker</p>
+<p>[ ] Select opening bowler</p>
+<p>[ ] Click "Start innings (set LIVE)"</p>
+<p>MATCH DAY TIPS</p>
+<p>--------------</p>
+<ul>
+<li>Use keyboard shortcuts for speed</li>
+<li>Check "Connected" (green pill) before starting</li>
+<li>Undo works for up to 50 actions</li>
+<li>State auto-saves every ~1 second</li>
+<li>Can resume if browser closes (up to 72h)</li>
+<li>Voice clips work on mobile + desktop</li>
+<li>DLS panel appears automatically in 2nd innings</li>
+</ul>
+<code>`</code>
+<p>---</p>
+<h2>Support</h2>
+<ul>
+<li><strong>Can't log in?</strong> Contact your admin to check your account is active and you're assigned to a tournament.</li>
+<li><strong>No matches visible?</strong> Your admin hasn't assigned you to the match's tournament.</li>
+<li><strong>Connection keeps dropping?</strong> The app auto-reconnects and buffers data — keep scoring, it'll sync when WiFi returns.</li>
+<li><strong>Need to score as admin?</strong> Site admins can score directly from the admin Matches view — click the "Score" button on any match row.</li>
+</ul>
+
+</div></body></html>

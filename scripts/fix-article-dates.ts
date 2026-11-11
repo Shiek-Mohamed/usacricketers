@@ -49,7 +49,10 @@ async function main() {
       const html = await fetchHTML(`${SOURCE_BASE}/news.php?page=${page}`)
       const $ = cheerio.load(html)
       let found = 0
-      $("a[href*='news-detail.php']").each((_, el) => {
+      // Only pick up main listing links — they have class="block" (featured)
+      // or class="block group" (regular cards). Sidebar/footer "popular"
+      // links have class="inline-flex items-center..." and are excluded.
+      $("a.block[href*='news-detail.php']").each((_, el) => {
         const href = $(el).attr("href") || ""
         const m = href.match(/slug=([^&"']+)/)
         if (!m) return
@@ -92,7 +95,9 @@ async function main() {
     .sort((a, b) => (b.position! - a.position!)) // oldest first
 
   for (const a of toUpdate) {
-    const daysAgo = total - 1 - a.position!
+    // Position 0 = newest (top of listing page 1) → 0 days ago = today
+    // Position N = oldest → N days ago
+    const daysAgo = a.position!
     const newDate = new Date(now - daysAgo * dayMs)
 
     if (DRY_RUN) {

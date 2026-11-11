@@ -301,26 +301,27 @@ export function MarkdownEditor({
                     accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
                     ref={fileRef}
                     onChange={() => {
-                      // clear any previous upload when a new file is picked
+                      // Auto-upload immediately when a file is selected —
+                      // saves the user from having to click a separate
+                      // "Upload" button before "Insert" becomes active.
                       setUploadedUrl("")
+                      // Small delay so fileRef.current.files is populated
+                      setTimeout(() => handleUpload(), 0)
                     }}
                   />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleUpload}
-                    disabled={uploading}
-                    className="w-full gap-2"
-                  >
-                    {uploading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Upload className="h-4 w-4" />
-                    )}
-                    {uploadedUrl ? "Re-upload" : "Upload"}
-                  </Button>
+                  {uploading && (
+                    <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Uploading…
+                    </p>
+                  )}
+                  {uploadedUrl && (
+                    <p className="text-[11px] text-emerald-600 font-medium">
+                      ✓ Uploaded — click Insert to add to the article
+                    </p>
+                  )}
                   <p className="text-[11px] text-muted-foreground">
-                    PNG, JPEG, WebP, GIF or SVG · max 5 MB. Saved to <code>/uploads/</code>.
+                    PNG, JPEG, WebP, GIF or SVG · max 10 MB. Saved to <code>/uploads/</code>.
                   </p>
                 </div>
               </TabsContent>

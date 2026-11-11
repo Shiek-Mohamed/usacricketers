@@ -187,8 +187,11 @@ export function MarkdownEditor({
 
   return (
     <div className="rounded-md border">
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-1 border-b bg-muted/40 px-2 py-1.5">
+      {/* Toolbar — z-30 so it sits above the sticky action bar (z-20) at the
+          bottom of the article editor page. Without this, the "Insert photo"
+          and other toolbar buttons get covered when the editor is scrolled
+          near the bottom of the viewport. */}
+      <div className="relative z-30 flex flex-wrap items-center gap-1 border-b bg-muted/40 px-2 py-1.5">
         <Button type="button" variant="ghost" size="icon" className={btn} title="Bold" onClick={() => applyWrap("**", "**", "bold text")}>
           <Bold className="h-4 w-4" />
         </Button>

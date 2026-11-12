@@ -3,7 +3,7 @@
 import { useMemo } from "react"
 import { cn } from "@/lib/utils"
 import { useAppStore } from "@/lib/store"
-import { useMatches, useArticles, useGalleries, useVideos } from "@/lib/use-data"
+import { useMatches, useArticles, useGalleries, useVideos, usePlayers } from "@/lib/use-data"
 import type { Gallery, Match, Article, Video } from "@/lib/types"
 import {
   TeamBadge,
@@ -411,15 +411,17 @@ export function HomeView() {
   const { data: featuredArticles, loading: articlesLoadingFeatured } =
     useArticles({ featured: true, pageSize: 12 })
   const { data: allArticles, loading: articlesLoadingAll } = useArticles({ pageSize: 16 })
-  const { data: interviewData } = useArticles({ category: "interview", pageSize: 6 })
+  const { data: interviewData } = useArticles({ category: "interview", pageSize: 9 })
 
   const matches = matchesData ?? []
 
   // Build a carousel of recent matches: live first, then completed, then upcoming.
   // Show up to 8 cards total — enough for a scrollable carousel.
   const carouselMatches = useMemo(() => {
-    const live = matches.filter((m) => m.status === "live")
-    const completed = matches.filter((m) => m.status === "completed").slice(0, 4)
+    const live = matches.filter((m) => m.status === "live" && m.scorecard)
+    const completed = matches
+      .filter((m) => m.status === "completed" && m.scorecard)
+      .slice(0, 4)
     const upcoming = matches.filter((m) => m.status === "upcoming").slice(0, 3)
     return [...live, ...completed, ...upcoming].slice(0, 8)
   }, [matches])
@@ -528,6 +530,9 @@ export function HomeView() {
           content. Inline variant = light card style. */}
       <NewsletterSignup variant="inline" />
 
+      {/* Star Players — 8 player cards with career stats */}
+      <StarPlayersSection />
+
       {/* Interviews — styled per the provided sample design */}
       <InterviewsSection articles={interviewData?.items ?? []} />
 
@@ -550,7 +555,7 @@ function InterviewsSection({ articles }: { articles: Article[] }) {
   if (!articles.length) return null
   const hero = articles[0]
   const secondary = articles.slice(1, 3)
-  const popular = articles.slice(0, 3)
+  const popular = articles.slice(3, 9)
 
   return (
     <section className="space-y-6">
@@ -587,6 +592,7 @@ function InterviewsSection({ articles }: { articles: Article[] }) {
         </div>
 
         {/* Right: Popular Interviews numbered list */}
+        {popular.length > 0 && (
         <aside className="lg:col-span-4">
           <div className="mb-5 border-b pb-4">
             <h3 className="text-lg font-bold uppercase tracking-wide text-[#1e2a5e] sm:text-xl">
@@ -616,6 +622,7 @@ function InterviewsSection({ articles }: { articles: Article[] }) {
             ))}
           </ul>
         </aside>
+        )}
       </div>
     </section>
   )
@@ -669,6 +676,90 @@ function InterviewCard({
         </div>
       </div>
     </a>
+  )
+}
+
+/* ---- Star Players section (8 player cards with career stats) ---- */
+
+function StarPlayersSection() {
+  const navigate = useAppStore((s) => s.navigate)
+  const { data: playersData, loading } = usePlayers()
+
+  const players = useMemo(() => {
+    const all = playersData ?? []
+    return all
+      .filter((p) => {
+        try {
+          const stats = typeof p.battingStats === "string" ? JSON.parse(p.battingStats) : p.battingStats
+          return stats && stats.runs > 0
+        } catch { return false }
+      })
+      .sort((a, b) => {
+        try {
+          const sa = typeof a.battingStats === "string" ? JSON.parse(a.battingStats) : a.battingStats
+          const sb = typeof b.battingStats === "string" ? JSON.parse(b.battingStats) : b.battingStats
+          return (sb?.runs || 0) - (sa?.runs || 0)
+        } catch { return 0 }
+      })
+      .slice(0, 8)
+  }, [playersData])
+
+  if (!loading && players.length === 0) return null
+
+  return (
+    <section className="rounded-xl bg-[#1e2a5e] p-4 sm:p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-extrabold uppercase tracking-wide text-white sm:text-xl">
+          Star Players
+        </h2>
+        <button
+          onClick={() => navigate("players")}
+          className="text-xs font-semibold text-amber-400 transition-colors hover:text-amber-300"
+        >
+          View all →
+        </button>
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+        {loading ? (
+          Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="rounded-lg bg-white/5 p-3">
+              <Skeleton className="mx-auto mb-2 h-12 w-12 rounded-full" />
+              <Skeleton className="mx-auto h-3 w-20" />
+              <Skeleton className="mx-auto mt-1 h-2 w-16" />
+            </div>
+          ))
+        ) : (
+          players.map((p) => {
+            let stats: any = {}
+            try {
+              stats = typeof p.battingStats === "string" ? JSON.parse(p.battingStats) : p.battingStats || {}
+            } catch {}
+            return (
+              <a
+                key={p.id}
+                href={p.id ? `/players/${p.id}` : "#"}
+                className="group rounded-lg bg-white/5 p-3 text-center transition-colors hover:bg-white/10"
+              >
+                <div className="mx-auto mb-2 grid h-12 w-12 place-items-center rounded-full bg-gradient-to-br from-amber-500 to-amber-600 text-sm font-extrabold text-white shadow-md ring-2 ring-white/10">
+                  {p.name?.slice(0, 2).toUpperCase() || "?"}
+                </div>
+                <p className="truncate text-xs font-semibold text-white">
+                  {p.name}
+                </p>
+                <p className="text-[11px] font-medium text-amber-400">
+                  {stats.runs ? `${stats.runs} runs` : p.role}
+                </p>
+                {stats.matches && (
+                  <p className="text-[10px] text-white/70">
+                    {stats.matches} matches
+                  </p>
+                )}
+              </a>
+            )
+          })
+        )}
+      </div>
+    </section>
   )
 }
 

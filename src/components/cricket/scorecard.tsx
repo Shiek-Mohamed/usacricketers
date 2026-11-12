@@ -71,7 +71,7 @@ function InningsCard({
       <BattingBlock innings={innings} />
 
       {/* Fall of wickets */}
-      {innings.fallOfWickets.length > 0 && (
+      {innings.fallOfWickets && innings.fallOfWickets.length > 0 && (
         <FallOfWickets fow={innings.fallOfWickets} />
       )}
 

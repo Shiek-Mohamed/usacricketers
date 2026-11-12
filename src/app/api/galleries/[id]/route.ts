@@ -30,6 +30,8 @@ export async function PUT(
       description: body.description,
       coverImage: body.coverImage,
       photos: typeof body.photos === "string" ? body.photos : JSON.stringify(body.photos || []),
+      // Allow updating createdAt for chronological reordering
+      ...(body.createdAt ? { createdAt: new Date(body.createdAt) } : {}),
       published: body.published !== false,
     },
   })

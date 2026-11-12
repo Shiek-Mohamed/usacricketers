@@ -15,8 +15,6 @@ import {
   Activity,
   ChevronRight,
   Shield,
-  Sparkles,
-  Check,
 } from "lucide-react"
 
 const NAVY = "#1e2a5e"
@@ -211,63 +209,12 @@ export function ScorerLandingView() {
                 <div className="text-center">
                   <Button
                     onClick={() => enterScorerLogin()}
-                    variant="outline"
-                    className="gap-2 border-white/30 text-white hover:bg-white/10 hover:text-white"
+                    className="gap-2 bg-white text-[#1e2a5e] hover:bg-white/90"
                     size="lg"
                   >
-                    Get started
+                    <LogIn className="h-4 w-4" />
+                    Sign in to score
                     <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                {/* Pricing plans — compact upgrade section */}
-                <div className="rounded-xl border bg-white p-5 shadow-lg">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-amber-500" />
-                    <h2 className="text-sm font-extrabold uppercase tracking-wide" style={{ color: NAVY }}>
-                      Pricing Plans
-                    </h2>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Start free. Upgrade when your league grows.
-                  </p>
-                  <div className="mt-3 grid grid-cols-3 gap-3">
-                    {/* Free */}
-                    <div className="rounded-lg border border-border p-3 text-center">
-                      <div className="font-display text-xs font-bold uppercase text-muted-foreground">Free</div>
-                      <div className="font-display text-xl font-black" style={{ color: NAVY }}>$0</div>
-                      <div className="text-[10px] text-muted-foreground">1 league · 10 teams</div>
-                    </div>
-                    {/* Pro — highlighted */}
-                    <div className="relative rounded-lg border-2 border-amber-400 bg-amber-50/50 p-3 text-center">
-                      <div className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-amber-500 px-2 py-0.5">
-                        <span className="font-display text-[8px] font-bold uppercase tracking-widest text-white">Popular</span>
-                      </div>
-                      <div className="font-display text-xs font-bold uppercase text-amber-600">Pro</div>
-                      <div className="font-display text-xl font-black text-amber-600">$29</div>
-                      <div className="text-[10px] text-muted-foreground">Unlimited leagues</div>
-                    </div>
-                    {/* Enterprise */}
-                    <div className="rounded-lg border border-border p-3 text-center">
-                      <div className="font-display text-xs font-bold uppercase text-muted-foreground">Enterprise</div>
-                      <div className="font-display text-xl font-black" style={{ color: NAVY }}>$99</div>
-                      <div className="text-[10px] text-muted-foreground">White-label + API</div>
-                    </div>
-                  </div>
-                  {/* Pro highlights */}
-                  <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1"><Check className="h-3 w-3 text-emerald-500" /> Custom branding</span>
-                    <span className="flex items-center gap-1"><Check className="h-3 w-3 text-emerald-500" /> Ad-free</span>
-                    <span className="flex items-center gap-1"><Check className="h-3 w-3 text-emerald-500" /> Rankings + brackets</span>
-                    <span className="flex items-center gap-1"><Check className="h-3 w-3 text-emerald-500" /> Custom domain</span>
-                  </div>
-                  <Button
-                    onClick={() => navigate("pricing")}
-                    className="mt-3 w-full gap-2 bg-amber-500 text-white hover:bg-amber-600"
-                    size="sm"
-                  >
-                    <Sparkles className="h-3.5 w-3.5" />
-                    View Plans & Upgrade
                   </Button>
                 </div>
               </>

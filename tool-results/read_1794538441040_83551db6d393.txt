@@ -1,0 +1,1189 @@
+     1→"use client"
+     2→
+     3→import { useState } from "react"
+     4→import type { Match, Scorecard } from "@/lib/types"
+     5→import {
+     6→  TeamBadge,
+     7→  StatusPill,
+     8→  FormatPill,
+     9→  formatMatchDate,
+    10→  formatMatchTime,
+    11→} from "@/components/cricket/ui"
+    12→import { ScorecardView } from "@/components/cricket/scorecard"
+    13→import { InnerPageLayout } from "@/components/site/inner-layout"
+    14→import { CustomSidebarBlocks } from "@/components/site/custom-sidebar-blocks"
+    15→import { RecentResultsWidget } from "@/components/site/sidebar-widgets"
+    16→import { Header } from "@/components/site/header"
+    17→import { Footer } from "@/components/site/footer"
+    18→import { ShareButtons } from "@/components/site/share-buttons"
+    19→import { LiveMatchSection } from "@/components/site/live-match-section"
+    20→import { Card } from "@/components/ui/card"
+    21→import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+    22→import { ChartContainer, type ChartConfig } from "@/components/ui/chart"
+    23→import { cn } from "@/lib/utils"
+    24→import { Bar, BarChart, Line, LineChart, XAxis, YAxis, Cell, ResponsiveContainer, CartesianGrid } from "recharts"
+    25→import {
+    26→  ChevronRight,
+    27→  ChevronDown,
+    28→  MapPin,
+    29→  CalendarDays,
+    30→  Home as HomeIcon,
+    31→  Trophy,
+    32→  Users,
+    33→  User,
+    34→  Shield,
+    35→  Award,
+    36→  Info,
+    37→  MessageSquare,
+    38→  BarChart3,
+    39→  TrendingUp,
+    40→  CloudRain,
+    41→} from "lucide-react"
+    42→
+    43→function MatchBreadcrumbs({ match }: { match: Match }) {
+    44→  const t1 = match.team1?.shortName ?? "Team 1"
+    45→  const t2 = match.team2?.shortName ?? "Team 2"
+    46→  return (
+    47→    <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+    48→      <a href="/" className="inline-flex items-center gap-1 transition-colors hover:text-foreground">
+    49→        <HomeIcon className="h-3 w-3" /> Home
+    50→      </a>
+    51→      <ChevronRight className="h-3 w-3 shrink-0 opacity-60" aria-hidden="true" />
+    52→      <a href="/?view=matches" className="transition-colors hover:text-foreground">Matches</a>
+    53→      <ChevronRight className="h-3 w-3 shrink-0 opacity-60" aria-hidden="true" />
+    54→      <span className="line-clamp-1 max-w-[60%] truncate font-medium text-foreground/80">{t1} vs {t2}</span>
+    55→    </nav>
+    56→  )
+    57→}
+    58→
+    59→/** Detail row helper */
+    60→function DetailRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value?: string | null }) {
+    61→  if (!value) return null
+    62→  return (
+    63→    <div className="flex items-center gap-2 py-1">
+    64→      <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+    65→      <span className="text-xs font-medium text-muted-foreground">{label}:</span>
+    66→      <span className="text-xs font-semibold text-foreground">{value}</span>
+    67→    </div>
+    68→  )
+    69→}
+    70→
+    71→/** Full match scorebox — Wisden-inspired dark navy gradient hero with
+    72→ *  symmetric team layout, big score numerals, "vs" divider, and a
+    73→ *  one-line status strip at the bottom. Match details go in a compact
+    74→ *  horizontal strip below the hero. */
+    75→function MatchScorebox({ match }: { match: Match }) {
+    76→  const sc = match.scorecard
+    77→  const live = match.status === "live"
+    78→  const t1 = match.team1
+    79→  const t2 = match.team2
+    80→  const t1Innings = sc?.innings?.filter((i) => i.teamId === match.team1Id) ?? []
+    81→  const t2Innings = sc?.innings?.filter((i) => i.teamId === match.team2Id) ?? []
+    82→
+    83→  const statusLine = (() => {
+    84→    if (match.status === "completed" && match.result) return match.result
+    85→    if (match.status === "upcoming") return "Match yet to begin"
+    86→    if (!sc || (t1Innings.length === 0 && t2Innings.length === 0)) return "Innings setup in progress"
+    87→    const lastInn = sc.innings?.[sc.innings.length - 1]
+    88→    if (!lastInn) return "Live — scoring in progress"
+    89→    return `Live — ${lastInn.totalRuns}/${lastInn.totalWickets} (${lastInn.totalOvers} ov)`
+    90→  })()
+    91→
+    92→  return (
+    93→    <div className={`overflow-hidden rounded-xl ${live ? "ring-2 ring-red-500/40" : ""}`}>
+    94→      {/* Top bar — format + match no + share + status */}
+    95→      <div className="flex items-center justify-between gap-2 bg-[#0f1729] dark:bg-[#0d1525] px-4 py-2 sm:px-6">
+    96→        <div className="flex items-center gap-2 min-w-0">
+    97→          <FormatPill format={match.format} />
+    98→          <span className="truncate font-display text-sm font-bold uppercase tracking-wide text-white/90">{match.matchNo}</span>
+    99→          {match.series?.shortName && (
+   100→            <span className="hidden font-display text-xs font-medium uppercase tracking-wide text-white/50 sm:inline">· {match.series.shortName}</span>
+   101→          )}
+   102→        </div>
+   103→        <div className="flex items-center gap-2">
+   104→          <ShareButtons title={`${t1?.shortName ?? "?"} vs ${t2?.shortName ?? "?"} — ${match.matchNo}`} className="flex" />
+   105→          {live ? (
+   106→            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
+   107→              <span className="relative flex h-2 w-2">
+   108→                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+   109→                <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+   110→              </span>
+   111→              Live
+   112→            </span>
+   113→          ) : (
+   114→            <StatusPill status={match.status} />
+   115→          )}
+   116→        </div>
+   117→      </div>
+   118→
+   119→      {/* Hero scoreboard — dark navy gradient with symmetric team layout */}
+   120→      <div className="bg-gradient-to-b from-[#1e2a5e] to-[#0f1729] dark:from-[#1e2a5e] dark:to-[#1a2540] px-4 py-6 sm:px-6 sm:py-8">
+   121→        {/* Venue + date — small, centered */}
+   122→        <div className="mb-5 text-center text-xs text-white/50">
+   123→          {match.venue}{match.city ? `, ${match.city}` : ""} · {formatMatchDate(match.startDate)}
+   124→        </div>
+   125→
+   126→        {/* Two teams centered as a group — crests + scores + "vs" */}
+   127→        <div className="flex items-center justify-center gap-6 sm:gap-12">
+   128→          {/* Team 1 (left) */}
+   129→          <ScoreHeroSide team={t1} innings={t1Innings} align="left" />
+   130→
+   131→          {/* VS divider */}
+   132→          <div className="text-xs font-bold uppercase tracking-widest text-white/30">vs</div>
+   133→
+   134→          {/* Team 2 (right) */}
+   135→          <ScoreHeroSide team={t2} innings={t2Innings} align="right" />
+   136→        </div>
+   137→
+   138→        {/* Toss info */}
+   139→        {match.tossWinnerId && match.tossDecision && (() => {
+   140→          const winner = match.tossWinnerId === match.team1Id ? match.team1 : match.tossWinnerId === match.team2Id ? match.team2 : undefined
+   141→          if (!winner) return null
+   142→          return (
+   143→            <div className="mt-5 text-center text-xs font-medium text-white/60">
+   144→              {winner.name} won the toss and elected to {match.tossDecision === "bat" ? "bat" : "bowl"}
+   145→            </div>
+   146→          )
+   147→        })()}
+   148→      </div>
+   149→
+   150→      {/* Status strip — one-line summary */}
+   151→      <div className="bg-[#162244] dark:bg-[#1a2540] px-4 py-2.5 text-center sm:px-6">
+   152→        <p className="text-sm font-semibold text-white/90">{statusLine}</p>
+   153→      </div>
+   154→
+   155→      {/* Match details — compact horizontal strip below the hero */}
+   156→      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border/40 bg-muted/20 px-4 py-2.5 text-xs sm:px-6">
+   157→        {match.series?.name && (
+   158→          <span className="inline-flex items-center gap-1"><Trophy className="h-3.5 w-3.5 text-muted-foreground" /> {match.series.name}</span>
+   159→        )}
+   160→        {match.series?.season && (
+   161→          <span className="inline-flex items-center gap-1"><CalendarDays className="h-3.5 w-3.5 text-muted-foreground" /> {match.series.season}</span>
+   162→        )}
+   163→        {match.manOfMatch && (
+   164→          <span className="inline-flex items-center gap-1"><User className="h-3.5 w-3.5 text-muted-foreground" /> POTM: {match.manOfMatch}</span>
+   165→        )}
+   166→        {match.umpires && (
+   167→          <span className="inline-flex items-center gap-1"><Users className="h-3.5 w-3.5 text-muted-foreground" /> Umpires: {match.umpires}</span>
+   168→        )}
+   169→        {match.tvUmpire && (
+   170→          <span className="inline-flex items-center gap-1"><Users className="h-3.5 w-3.5 text-muted-foreground" /> TV: {match.tvUmpire}</span>
+   171→        )}
+   172→        {match.referee && (
+   173→          <span className="inline-flex items-center gap-1"><Shield className="h-3.5 w-3.5 text-muted-foreground" /> Referee: {match.referee}</span>
+   174→        )}
+   175→      </div>
+   176→    </div>
+   177→  )
+   178→}
+   179→
+   180→/** One team's side of the hero scoreboard — crest + short name + score. */
+   181→function ScoreHeroSide({
+   182→  team,
+   183→  innings,
+   184→  align,
+   185→}: {
+   186→  team?: Match["team1"]
+   187→  innings: { totalRuns: number; totalWickets: number; totalOvers: string }[]
+   188→  align: "left" | "right"
+   189→}) {
+   190→  if (!team) return <div />
+   191→  const hasScore = innings.length > 0
+   192→  return (
+   193→    <a
+   194→      href={`/teams/${team.id}`}
+   195→      className={`flex flex-col gap-2 ${align === "left" ? "items-start text-left" : "items-end text-right"}`}
+   196→    >
+   197→      {/* Crest in a translucent circle */}
+   198→      <div className="grid h-12 w-12 place-items-center rounded-full bg-white/10 ring-2 ring-white/20 sm:h-14 sm:w-14">
+   199→        <TeamBadge team={team} size="md" />
+   200→      </div>
+   201→      {/* Team short name */}
+   202→      <div className="font-display text-xs font-bold uppercase tracking-wide text-white/70 sm:text-sm">
+   203→        {team.shortName}
+   204→      </div>
+   205→      {/* Score — massive numerals */}
+   206→      {hasScore ? (
+   207→        <div className="text-white">
+   208→          {innings.map((inn, i) => (
+   209→            <div key={i} className="font-display text-2xl font-extrabold tabular-nums sm:text-4xl">
+   210→              {inn.totalRuns}<span className="text-white/60">/{inn.totalWickets}</span>
+   211→            </div>
+   212→          ))}
+   213→          <div className="font-display text-xs font-normal text-white/50">
+   214→            ({innings[0].totalOvers} ov)
+   215→          </div>
+   216→        </div>
+   217→      ) : (
+   218→        <div className="font-display text-sm text-white/40">Yet to bat</div>
+   219→      )}
+   220→    </a>
+   221→  )
+   222→}
+   223→
+   224→/* -------------------------------------------------------------------------- */
+   225→/*  Ball chip — Wisden-style color-coded circles                               */
+   226→/*  dot=dark gray · 1-3=white w/ border · 4=blue · 6=magenta · W=red           */
+   227→/* -------------------------------------------------------------------------- */
+   228→
+   229→function BallChip({ kind, text, size = "sm" }: { kind: string; text: string; size?: "sm" | "md" }) {
+   230→  // All chips use the SAME dimensions regardless of ball type — consistency
+   231→  const dim = size === "md" ? "h-9 w-9 text-sm" : "h-7 w-7 text-xs"
+   232→  const base = `grid ${dim} shrink-0 place-items-center rounded-full font-bold`
+   233→  if (kind === "wicket") return <span className={`${base} bg-red-600 text-white`}>W</span>
+   234→  if (kind === "six") return <span className={`${base} bg-fuchsia-600 text-white`}>6</span>
+   235→  if (kind === "boundary") return <span className={`${base} bg-sky-600 text-white`}>4</span>
+   236→  if (kind === "extra") {
+   237→    const t = text.toLowerCase()
+   238→    const label = t.includes("wide") ? "wd" : t.includes("no ball") ? "nb" : "+"
+   239→    return <span className={`${base} bg-amber-500 text-amber-950`}>{label}</span>
+   240→  }
+   241→  if (kind === "run") {
+   242→    const m = text.match(/^(\d+)/)
+   243→    const r = m ? m[1] : "0"
+   244→    return <span className={`${base} border border-gray-300 bg-white text-gray-700`}>{r}</span>
+   245→  }
+   246→  // Dot ball — same size, gray fill with center dot
+   247→  return <span className={`${base} bg-gray-200`}><span className="h-1.5 w-1.5 rounded-full bg-gray-500" /></span>
+   248→}
+   249→
+   250→/* -------------------------------------------------------------------------- */
+   251→/*  Commentary accordion — Wisden-style over-by-over blocks                    */
+   252→/* --------------------------------------------------------------------------- */
+   253→
+   254→function CommentaryAccordion({ scorecard, match }: { scorecard: Scorecard; match: Match }) {
+   255→  const commentary = scorecard.commentary ?? []
+   256→  if (commentary.length === 0) {
+   257→    return (
+   258→      <Card className="p-6 text-center text-sm text-muted-foreground">
+   259→        No commentary available for this match.
+   260→      </Card>
+   261→    )
+   262→  }
+   263→
+   264→  // Build innings selector pills (if multiple innings)
+   265→  const inningsLabels = scorecard.innings.map((inn, i) => ({
+   266→    key: `inn-${i}`,
+   267→    label: `${inn.teamShortName} Inns ${scorecard.innings.filter((x) => x.teamId === inn.teamId).indexOf(inn) + 1}`,
+   268→    teamId: inn.teamId,
+   269→  }))
+   270→
+   271→  // Group commentary by over number. Newest first.
+   272→  // Skip over 0 — those are pre-match info messages ("innings begins"),
+   273→  // not actual overs. Cricket overs start from 1.
+   274→  const ballKinds = new Set(["run", "boundary", "six", "wicket", "extra", "dot"])
+   275→  const overMap = new Map<number, typeof commentary>()
+   276→  for (const c of commentary) {
+   277→    const overNum = parseInt(c.over?.split(".")[0] || "0", 10)
+   278→    if (overNum < 1) continue // skip info/pre-match entries
+   279→    if (!overMap.has(overNum)) overMap.set(overNum, [])
+   280→    overMap.get(overNum)!.push(c)
+   281→  }
+   282→  const overs = Array.from(overMap.keys()).sort((a, b) => b - a)
+   283→
+   284→  return (
+   285→    <div className="space-y-3">
+   286→      {/* Innings selector pills */}
+   287→      {inningsLabels.length > 1 && (
+   288→        <div className="flex gap-1 rounded-full bg-muted p-1">
+   289→          {inningsLabels.map((inn, i) => (
+   290→            <button
+   291→              key={inn.key}
+   292→              className={`flex-1 rounded-full px-3 py-1.5 text-sm font-bold transition-colors ${
+   293→                i === 0 ? "bg-[#1e2a5e] text-white" : "text-muted-foreground hover:bg-accent"
+   294→              }`}
+   295→            >
+   296→              {inn.label}
+   297→            </button>
+   298→          ))}
+   299→        </div>
+   300→      )}
+   301→
+   302→      {/* Over blocks */}
+   303→      <div className="overflow-hidden rounded-lg border border-border/60">
+   304→        {overs.map((overNum) => {
+   305→          const entries = overMap.get(overNum)!
+   306→          const balls = entries.filter((e) => ballKinds.has(e.kind))
+   307→          const runsInOver = balls.reduce((sum, b) => {
+   308→            const m = b.text.match(/^(\d+)/)
+   309→            return sum + (m ? Number(m[1]) : 0)
+   310→          }, 0)
+   311→          const hasWicket = balls.some((b) => b.kind === "wicket")
+   312→          const bowler = entries.find((e) => e.text.includes("—"))?.text.split("—")[1]?.trim()?.split("  ")[0] ?? ""
+   313→
+   314→          return (
+   315→            <OverBlock
+   316→              key={overNum}
+   317→              overNum={overNum}
+   318→              entries={entries}
+   319→              balls={balls}
+   320→              runsInOver={runsInOver}
+   321→              hasWicket={hasWicket}
+   322→              bowler={bowler}
+   323→              isLast={overNum === overs[overs.length - 1]}
+   324→            />
+   325→          )
+   326→        })}
+   327→      </div>
+   328→    </div>
+   329→  )
+   330→}
+   331→
+   332→function OverBlock({
+   333→  overNum,
+   334→  entries,
+   335→  balls,
+   336→  runsInOver,
+   337→  hasWicket,
+   338→  bowler,
+   339→  isLast,
+   340→}: {
+   341→  overNum: number
+   342→  entries: { id: string; over: string; text: string; kind: string }[]
+   343→  balls: { id: string; over: string; text: string; kind: string }[]
+   344→  runsInOver: number
+   345→  hasWicket: boolean
+   346→  bowler: string
+   347→  isLast: boolean
+   348→}) {
+   349→  const [expanded, setExpanded] = useState(false)
+   350→  return (
+   351→    <div className={`bg-card ${!isLast ? "border-b border-border/40" : ""}`}>
+   352→      {/* Over header — title row */}
+   353→      <button
+   354→        onClick={() => setExpanded(!expanded)}
+   355→        className="flex w-full items-center justify-between gap-2 px-4 pt-3 text-left"
+   356→      >
+   357→        <span className="font-display text-base font-bold tabular-nums text-foreground">Over {overNum}</span>
+   358→        <div className="flex items-center gap-2">
+   359→          {/* Summary text */}
+   360→          <span className="text-sm text-muted-foreground">
+   361→            {runsInOver > 0 && `${runsInOver} run${runsInOver > 1 ? "s" : ""}`}
+   362→            {hasWicket && runsInOver > 0 && " · "}
+   363→            {hasWicket && <span className="font-bold text-red-600">W</span>}
+   364→            {bowler && ` · ${bowler}`}
+   365→          </span>
+   366→          <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`} />
+   367→        </div>
+   368→      </button>
+   369→
+   370→      {/* Ball chips row — below the title */}
+   371→      <button
+   372→        onClick={() => setExpanded(!expanded)}
+   373→        className="flex w-full items-center gap-2 px-4 pb-3 pt-2 text-left"
+   374→      >
+   375→        <div className="flex flex-1 items-center gap-2 overflow-hidden">
+   376→          {balls.slice(0, 8).map((b) => (
+   377→            <BallChip key={b.id} kind={b.kind} text={b.text} />
+   378→          ))}
+   379→        </div>
+   380→      </button>
+   381→
+   382→      {/* Expanded — per-ball commentary cards (Wisden style) */}
+   383→      {expanded && (
+   384→        <div className="space-y-2 px-4 pb-4">
+   385→          {entries.map((e) => (
+   386→            <BallCommentaryCard key={e.id} entry={e} />
+   387→          ))}
+   388→        </div>
+   389→      )}
+   390→    </div>
+   391→  )
+   392→}
+   393→
+   394→function BallCommentaryCard({ entry }: { entry: { id: string; over: string; text: string; kind: string } }) {
+   395→  const ballKinds = new Set(["run", "boundary", "six", "wicket", "extra", "dot"])
+   396→  const isBall = ballKinds.has(entry.kind)
+   397→  // Parse "Bowler — description" format, or use the text as-is
+   398→  const parts = entry.text.split("—")
+   399→  const heading = parts[0]?.trim() || ""
+   400→  const description = parts.slice(1).join("—").trim() || entry.text
+   401→
+   402→  return (
+   403→    <div className="flex items-start gap-3 rounded-lg bg-muted/50 p-3">
+   404→      {/* Ball number circle + over.ball notation */}
+   405→      <div className="flex shrink-0 flex-col items-center gap-1">
+   406→        {isBall ? (
+   407→          <BallChip kind={entry.kind} text={entry.text} size="md" />
+   408→        ) : (
+   409→          <div className="h-9 w-9 shrink-0" />
+   410→        )}
+   411→        <span className="text-xs font-medium text-muted-foreground">{entry.over}</span>
+   412→      </div>
+   413→      {/* Commentary text */}
+   414→      <div className="min-w-0 flex-1 pt-1">
+   415→        {heading && (
+   416→          <p className="text-sm font-bold text-foreground">{heading}</p>
+   417→        )}
+   418→        <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
+   419→      </div>
+   420→    </div>
+   421→  )
+   422→}
+   423→
+   424→/* -------------------------------------------------------------------------- */
+   425→/*  Squads — both teams' playing XIs from the scorecard                        */
+   426→/* -------------------------------------------------------------------------- */
+   427→
+   428→function SquadsView({ match, scorecard }: { match: Match; scorecard: Scorecard }) {
+   429→  const t1Innings = scorecard.innings.filter((i) => i.teamId === match.team1Id)
+   430→  const t2Innings = scorecard.innings.filter((i) => i.teamId === match.team2Id)
+   431→
+   432→  return (
+   433→    <div className="grid gap-4 sm:grid-cols-2">
+   434→      <SquadCard title={match.team1?.name ?? "Team 1"} shortName={match.team1?.shortName} innings={t1Innings} />
+   435→      <SquadCard title={match.team2?.name ?? "Team 2"} shortName={match.team2?.shortName} innings={t2Innings} />
+   436→    </div>
+   437→  )
+   438→}
+   439→
+   440→function SquadCard({
+   441→  title,
+   442→  shortName,
+   443→  innings,
+   444→}: {
+   445→  title: string
+   446→  shortName?: string
+   447→  innings: Scorecard["innings"]
+   448→}) {
+   449→  const played = innings.flatMap((inn) => inn.batting.map((b) => b.name))
+   450→  const didNotBat = innings.flatMap((inn) => inn.didNotBat ?? [])
+   451→  const all = [...played, ...didNotBat.map((d) => d.name)]
+   452→  const deduped = [...new Set(all)]
+   453→
+   454→  return (
+   455→    <Card className="overflow-hidden p-0">
+   456→      <div className="border-b bg-muted/30 px-4 py-2.5">
+   457→        <h3 className="font-display text-sm font-bold uppercase tracking-wide">
+   458→          {shortName && <span className="text-emerald-600">{shortName} </span>}
+   459→          {title}
+   460→        </h3>
+   461→      </div>
+   462→      <div className="divide-y divide-border/40">
+   463→        {deduped.length > 0 ? (
+   464→          deduped.map((name, i) => (
+   465→            <div key={i} className="flex items-center gap-2 px-4 py-2">
+   466→              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-muted text-xs font-bold text-muted-foreground">{i + 1}</span>
+   467→              <span className="text-sm font-medium text-foreground">{name}</span>
+   468→            </div>
+   469→          ))
+   470→        ) : (
+   471→          <p className="px-4 py-6 text-center text-sm text-muted-foreground">Squad not available</p>
+   472→        )}
+   473→      </div>
+   474→    </Card>
+   475→  )
+   476→}
+   477→
+   478→/* -------------------------------------------------------------------------- */
+   479→/*  Match Info — venue, date, series, weather, toss                            */
+   480→/* -------------------------------------------------------------------------- */
+   481→
+   482→function MatchInfoView({ match }: { match: Match }) {
+   483→  const tossWinner = match.tossWinnerId === match.team1Id ? match.team1 : match.tossWinnerId === match.team2Id ? match.team2 : undefined
+   484→  return (
+   485→    <Card className="overflow-hidden p-0">
+   486→      <div className="border-b bg-muted/30 px-4 py-2.5">
+   487→        <h3 className="flex items-center gap-1.5 font-display text-sm font-bold uppercase tracking-wide">
+   488→          <Info className="h-4 w-4 text-emerald-600" /> Match Information
+   489→        </h3>
+   490→      </div>
+   491→      <div className="divide-y divide-border/40">
+   492→        <InfoRow icon={MapPin} label="Venue" value={match.venue ? `${match.venue}${match.city ? `, ${match.city}` : ""}` : null} />
+   493→        <InfoRow icon={CalendarDays} label="Date & Time" value={`${formatMatchDate(match.startDate)} · ${formatMatchTime(match.startDate)}`} />
+   494→        <InfoRow icon={Trophy} label="Series" value={match.series?.name} />
+   495→        <InfoRow icon={CloudRain} label="Weather" value={match.weather} />
+   496→        {tossWinner && match.tossDecision && (
+   497→          <InfoRow icon={Trophy} label="Toss" value={`${tossWinner.name} won the toss and elected to ${match.tossDecision === "bat" ? "bat" : "bowl"}`} />
+   498→        )}
+   499→      </div>
+   500→    </Card>
+   501→  )
+   502→}
+   503→
+   504→function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value?: string | null }) {
+   505→  if (!value) return null
+   506→  return (
+   507→    <div className="flex items-center gap-2 px-4 py-3">
+   508→      <Icon className="h-4 w-4 shrink-0 text-muted-foreground/60" />
+   509→      <span className="w-36 shrink-0 text-sm font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
+   510→      <span className="text-sm font-medium text-foreground">{value}</span>
+   511→    </div>
+   512→  )
+   513→}
+   514→
+   515→/* -------------------------------------------------------------------------- */
+   516→/*  Match Preview — recent form + head-to-head for upcoming matches            */
+   517→/* -------------------------------------------------------------------------- */
+   518→
+   519→function MatchPreview({ match, recent }: { match: Match; recent: Match[] }) {
+   520→  const t1 = match.team1
+   521→  const t2 = match.team2
+   522→
+   523→  // Compute recent form (last 5 completed matches for each team)
+   524→  function getForm(teamId: string): { result: "W" | "L" | "T" | "N"; match: Match }[] {
+   525→    return recent
+   526→      .filter((m) => m.status === "completed" && (m.team1Id === teamId || m.team2Id === teamId))
+   527→      .slice(0, 5)
+   528→      .map((m) => {
+   529→        const isTeam1 = m.team1Id === teamId
+   530→        const team = isTeam1 ? m.team1 : m.team2
+   531→        const opp = isTeam1 ? m.team2 : m.team1
+   532→        const result = (m.result || "").toLowerCase()
+   533→        if (result.includes("tie") || result.includes("tied")) return { result: "T" as const, match: m }
+   534→        if (!result) return { result: "N" as const, match: m }
+   535→        const won = result.includes(team?.shortName?.toLowerCase() ?? "___") ||
+   536→                    result.includes(team?.name?.toLowerCase() ?? "___")
+   537→        return { result: won ? "W" as const : "L" as const, match: m }
+   538→      })
+   539→  }
+   540→
+   541→  const t1Form = getForm(match.team1Id)
+   542→  const t2Form = getForm(match.team2Id)
+   543→
+   544→  // Head-to-head: matches between these two teams
+   545→  const h2h = recent.filter((m) =>
+   546→    m.status === "completed" &&
+   547→    ((m.team1Id === match.team1Id && m.team2Id === match.team2Id) ||
+   548→     (m.team1Id === match.team2Id && m.team2Id === match.team1Id))
+   549→  )
+   550→  const t1Wins = h2h.filter((m) => {
+   551→    const r = (m.result || "").toLowerCase()
+   552→    return r.includes(t1?.shortName?.toLowerCase() ?? "___") || r.includes(t1?.name?.toLowerCase() ?? "___")
+   553→  }).length
+   554→  const t2Wins = h2h.filter((m) => {
+   555→    const r = (m.result || "").toLowerCase()
+   556→    return r.includes(t2?.shortName?.toLowerCase() ?? "___") || r.includes(t2?.name?.toLowerCase() ?? "___")
+   557→  }).length
+   558→
+   559→  if (t1Form.length === 0 && t2Form.length === 0) return null
+   560→
+   561→  return (
+   562→    <Card className="overflow-hidden p-0">
+   563→      <div className="border-b bg-muted/30 px-4 py-2.5">
+   564→        <h3 className="flex items-center gap-1.5 font-display text-sm font-bold uppercase tracking-wide">
+   565→          <Trophy className="h-4 w-4 text-emerald-600" /> Match Preview
+   566→        </h3>
+   567→      </div>
+   568→      <div className="grid grid-cols-2 divide-x divide-border/40">
+   569→        {/* Team 1 form */}
+   570→        <div className="p-4">
+   571→          <div className="mb-3 flex items-center gap-2">
+   572→            {t1 && <TeamBadge team={t1} size="sm" />}
+   573→            <span className="font-display text-sm font-bold">{t1?.shortName}</span>
+   574→          </div>
+   575→          <div className="flex items-center gap-1.5">
+   576→            {t1Form.length > 0 ? (
+   577→              t1Form.map((f, i) => (
+   578→                <span
+   579→                  key={i}
+   580→                  className={cn(
+   581→                    "grid h-7 w-7 place-items-center rounded text-xs font-bold",
+   582→                    f.result === "W" && "bg-emerald-600 text-white",
+   583→                    f.result === "L" && "bg-red-500 text-white",
+   584→                    f.result === "T" && "bg-amber-500 text-white",
+   585→                    f.result === "N" && "bg-muted text-muted-foreground",
+   586→                  )}
+   587→                >
+   588→                  {f.result}
+   589→                </span>
+   590→              ))
+   591→            ) : (
+   592→              <span className="text-xs text-muted-foreground">No recent matches</span>
+   593→            )}
+   594→          </div>
+   595→        </div>
+   596→        {/* Team 2 form */}
+   597→        <div className="p-4">
+   598→          <div className="mb-3 flex items-center gap-2">
+   599→            {t2 && <TeamBadge team={t2} size="sm" />}
+   600→            <span className="font-display text-sm font-bold">{t2?.shortName}</span>
+   601→          </div>
+   602→          <div className="flex items-center gap-1.5">
+   603→            {t2Form.length > 0 ? (
+   604→              t2Form.map((f, i) => (
+   605→                <span
+   606→                  key={i}
+   607→                  className={cn(
+   608→                    "grid h-7 w-7 place-items-center rounded text-xs font-bold",
+   609→                    f.result === "W" && "bg-emerald-600 text-white",
+   610→                    f.result === "L" && "bg-red-500 text-white",
+   611→                    f.result === "T" && "bg-amber-500 text-white",
+   612→                    f.result === "N" && "bg-muted text-muted-foreground",
+   613→                  )}
+   614→                >
+   615→                  {f.result}
+   616→                </span>
+   617→              ))
+   618→            ) : (
+   619→              <span className="text-xs text-muted-foreground">No recent matches</span>
+   620→            )}
+   621→          </div>
+   622→        </div>
+   623→      </div>
+   624→      {/* Head-to-head */}
+   625→      {h2h.length > 0 && (
+   626→        <div className="border-t px-4 py-3 text-center">
+   627→          <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Head-to-Head: </span>
+   628→          <span className="text-sm font-bold text-emerald-600">{t1?.shortName} {t1Wins}</span>
+   629→          <span className="text-sm text-muted-foreground"> — </span>
+   630→          <span className="text-sm font-bold text-red-500">{t2Wins} {t2?.shortName}</span>
+   631→          <span className="text-xs text-muted-foreground"> ({h2h.length} matches)</span>
+   632→        </div>
+   633→      )}
+   634→    </Card>
+   635→  )
+   636→}
+   637→
+   638→/* -------------------------------------------------------------------------- */
+   639→/*  WinViz — win probability bar based on current match state                   */
+   640→/* -------------------------------------------------------------------------- */
+   641→
+   642→function WinVizView({ match }: { match: Match }) {
+   643→  const sc = match.scorecard
+   644→  const t1 = match.team1
+   645→  const t2 = match.team2
+   646→
+   647→  // Compute win probability from the match state
+   648→  const probs = computeWinProbability(match, sc)
+   649→
+   650→  if (!probs) {
+   651→    return (
+   652→      <Card className="flex flex-col items-center justify-center gap-2 p-10 text-center">
+   653→        <TrendingUp className="h-10 w-10 text-muted-foreground/40" />
+   654→        <h3 className="font-display text-sm font-bold uppercase tracking-wide">WinViz</h3>
+   655→        <p className="max-w-xs text-sm text-muted-foreground">
+   656→          Win probability will appear here once the match is live or completed.
+   657→        </p>
+   658→      </Card>
+   659→    )
+   660→  }
+   661→
+   662→  return (
+   663→    <div className="space-y-4">
+   664→      <Card className="overflow-hidden p-0">
+   665→        <div className="border-b bg-muted/30 px-4 py-2.5">
+   666→          <h3 className="flex items-center gap-1.5 font-display text-sm font-bold uppercase tracking-wide">
+   667→            <TrendingUp className="h-4 w-4 text-emerald-600" /> Win Probability
+   668→          </h3>
+   669→        </div>
+   670→        <div className="p-4">
+   671→          {/* Probability bar */}
+   672→          <div className="flex h-12 overflow-hidden rounded-lg">
+   673→            {probs.t1 > 0 && (
+   674→              <div
+   675→                className="flex items-center justify-center transition-all duration-500"
+   676→                style={{ width: `${probs.t1}%`, background: t1?.primaryColor || "#1e2a5e" }}
+   677→              >
+   678→                <span className="text-sm font-bold text-white">{probs.t1}%</span>
+   679→              </div>
+   680→            )}
+   681→            {probs.draw > 0 && (
+   682→              <div
+   683→                className="flex items-center justify-center bg-muted transition-all duration-500"
+   684→                style={{ width: `${probs.draw}%` }}
+   685→              >
+   686→                <span className="text-sm font-bold text-muted-foreground">{probs.draw}%</span>
+   687→              </div>
+   688→            )}
+   689→            {probs.t2 > 0 && (
+   690→              <div
+   691→                className="flex items-center justify-center transition-all duration-500"
+   692→                style={{ width: `${probs.t2}%`, background: t2?.primaryColor || "#94a3b8" }}
+   693→              >
+   694→                <span className="text-sm font-bold text-white">{probs.t2}%</span>
+   695→              </div>
+   696→            )}
+   697→          </div>
+   698→          {/* Team labels */}
+   699→          <div className="mt-3 flex items-center justify-between">
+   700→            <div className="flex items-center gap-1.5">
+   701→              <span className="h-3 w-3 rounded-full" style={{ background: t1?.primaryColor || "#1e2a5e" }} />
+   702→              <span className="text-sm font-bold">{t1?.shortName}</span>
+   703→            </div>
+   704→            {probs.draw > 0 && (
+   705→              <span className="text-xs text-muted-foreground">Draw</span>
+   706→            )}
+   707→            <div className="flex items-center gap-1.5">
+   708→              <span className="text-sm font-bold">{t2?.shortName}</span>
+   709→              <span className="h-3 w-3 rounded-full" style={{ background: t2?.primaryColor || "#94a3b8" }} />
+   710→            </div>
+   711→          </div>
+   712→        </div>
+   713→      </Card>
+   714→      <p className="text-center text-xs text-muted-foreground">
+   715→        Win probability is calculated from the current match situation — runs scored, wickets remaining, and overs left. It updates as the match progresses.
+   716→      </p>
+   717→    </div>
+   718→  )
+   719→}
+   720→
+   721→/** Simplified win probability model based on match state. */
+   722→function computeWinProbability(match: Match, sc: Scorecard | null):
+   723→  | { t1: number; t2: number; draw: number }
+   724→  | null {
+   725→  if (!sc || sc.innings.length === 0) return null
+   726→  if (match.status === "completed" && match.result) {
+   727→    // Completed match — assign 100% to the winner
+   728→    if (match.result.includes(match.team1?.shortName ?? "___") && !match.result.includes("tie")) {
+   729→      return { t1: 100, t2: 0, draw: 0 }
+   730→    }
+   731→    if (match.result.includes(match.team2?.shortName ?? "___") && !match.result.includes("tie")) {
+   732→      return { t1: 0, t2: 100, draw: 0 }
+   733→    }
+   734→    return { t1: 50, t2: 50, draw: 0 } // tie/no result
+   735→  }
+   736→
+   737→  const isTest = match.format === "Test"
+   738→  const innings = sc.innings
+   739→  const lastInn = innings[innings.length - 1]
+   740→  const firstInn = innings[0]
+   741→
+   742→  if (innings.length === 1) {
+   743→    // 1st innings in progress — roughly 50/50 with slight edge to batting team
+   744→    const runs = lastInn.totalRuns
+   745→    const wickets = lastInn.totalWickets
+   746→    const overs = parseFloat(lastInn.totalOvers) || 0
+   747→    const maxOvers = match.format === "T20" || match.format === "T20I" ? 20 : match.format === "ODI" || match.format === "ODI" ? 50 : 90
+   748→    // Simple heuristic: more runs + fewer wickets = better position
+   749→    const progress = overs / maxOvers // 0 to 1
+   750→    const wicketPenalty = wickets * 8 // each wicket costs ~8% confidence
+   751→    const runBonus = Math.min(runs / (maxOvers * 5), 1) * 20 // strong total gives bonus
+   752→    const battingAdvantage = Math.max(0, Math.min(25, runBonus - wicketPenalty * progress))
+   753→    const drawChance = isTest ? Math.max(5, 40 - overs * 0.4) : 0
+   754→    const remaining = 100 - drawChance
+   755→    const battingTeam = lastInn.teamId === match.team1Id ? "t1" : "t2"
+   756→    const battingProb = remaining / 2 + battingAdvantage
+   757→    const bowlingProb = remaining - battingProb
+   758→    if (battingTeam === "t1") return { t1: Math.round(battingProb), t2: Math.round(bowlingProb), draw: Math.round(drawChance) }
+   759→    return { t1: Math.round(bowlingProb), t2: Math.round(battingProb), draw: Math.round(drawChance) }
+   760→  }
+   761→
+   762→  if (innings.length >= 2) {
+   763→    // 2nd innings — chasing team's probability based on target + wickets + balls left
+   764→    const target = (firstInn.totalRuns ?? 0) + 1
+   765→    const chasingRuns = lastInn.totalRuns
+   766→    const chasingWickets = lastInn.totalWickets
+   767→    const chasingOvers = parseFloat(lastInn.totalOvers) || 0
+   768→    const maxOvers = match.format === "T20" || match.format === "T20I" ? 20 : match.format === "ODI" || match.format === "ODI" ? 50 : 90
+   769→    const ballsRemaining = Math.max(0, (maxOvers - chasingOvers) * 6)
+   770→    const runsNeeded = target - chasingRuns
+   771→    const wicketsInHand = 10 - chasingWickets
+   772→
+   773→    if (runsNeeded <= 0) {
+   774→      // Chase complete — chasing team wins
+   775→      const chaser = lastInn.teamId === match.team1Id ? "t1" : "t2"
+   776→      return chaser === "t1" ? { t1: 100, t2: 0, draw: 0 } : { t1: 0, t2: 100, draw: 0 }
+   777→    }
+   778→    if (ballsRemaining <= 0 || wicketsInHand <= 0) {
+   779→      // Can't chase — batting team (first innings) wins
+   780→      const firstTeam = firstInn.teamId === match.team1Id ? "t1" : "t2"
+   781→      return firstTeam === "t1" ? { t1: 100, t2: 0, draw: isTest ? 0 : 0 } : { t1: 0, t2: 100, draw: 0 }
+   782→    }
+   783→
+   784→    const requiredRR = (runsNeeded / ballsRemaining) * 6
+   785→    const currentRR = chasingOvers > 0 ? chasingRuns / chasingOvers : 0
+   786→    // Win probability: based on RRR vs CRR + wickets in hand
+   787→    const rrRatio = currentRR > 0 ? requiredRR / currentRR : 2
+   788→    const chaseProb = Math.max(0, Math.min(100,
+   789→      (wicketsInHand / 10) * 60 + (1 / rrRatio) * 40
+   790→    ))
+   791→    const drawChance = isTest ? Math.max(0, 30 - innings.length * 10) : 0
+   792→    const remaining = 100 - drawChance
+   793→    const chaser = lastInn.teamId === match.team1Id ? "t1" : "t2"
+   794→    const chaserProb = Math.round(chaseProb * remaining / 100)
+   795→    const setterProb = remaining - chaserProb
+   796→    if (chaser === "t1") return { t1: chaserProb, t2: setterProb, draw: Math.round(drawChance) }
+   797→    return { t1: setterProb, t2: chaserProb, draw: Math.round(drawChance) }
+   798→  }
+   799→
+   800→  return null
+   801→}
+   802→
+   803→/* -------------------------------------------------------------------------- */
+   804→/*  Graphs — Run Rate Worm (Manhattan chart)                                   */
+   805→/* --------------------------------------------------------------------------- */
+   806→
+   807→function GraphsView({ match }: { match: Match }) {
+   808→  const sc = match.scorecard
+   809→  if (!sc || sc.innings.length === 0) {
+   810→    return (
+   811→      <Card className="flex flex-col items-center justify-center gap-2 p-10 text-center">
+   812→        <BarChart3 className="h-10 w-10 text-muted-foreground/40" />
+   813→        <h3 className="font-display text-sm font-bold uppercase tracking-wide">Graphs</h3>
+   814→        <p className="max-w-xs text-sm text-muted-foreground">
+   815→          Graphs will appear here once the match begins and overs are bowled.
+   816→        </p>
+   817→      </Card>
+   818→    )
+   819→  }
+   820→
+   821→  return (
+   822→    <div className="space-y-4">
+   823→      {/* Cumulative Run Worm — both teams on one chart */}
+   824→      {sc.innings.length >= 2 && (
+   825→        <CumulativeRunWorm match={match} scorecard={sc} />
+   826→      )}
+   827→
+   828→      {/* Per-innings Run Rate Worms (Manhattan) */}
+   829→      {sc.innings.map((inn, i) => {
+   830→        const team = inn.teamId === match.team1Id ? match.team1 : match.team2
+   831→        return (
+   832→          <RunRateWorm
+   833→            key={i}
+   834→            innings={inn}
+   835→            teamName={team?.name ?? "Team"}
+   836→            teamShort={team?.shortName ?? ""}
+   837→            teamColor={team?.primaryColor ?? "#1e2a5e"}
+   838→            commentary={sc.commentary ?? []}
+   839→            teamId={inn.teamId}
+   840→          />
+   841→        )
+   842→      })}
+   843→    </div>
+   844→  )
+   845→}
+   846→
+   847→/* -------------------------------------------------------------------------- */
+   848→/*  Cumulative Run Worm — both teams' progress on one chart                    */
+   849→/* --------------------------------------------------------------------------- */
+   850→
+   851→function CumulativeRunWorm({ match, scorecard }: { match: Match; scorecard: Scorecard }) {
+   852→  const t1 = match.team1
+   853→  const t2 = match.team2
+   854→  const t1Color = t1?.primaryColor ?? "#1e2a5e"
+   855→  const t2Color = t2?.primaryColor ?? "#94a3b8"
+   856→
+   857→  // Compute cumulative runs per over for each team
+   858→  const ballKinds = new Set(["run", "boundary", "six", "wicket", "extra", "dot"])
+   859→
+   860→  function cumulativeForTeam(teamId: string): Map<number, number> {
+   861→    const overRuns = new Map<number, number>()
+   862→    for (const c of scorecard.commentary ?? []) {
+   863→      const overNum = parseInt(c.over?.split(".")[0] || "0", 10)
+   864→      if (overNum < 1) continue
+   865→      if (!ballKinds.has(c.kind)) continue
+   866→      // Check if this ball belongs to this team's innings
+   867→      const inn = scorecard.innings.find((i) => i.teamId === teamId)
+   868→      if (!inn) continue
+   869→      const m = c.text.match(/^(\d+)/)
+   870→      const runs = m ? Number(m[1]) : 0
+   871→      overRuns.set(overNum, (overRuns.get(overNum) ?? 0) + runs)
+   872→    }
+   873→    // Convert to cumulative
+   874→    let cum = 0
+   875→    const cumulative = new Map<number, number>()
+   876→    const sorted = Array.from(overRuns.keys()).sort((a, b) => a - b)
+   877→    for (const over of sorted) {
+   878→      cum += overRuns.get(over) ?? 0
+   879→      cumulative.set(over, cum)
+   880→    }
+   881→    return cumulative
+   882→  }
+   883→
+   884→  const t1Data = cumulativeForTeam(match.team1Id)
+   885→  const t2Data = cumulativeForTeam(match.team2Id)
+   886→
+   887→  // Merge into a single dataset keyed by over number
+   888→  const allOvers = Array.from(new Set([...t1Data.keys(), ...t2Data.keys()])).sort((a, b) => a - b)
+   889→  const data = allOvers.map((over) => ({
+   890→    over: `${over}`,
+   891→    [match.team1Id]: t1Data.get(over) ?? null,
+   892→    [match.team2Id]: t2Data.get(over) ?? null,
+   893→  }))
+   894→
+   895→  if (data.length === 0) {
+   896→    return null
+   897→  }
+   898→
+   899→  const chartConfig: ChartConfig = {
+   900→    [match.team1Id]: { label: t1?.shortName ?? "Team 1", color: t1Color },
+   901→    [match.team2Id]: { label: t2?.shortName ?? "Team 2", color: t2Color },
+   902→  }
+   903→
+   904→  return (
+   905→    <Card className="overflow-hidden p-0">
+   906→      <div className="border-b bg-muted/30 px-4 py-2.5">
+   907→        <h3 className="flex items-center gap-1.5 font-display text-sm font-bold uppercase tracking-wide">
+   908→          <BarChart3 className="h-4 w-4 text-emerald-600" />
+   909→          Cumulative Run Worm
+   910→        </h3>
+   911→        <p className="mt-0.5 text-xs text-muted-foreground">
+   912→          {t1?.shortName} vs {t2?.shortName} — cumulative runs per over
+   913→        </p>
+   914→      </div>
+   915→      <div className="p-4">
+   916→        {/* Legend */}
+   917→        <div className="mb-3 flex items-center gap-4">
+   918→          <div className="flex items-center gap-1.5">
+   919→            <span className="h-3 w-6 rounded-full" style={{ background: t1Color }} />
+   920→            <span className="text-sm font-bold">{t1?.shortName}</span>
+   921→          </div>
+   922→          <div className="flex items-center gap-1.5">
+   923→            <span className="h-3 w-6 rounded-full" style={{ background: t2Color }} />
+   924→            <span className="text-sm font-bold">{t2?.shortName}</span>
+   925→          </div>
+   926→        </div>
+   927→        <ChartContainer config={chartConfig} className="h-[300px] w-full">
+   928→          <LineChart data={data} margin={{ top: 8, right: 12, bottom: 8, left: -12 }}>
+   929→            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+   930→            <XAxis
+   931→              dataKey="over"
+   932→              tickLine={false}
+   933→              axisLine={false}
+   934→              tick={{ fontSize: 10 }}
+   935→              label={{ value: "Overs", position: "insideBottom", offset: -2, style: { fontSize: 11, fill: "#9ca3af" } }}
+   936→            />
+   937→            <YAxis
+   938→              tickLine={false}
+   939→              axisLine={false}
+   940→              tick={{ fontSize: 10 }}
+   941→              label={{ value: "Runs", angle: -90, position: "insideLeft", style: { fontSize: 11, fill: "#9ca3af" } }}
+   942→            />
+   943→            <Line
+   944→              type="monotone"
+   945→              dataKey={match.team1Id}
+   946→              stroke={t1Color}
+   947→              strokeWidth={2.5}
+   948→              dot={false}
+   949→              connectNulls
+   950→            />
+   951→            <Line
+   952→              type="monotone"
+   953→              dataKey={match.team2Id}
+   954→              stroke={t2Color}
+   955→              strokeWidth={2.5}
+   956→              dot={false}
+   957→              connectNulls
+   958→            />
+   959→          </LineChart>
+   960→        </ChartContainer>
+   961→      </div>
+   962→    </Card>
+   963→  )
+   964→}
+   965→
+   966→function RunRateWorm({
+   967→  innings,
+   968→  teamName,
+   969→  teamShort,
+   970→  teamColor,
+   971→  commentary,
+   972→  teamId,
+   973→}: {
+   974→  innings: Scorecard["innings"][0]
+   975→  teamName: string
+   976→  teamShort: string
+   977→  teamColor: string
+   978→  commentary: { id: string; over: string; text: string; kind: string }[]
+   979→  teamId: string
+   980→}) {
+   981→  // Compute runs per over from commentary data
+   982→  const ballKinds = new Set(["run", "boundary", "six", "wicket", "extra", "dot"])
+   983→  const overRuns = new Map<number, number>()
+   984→
+   985→  for (const c of commentary) {
+   986→    const overNum = parseInt(c.over?.split(".")[0] || "0", 10)
+   987→    if (overNum < 1) continue
+   988→    if (!ballKinds.has(c.kind)) continue
+   989→    const m = c.text.match(/^(\d+)/)
+   990→    const runs = m ? Number(m[1]) : 0
+   991→    overRuns.set(overNum, (overRuns.get(overNum) ?? 0) + runs)
+   992→  }
+   993→
+   994→  const data = Array.from(overRuns.entries())
+   995→    .sort((a, b) => a[0] - b[0])
+   996→    .map(([over, runs]) => ({ over: `Ov ${over}`, runs }))
+   997→
+   998→  if (data.length === 0) {
+   999→    return (
+  1000→      <Card className="p-6 text-center text-sm text-muted-foreground">
+  1001→        No over-by-over data available for {teamName} yet.
+  1002→      </Card>
+  1003→    )
+  1004→  }
+  1005→
+  1006→  const chartConfig: ChartConfig = {
+  1007→    runs: { label: "Runs", color: teamColor },
+  1008→  }
+  1009→
+  1010→  // Color bars: wicket overs in red, maiden (0 runs) in gray, else team color
+  1011→  const maxRuns = Math.max(...data.map((d) => d.runs), 6)
+  1012→
+  1013→  return (
+  1014→    <Card className="overflow-hidden p-0">
+  1015→      <div className="border-b bg-muted/30 px-4 py-2.5">
+  1016→        <h3 className="flex items-center gap-1.5 font-display text-sm font-bold uppercase tracking-wide">
+  1017→          <BarChart3 className="h-4 w-4 text-emerald-600" />
+  1018→          {teamShort} — Run Rate Worm
+  1019→        </h3>
+  1020→        <p className="mt-0.5 text-xs text-muted-foreground">
+  1021→          {teamName} · {innings.totalRuns}/{innings.totalWickets} ({innings.totalOvers} ov)
+  1022→        </p>
+  1023→      </div>
+  1024→      <div className="p-4">
+  1025→        <ChartContainer config={chartConfig} className="h-[300px] w-full">
+  1026→          <BarChart data={data} margin={{ top: 16, right: 16, bottom: 16, left: 0 }} barCategoryGap="20%" barGap={4}>
+  1027→            <XAxis
+  1028→              dataKey="over"
+  1029→              tickLine={false}
+  1030→              axisLine={false}
+  1031→              tick={{ fontSize: 10 }}
+  1032→              interval="preserveStartEnd"
+  1033→            />
+  1034→            <YAxis
+  1035→              tickLine={false}
+  1036→              axisLine={false}
+  1037→              tick={{ fontSize: 10 }}
+  1038→              domain={[0, maxRuns]}
+  1039→              width={32}
+  1040→            />
+  1041→            <Bar dataKey="runs" radius={[4, 4, 0, 0]} maxBarSize={48}>
+  1042→              {data.map((entry, index) => (
+  1043→                <Cell
+  1044→                  key={`cell-${index}`}
+  1045→                  fill={entry.runs === 0 ? "#d1d5db" : teamColor}
+  1046→                />
+  1047→              ))}
+  1048→            </Bar>
+  1049→          </BarChart>
+  1050→        </ChartContainer>
+  1051→      </div>
+  1052→    </Card>
+  1053→  )
+  1054→}
+  1055→
+  1056→export function MatchPageContent({ match, recent }: { match: Match; recent: Match[] }) {
+  1057→  return (
+  1058→    <div className="flex min-h-screen flex-col bg-background">
+  1059→      <Header />
+  1060→      <main className="flex-1 w-full">
+  1061→        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6">
+  1062→          <InnerPageLayout
+  1063→            sidebar={
+  1064→              <>
+  1065→                {recent.length > 0 && <RecentResultsWidget matches={recent} />}
+  1066→                <CustomSidebarBlocks placement="match" />
+  1067→              </>
+  1068→            }
+  1069→          >
+  1070→            <div className="space-y-4">
+  1071→              <MatchBreadcrumbs match={match} />
+  1072→              <MatchScorebox match={match} />
+  1073→
+  1074→              {/* Match Preview — shown only for upcoming matches */}
+  1075→              {match.status === "upcoming" && recent.length > 0 && (
+  1076→                <MatchPreview match={match} recent={recent} />
+  1077→              )}
+  1078→              {/* 6-tab Wisden-style layout — solid block active tabs */}
+  1079→              <Tabs defaultValue="commentary" className="w-full">
+  1080→                <TabsList className="flex w-full justify-start gap-0 rounded-none border-b border-border bg-transparent p-0">
+  1081→                  <TabsTrigger value="commentary" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none">
+  1082→                    <MessageSquare className="h-4 w-4" />
+  1083→                    Commentary
+  1084→                  </TabsTrigger>
+  1085→                  <TabsTrigger value="squads" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none">
+  1086→                    <Users className="h-4 w-4" />
+  1087→                    Squads
+  1088→                  </TabsTrigger>
+  1089→                  <TabsTrigger value="scorecard" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none">
+  1090→                    Scorecard
+  1091→                  </TabsTrigger>
+  1092→                  <TabsTrigger value="winviz" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none">
+  1093→                    <TrendingUp className="h-4 w-4" />
+  1094→                    WinViz
+  1095→                  </TabsTrigger>
+  1096→                  <TabsTrigger value="graphs" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none">
+  1097→                    <BarChart3 className="h-4 w-4" />
+  1098→                    Graphs
+  1099→                  </TabsTrigger>
+  1100→                  <TabsTrigger value="info" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none">
+  1101→                    <Info className="h-4 w-4" />
+  1102→                    Match Info
+  1103→                  </TabsTrigger>
+  1104→                </TabsList>
+  1105→
+  1106→                {/* Commentary tab — over-by-over accordion with ball chips */}
+  1107→                <TabsContent value="commentary" className="mt-4">
+  1108→                  {match.scorecard?.commentary?.length ? (
+  1109→                    <CommentaryAccordion scorecard={match.scorecard} match={match} />
+  1110→                  ) : match.scorecard ? (
+  1111→                    <Card className="p-6 text-center text-sm text-muted-foreground">
+  1112→                      No commentary available for this match.
+  1113→                    </Card>
+  1114→                  ) : (
+  1115→                    <Card className="p-6 text-center text-sm text-muted-foreground">
+  1116→                      Commentary will be available once the match begins.
+  1117→                    </Card>
+  1118→                  )}
+  1119→                </TabsContent>
+  1120→
+  1121→                {/* Squads tab */}
+  1122→                <TabsContent value="squads" className="mt-4">
+  1123→                  {match.scorecard ? (
+  1124→                    <SquadsView match={match} scorecard={match.scorecard} />
+  1125→                  ) : (
+  1126→                    <Card className="p-6 text-center text-sm text-muted-foreground">
+  1127→                      Squads will be available once the match begins.
+  1128→                    </Card>
+  1129→                  )}
+  1130→                </TabsContent>
+  1131→
+  1132→                {/* Scorecard tab */}
+  1133→                <TabsContent value="scorecard" className="mt-4">
+  1134→                  {match.scorecard ? (
+  1135→                    <ScorecardView scorecard={match.scorecard} />
+  1136→                  ) : (
+  1137→                    <Card className="p-6 text-center text-sm text-muted-foreground">
+  1138→                      Scorecard not yet available for this match.
+  1139→                    </Card>
+  1140→                  )}
+  1141→                </TabsContent>
+  1142→
+  1143→                {/* WinViz tab — win probability */}
+  1144→                <TabsContent value="winviz" className="mt-4">
+  1145→                  <WinVizView match={match} />
+  1146→                </TabsContent>
+  1147→
+  1148→                {/* Graphs tab — run rate worm */}
+  1149→                <TabsContent value="graphs" className="mt-4">
+  1150→                  <GraphsView match={match} />
+  1151→                </TabsContent>
+  1152→
+  1153→                {/* Match Info tab */}
+  1154→                <TabsContent value="info" className="mt-4">
+  1155→                  <MatchInfoView match={match} />
+  1156→                </TabsContent>
+  1157→              </Tabs>
+  1158→
+  1159→              {recent.length > 0 && (
+  1160→                <div>
+  1161→                  <h2 className="mb-3 flex items-center gap-2 text-sm font-bold">
+  1162→                    <CalendarDays className="h-4 w-4 text-emerald-600" /> Recent Results
+  1163→                  </h2>
+  1164→                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+  1165→                    {recent.slice(0, 6).map((m) => (
+  1166→                      <a key={m.id} href={`/matches/${m.id}`} className="group flex flex-col rounded-lg border bg-card p-3 transition-shadow hover:shadow-md">
+  1167→                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+  1168→                          <span className="font-semibold">{m.team1?.shortName} v {m.team2?.shortName}</span>
+  1169→                          <FormatPill format={m.format} />
+  1170→                        </div>
+  1171→                        <p className="mt-1 line-clamp-2 text-xs">{m.result || formatMatchDate(m.startDate)}</p>
+  1172→                      </a>
+  1173→                    ))}
+  1174→                  </div>
+  1175→                </div>
+  1176→              )}
+  1177→
+  1178→              <a href="/?view=matches" className="inline-flex w-fit items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent">
+  1179→                <ChevronRight className="h-4 w-4 rotate-180" aria-hidden="true" /> More matches
+  1180→              </a>
+  1181→            </div>
+  1182→          </InnerPageLayout>
+  1183→        </div>
+  1184→      </main>
+  1185→      <Footer />
+  1186→    </div>
+  1187→  )
+  1188→}
+  1189→

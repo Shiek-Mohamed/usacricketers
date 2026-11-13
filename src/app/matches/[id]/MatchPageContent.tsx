@@ -17,6 +17,14 @@ import { Header } from "@/components/site/header"
 import { Footer } from "@/components/site/footer"
 import { ShareButtons } from "@/components/site/share-buttons"
 import { LiveMatchSection } from "@/components/site/live-match-section"
+import {
+  LiveScoreBanner,
+  ThisOverTracker,
+  RecentOversStrip,
+  CurrentPartnership,
+  EnhancedCommentaryFeed,
+} from "@/components/cricket/live-match-enhancements"
+import { useLiveScore } from "@/lib/use-live-score"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart"
@@ -38,6 +46,7 @@ import {
   BarChart3,
   TrendingUp,
   CloudRain,
+  Radio,
 } from "lucide-react"
 
 function MatchBreadcrumbs({ match }: { match: Match }) {
@@ -1054,6 +1063,18 @@ function RunRateWorm({
 }
 
 export function MatchPageContent({ match, recent }: { match: Match; recent: Match[] }) {
+  // Subscribe to the live scoring WebSocket (read-only — no scorer token).
+  // When a scorer is broadcasting, liveState is populated and we render the
+  // ESPNcricinfo-style live center (banner + this over + recent overs +
+  // partnership + enhanced commentary). When no live state, we fall back to
+  // the static MatchScorebox + CommentaryAccordion for completed/upcoming.
+  const { liveState } = useLiveScore(match.id, null)
+  const currentInnings = liveState?.innings[liveState?.currentInnings ?? 0]
+  // Show the live center as soon as the scorer has initialized an innings —
+  // the enhancement sub-components (this over, partnership, recent overs)
+  // gracefully render nothing until their data arrives.
+  const hasLiveState = Boolean(liveState && currentInnings)
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
@@ -1069,43 +1090,64 @@ export function MatchPageContent({ match, recent }: { match: Match; recent: Matc
           >
             <div className="space-y-4">
               <MatchBreadcrumbs match={match} />
-              <MatchScorebox match={match} />
+
+              {/* ─── LIVE: ESPNcricinfo-style hero + enhancement strips ─── */}
+              {hasLiveState && liveState ? (
+                <>
+                  <LiveScoreBanner match={match} liveState={liveState} />
+
+                  {/* This Over tracker + Current partnership — side by side on desktop */}
+                  <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                    <ThisOverTracker liveState={liveState} />
+                    <CurrentPartnership liveState={liveState} />
+                  </div>
+
+                  {/* Recent overs — full-width horizontal strip */}
+                  <RecentOversStrip liveState={liveState} />
+                </>
+              ) : (
+                /* ─── STATIC: original scorebox for completed/upcoming ─── */
+                <MatchScorebox match={match} />
+              )}
 
               {/* Match Preview — shown only for upcoming matches */}
               {match.status === "upcoming" && recent.length > 0 && (
                 <MatchPreview match={match} recent={recent} />
               )}
-              {/* 6-tab Wisden-style layout — solid block active tabs */}
+
+              {/* 6-tab layout — solid block active tabs */}
               <Tabs defaultValue="commentary" className="w-full">
-                <TabsList className="flex w-full justify-start gap-0 rounded-none border-b border-border bg-transparent p-0">
-                  <TabsTrigger value="commentary" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none">
-                    <MessageSquare className="h-4 w-4" />
+                <TabsList className="flex w-full justify-start gap-0 overflow-x-auto rounded-none border-b border-border bg-transparent p-0">
+                  <TabsTrigger value="commentary" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none whitespace-nowrap">
+                    {hasLiveState ? <Radio className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}
                     Commentary
                   </TabsTrigger>
-                  <TabsTrigger value="squads" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none">
+                  <TabsTrigger value="squads" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none whitespace-nowrap">
                     <Users className="h-4 w-4" />
                     Squads
                   </TabsTrigger>
-                  <TabsTrigger value="scorecard" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none">
+                  <TabsTrigger value="scorecard" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none whitespace-nowrap">
                     Scorecard
                   </TabsTrigger>
-                  <TabsTrigger value="winviz" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none">
+                  <TabsTrigger value="winviz" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none whitespace-nowrap">
                     <TrendingUp className="h-4 w-4" />
                     WinViz
                   </TabsTrigger>
-                  <TabsTrigger value="graphs" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none">
+                  <TabsTrigger value="graphs" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none whitespace-nowrap">
                     <BarChart3 className="h-4 w-4" />
                     Graphs
                   </TabsTrigger>
-                  <TabsTrigger value="info" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none">
+                  <TabsTrigger value="info" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none whitespace-nowrap">
                     <Info className="h-4 w-4" />
                     Match Info
                   </TabsTrigger>
                 </TabsList>
 
-                {/* Commentary tab — over-by-over accordion with ball chips */}
+                {/* Commentary tab — LIVE feed when broadcasting, else static accordion */}
                 <TabsContent value="commentary" className="mt-4">
-                  {match.scorecard?.commentary?.length ? (
+                  {hasLiveState && liveState ? (
+                    <EnhancedCommentaryFeed liveState={liveState} />
+                  ) : match.scorecard?.commentary?.length ? (
                     <CommentaryAccordion scorecard={match.scorecard} match={match} />
                   ) : match.scorecard ? (
                     <Card className="p-6 text-center text-sm text-muted-foreground">

@@ -1,0 +1,1329 @@
+     1→     1→"use client"
+     2→     2→
+     3→     3→import type { Scorecard, Innings, BattingLine, BowlingLine, Match } from "./types"
+     4→     4→
+     5→     5→export interface ScorerBatsman {
+     6→     6→  id: string
+     7→     7→  name: string
+     8→     8→  runs: number
+     9→     9→  balls: number
+    10→    10→  fours: number
+    11→    11→  sixes: number
+    12→    12→  out: boolean
+    13→    13→  dismissal: string
+    14→    14→  isCaptain?: boolean
+    15→    15→  isKeeper?: boolean
+    16→    16→}
+    17→    17→
+    18→    18→export interface ScorerBowler {
+    19→    19→  id: string
+    20→    20→  name: string
+    21→    21→  balls: number
+    22→    22→  runsConceded: number
+    23→    23→  wickets: number
+    24→    24→  maidens: number
+    25→    25→  wides: number
+    26→    26→  noballs: number
+    27→    27→  dots: number
+    28→    28→  foursConceded: number
+    29→    29→  sixesConceded: number
+    30→    30→  // per-over tracking for maiden detection
+    31→    31→  overRuns: number
+    32→    32→  overWickets: number
+    33→    33→  overBalls: number
+    34→    34→}
+    35→    35→
+    36→    36→export interface FallOfWicket {
+    37→    37→  wktNo: number
+    38→    38→  score: number
+    39→    39→  over: string
+    40→    40→  batsman: string
+    41→    41→}
+    42→    42→
+    43→    43→export interface ScorerInnings {
+    44→    44→  battingTeamId: string
+    45→    45→  battingTeamShortName: string
+    46→    46→  bowlingTeamId: string
+    47→    47→  bowlingTeamShortName: string
+    48→    48→  runs: number
+    49→    49→  wickets: number
+    50→    50→  balls: number
+    51→    51→  batsmen: ScorerBatsman[]
+    52→    52→  bowlers: ScorerBowler[]
+    53→    53→  fallOfWickets: FallOfWicket[]
+    54→    54→  declared: boolean
+    55→    55→  target: number | null
+    56→    56→  // extras breakdown
+    57→    57→  extrasByes: number
+    58→    58→  extrasLegByes: number
+    59→    59→  extrasWides: number
+    60→    60→  extrasNoBalls: number
+    61→    61→  // full squad for 'did not bat'
+    62→    62→  squad: { id: string; name: string; isCaptain?: boolean; isKeeper?: boolean }[]
+    63→    63→  /** True when the CURRENT ball (i.e. the one about to be bowled) is a free
+    64→    64→   *  hit. Set after a no-ball in limited-overs matches (maxOvers > 0); on
+    65→    65→   *  the next legal delivery it applies, then resets to false. Wides + no-
+    66→    66→   *  balls during a free hit keep it pending. Bowler-credited dismissals
+    67→    67→   *  (bowled/caught/lbw/stumped/hit-wkt) are NOT allowed on a free hit —
+    68→    68→   *  only run-out and retired-out stand. */
+    69→    69→  freeHit: boolean
+    70→    70→  /** Completed partnerships — recorded when a wicket falls. Each entry
+    71→    71→   *  has the wicket number, runs scored, balls faced, and both batsmen's
+    72→    72→   *  names. The opening partnership is wicket 1. */
+    73→    73→  partnerships: {
+    74→    74→    wicket: number
+    75→    75→    runs: number
+    76→    76→    balls: number
+    77→    77→    batsman1: string
+    78→    78→    batsman2: string
+    79→    79→  }[]
+    80→    80→  /** Runs on the board when the current partnership started. Used to
+    81→    81→   *  compute the partnership runs when the next wicket falls. */
+    82→    82→  partnershipStartRuns: number
+    83→    83→  /** Balls bowled when the current partnership started. */
+    84→    84→  partnershipStartBalls: number
+    85→    85→  /** True if this innings was played as a follow-on (Team B bats again
+    86→    86→   *  immediately after their 1st innings in a Test match, because Team A
+    87→    87→   *  enforced the follow-on with a 200+ run lead). */
+    88→    88→  followOn: boolean
+    89→    89→  /** True if this innings is a super-over (1-over tiebreaker). */
+    90→    90→  isSuperOver: boolean
+    91→    91→}
+    92→    92→
+    93→    93→export interface CommentaryEntry {
+    94→    94→  id: string
+    95→    95→  ballNo: number
+    96→    96→  over: string
+    97→    97→  text: string
+    98→    98→  kind:
+    99→    99→    | "run"
+   100→   100→    | "boundary"
+   101→   101→    | "six"
+   102→   102→    | "wicket"
+   103→   103→    | "extra"
+   104→   104→    | "over"
+   105→   105→    | "info"
+   106→   106→    | "dot"
+   107→   107→    | "manual"
+   108→   108→  /** Who scored this ball — the scorer's ID from their session token.
+   109→   109→   *  Closes scoring data gap #10 (scorer identity per ball). */
+   110→   110→  scorerId?: string
+   111→   111→  /** When this ball was scored — ISO timestamp.
+   112→   112→   *  Closes scoring data gap #11 (timestamp per ball). */
+   113→   113→  timestamp?: string
+   114→   114→}
+   115→   115→
+   116→   116→export interface LiveMatchState {
+   117→   117→  matchId: string
+   118→   118→  format: string
+   119→   119→  maxOvers: number // 0 = unlimited
+   120→   120→  innings: ScorerInnings[]
+   121→   121→  currentInnings: number
+   122→   122→  strikerId: string | null
+   123→   123→  nonStrikerId: string | null
+   124→   124→  bowlerId: string | null
+   125→   125→  status: string
+   126→   126→  result: string
+   127→   127→  note: string
+   128→   128→  commentary: CommentaryEntry[]
+   129→   129→  ballNo: number
+   130→   130→  // DLS — set when the scorer applies a DLS target after a rain interruption
+   131→   131→  dlsTarget?: number | null
+   132→   132→  dlsRevisedOvers?: number | null
+   133→   133→  /** The scorer's ID — set when scoring starts. Propagated to every
+   134→   134→   *  commentary entry via pushCommentary. Closes scoring data gap #10. */
+   135→   135→  scorerId?: string | null
+   136→   136→}
+   137→   137→
+   138→   138→export type WicketType =
+   139→   139→  | "bowled"
+   140→   140→  | "caught"
+   141→   141→  | "lbw"
+   142→   142→  | "runout"
+   143→   143→  | "stumped"
+   144→   144→  | "hitwkt"
+   145→   145→  | "retiredHurt"
+   146→   146→  | "retiredOut"
+   147→   147→
+   148→   148→/** Dismissal types that credit the bowler with a wicket (everything except
+   149→   149→ *  run-out, retired-hurt, and retired-out). Exported so the UI + tests
+   150→   150→ *  share the same source of truth for "does this dismissal credit the
+   151→   151→ *  bowler?" */
+   152→   152→export const BOWLER_CREDITED_WICKETS: ReadonlySet<WicketType> = new Set([
+   153→   153→  "bowled",
+   154→   154→  "caught",
+   155→   155→  "lbw",
+   156→   156→  "stumped",
+   157→   157→  "hitwkt",
+   158→   158→])
+   159→   159→
+   160→   160→/** Dismissal types that DON'T count as a wicket for the team's tally or
+   161→   161→ *  the batsman's dismissal — retired hurt means the batsman left the
+   162→   162→ *  field injured and may return. They're not out. */
+   163→   163→export const NOT_OUT_DISMISSALS: ReadonlySet<WicketType> = new Set([
+   164→   164→  "retiredHurt",
+   165→   165→])
+   166→   166→
+   167→   167→export type BallEvent =
+   168→   168→  | { kind: "run"; runs: number }
+   169→   169→  | { kind: "wide" }
+   170→   170→  | { kind: "noball" }
+   171→   171→  | {
+   172→   172→      kind: "wicket"
+   173→   173→      wicketType: WicketType
+   174→   174→      /** Which batsman got out (must match state.strikerId or state.nonStrikerId). */
+   175→   175→      outBatsmanId: string
+   176→   176→      /** Fielding players involved in the dismissal (catcher / stumper / run-out
+   177→   177→       *  fielder). Empty for bowled/lbw/hit-wkt/retired. UI is responsible for
+   178→   178→       *  pre-building the human-readable dismissal string below. */
+   179→   179→      fielderIds?: string[]
+   180→   180→      /** Pre-built dismissal summary string, e.g. "c Smith b Cummins" or
+   181→   181→       *  "run out (Carey)" — stored as-is in `batsmen[].dismissal` and shown
+   182→   182→       *  in the public scorecard. */
+   183→   183→      dismissal: string
+   184→   184→    }
+   185→   185→  | { kind: "bye"; runs: number }
+   186→   186→  | { kind: "legbye"; runs: number }
+   187→   187→
+   188→   188→const uid = () => Math.random().toString(36).slice(2, 10)
+   189→   189→
+   190→   190→export function maxOversForFormat(format: string): number {
+   191→   191→  if (format === "ODI") return 50
+   192→   192→  if (format === "T20I" || format === "T20") return 20
+   193→   193→  if (format === "T10") return 10
+   194→   194→  if (format === "T25") return 25
+   195→   195→  if (format === "T30") return 30
+   196→   196→  if (format === "T35") return 35
+   197→   197→  // Custom formats: parse "T8" → 8, "T15" → 15, "T40" → 40, etc.
+   198→   198→  const customMatch = format.match(/^T(\d+)$/i)
+   199→   199→  if (customMatch) return parseInt(customMatch[1], 10)
+   200→   200→  return 0 // Test = unlimited
+   201→   201→}
+   202→   202→
+   203→   203→export function oversString(balls: number): string {
+   204→   204→  const o = Math.floor(balls / 6)
+   205→   205→  const b = balls % 6
+   206→   206→  return b === 0 ? `${o}` : `${o}.${b}`
+   207→   207→}
+   208→   208→
+   209→   209→export function initState(match: Match, battingFirstTeamId: string): LiveMatchState {
+   210→   210→  const battingTeam =
+   211→   211→    match.team1Id === battingFirstTeamId ? match.team1 : match.team2
+   212→   212→  const bowlingTeam =
+   213→   213→    match.team1Id === battingFirstTeamId ? match.team2 : match.team1
+   214→   214→  const innings: ScorerInnings = {
+   215→   215→    battingTeamId: battingFirstTeamId,
+   216→   216→    battingTeamShortName: battingTeam?.shortName ?? "BAT",
+   217→   217→    bowlingTeamId: battingTeam === match.team1 ? match.team2Id : match.team1Id,
+   218→   218→    bowlingTeamShortName: bowlingTeam?.shortName ?? "BWL",
+   219→   219→    runs: 0,
+   220→   220→    wickets: 0,
+   221→   221→    balls: 0,
+   222→   222→    batsmen: [],
+   223→   223→    bowlers: [],
+   224→   224→    fallOfWickets: [],
+   225→   225→    declared: false,
+   226→   226→    target: null,
+   227→   227→    extrasByes: 0,
+   228→   228→    extrasLegByes: 0,
+   229→   229→    extrasWides: 0,
+   230→   230→    extrasNoBalls: 0,
+   231→   231→    squad: [],
+   232→   232→    freeHit: false,
+   233→   233→    partnerships: [],
+   234→   234→    partnershipStartRuns: 0,
+   235→   235→    partnershipStartBalls: 0,
+   236→   236→    followOn: false,
+   237→   237→    isSuperOver: false,
+   238→   238→  }
+   239→   239→  return {
+   240→   240→    matchId: match.id,
+   241→   241→    format: match.format,
+   242→   242→    maxOvers: maxOversForFormat(match.format),
+   243→   243→    innings: [innings],
+   244→   244→    currentInnings: 0,
+   245→   245→    strikerId: null,
+   246→   246→    nonStrikerId: null,
+   247→   247→    bowlerId: null,
+   248→   248→    status: "live",
+   249→   249→    result: "",
+   250→   250→    note: "",
+   251→   251→    commentary: [
+   252→   252→      {
+   253→   253→        id: uid(),
+   254→   254→        ballNo: 0,
+   255→   255→        over: "0.0",
+   256→   256→        text: `${battingTeam?.shortName ?? "Batting team"} innings begins`,
+   257→   257→        kind: "info",
+   258→   258→      },
+   259→   259→    ],
+   260→   260→    ballNo: 0,
+   261→   261→  }
+   262→   262→}
+   263→   263→
+   264→   264→export function addBatsman(
+   265→   265→  state: LiveMatchState,
+   266→   266→  id: string,
+   267→   267→  name: string,
+   268→   268→  opts?: { isCaptain?: boolean; isKeeper?: boolean }
+   269→   269→): LiveMatchState {
+   270→   270→  const inn = state.innings[state.currentInnings]
+   271→   271→  const batsman: ScorerBatsman = {
+   272→   272→    id,
+   273→   273→    name,
+   274→   274→    runs: 0,
+   275→   275→    balls: 0,
+   276→   276→    fours: 0,
+   277→   277→    sixes: 0,
+   278→   278→    out: false,
+   279→   279→    dismissal: "",
+   280→   280→    isCaptain: opts?.isCaptain,
+   281→   281→    isKeeper: opts?.isKeeper,
+   282→   282→  }
+   283→   283→  const newInnings = [...state.innings]
+   284→   284→  // ensure batsman list (dedup by id) and squad list (dedup by id)
+   285→   285→  const batsmen = inn.batsmen.some((b) => b.id === id)
+   286→   286→    ? inn.batsmen
+   287→   287→    : [...inn.batsmen, batsman]
+   288→   288→  const squad = inn.squad.some((s) => s.id === id)
+   289→   289→    ? inn.squad
+   290→   290→    : [
+   291→   291→        ...inn.squad,
+   292→   292→        { id, name, isCaptain: opts?.isCaptain, isKeeper: opts?.isKeeper },
+   293→   293→      ]
+   294→   294→  newInnings[state.currentInnings] = { ...inn, batsmen, squad }
+   295→   295→  return { ...state, innings: newInnings }
+   296→   296→}
+   297→   297→
+   298→   298→/** Pre-populate the squad with the full batting-team roster (so 'Did not bat'
+   299→   299→ * works). Players already added as batsmen are skipped to preserve any
+   300→   300→ * captain/keeper tags set on the batsman entry. */
+   301→   301→export function addSquadMember(
+   302→   302→  state: LiveMatchState,
+   303→   303→  id: string,
+   304→   304→  name: string,
+   305→   305→  opts?: { isCaptain?: boolean; isKeeper?: boolean }
+   306→   306→): LiveMatchState {
+   307→   307→  const inn = state.innings[state.currentInnings]
+   308→   308→  if (inn.squad.some((s) => s.id === id)) return state
+   309→   309→  const newInnings = [...state.innings]
+   310→   310→  newInnings[state.currentInnings] = {
+   311→   311→    ...inn,
+   312→   312→    squad: [
+   313→   313→      ...inn.squad,
+   314→   314→      { id, name, isCaptain: opts?.isCaptain, isKeeper: opts?.isKeeper },
+   315→   315→    ],
+   316→   316→  }
+   317→   317→  return { ...state, innings: newInnings }
+   318→   318→}
+   319→   319→
+   320→   320→export function setBatsmen(
+   321→   321→  state: LiveMatchState,
+   322→   322→  strikerId: string,
+   323→   323→  nonStrikerId: string
+   324→   324→): LiveMatchState {
+   325→   325→  return { ...state, strikerId, nonStrikerId }
+   326→   326→}
+   327→   327→
+   328→   328→export function setBowler(
+   329→   329→  state: LiveMatchState,
+   330→   330→  id: string,
+   331→   331→  name: string
+   332→   332→): LiveMatchState {
+   333→   333→  const inn = state.innings[state.currentInnings]
+   334→   334→  let bowlers = inn.bowlers
+   335→   335→  if (!bowlers.some((b) => b.id === id)) {
+   336→   336→    bowlers = [
+   337→   337→      ...bowlers,
+   338→   338→      {
+   339→   339→        id,
+   340→   340→        name,
+   341→   341→        balls: 0,
+   342→   342→        runsConceded: 0,
+   343→   343→        wickets: 0,
+   344→   344→        maidens: 0,
+   345→   345→        wides: 0,
+   346→   346→        noballs: 0,
+   347→   347→        dots: 0,
+   348→   348→        foursConceded: 0,
+   349→   349→        sixesConceded: 0,
+   350→   350→        overRuns: 0,
+   351→   351→        overWickets: 0,
+   352→   352→        overBalls: 0,
+   353→   353→      },
+   354→   354→    ]
+   355→   355→  }
+   356→   356→  const newInnings = [...state.innings]
+   357→   357→  newInnings[state.currentInnings] = { ...inn, bowlers }
+   358→   358→  return { ...state, innings: newInnings, bowlerId: id }
+   359→   359→}
+   360→   360→
+   361→   361→function swapStrike(state: LiveMatchState): LiveMatchState {
+   362→   362→  return {
+   363→   363→    ...state,
+   364→   364→    strikerId: state.nonStrikerId,
+   365→   365→    nonStrikerId: state.strikerId,
+   366→   366→  }
+   367→   367→}
+   368→   368→
+   369→   369→function pushCommentary(
+   370→   370→  state: LiveMatchState,
+   371→   371→  text: string,
+   372→   372→  kind: CommentaryEntry["kind"],
+   373→   373→  over: string,
+   374→   374→): CommentaryEntry[] {
+   375→   375→  const entry: CommentaryEntry = {
+   376→   376→    id: uid(),
+   377→   377→    ballNo: state.ballNo,
+   378→   378→    over,
+   379→   379→    text,
+   380→   380→    kind,
+   381→   381→    scorerId: state.scorerId ?? undefined,
+   382→   382→    timestamp: new Date().toISOString(),
+   383→   383→  }
+   384→   384→  return [entry, ...state.commentary].slice(0, 120)
+   385→   385→}
+   386→   386→
+   387→   387→export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchState {
+   388→   388→  if (state.status !== "live") return state
+   389→   389→  if (!state.strikerId || !state.nonStrikerId || !state.bowlerId) return state
+   390→   390→
+   391→   391→  const inn = state.innings[state.currentInnings]
+   392→   392→  const strikerIdx = inn.batsmen.findIndex((b) => b.id === state.strikerId)
+   393→   393→  const bowlerIdx = inn.bowlers.findIndex((b) => b.id === state.bowlerId)
+   394→   394→  if (strikerIdx < 0 || bowlerIdx < 0) return state
+   395→   395→
+   396→   396→  let batsmen = inn.batsmen.map((b) => ({ ...b }))
+   397→   397→  let bowlers = inn.bowlers.map((b) => ({ ...b }))
+   398→   398→  let runs = inn.runs
+   399→   399→  let wickets = inn.wickets
+   400→   400→  let balls = inn.balls
+   401→   401→  let extrasByes = inn.extrasByes
+   402→   402→  let extrasLegByes = inn.extrasLegByes
+   403→   403→  let extrasWides = inn.extrasWides
+   404→   404→  let extrasNoBalls = inn.extrasNoBalls
+   405→   405→  // Partnership tracking — start runs/balls for the current partnership.
+   406→   406→  let partnerships = inn.partnerships ?? []
+   407→   407→  let partnershipStartRuns = inn.partnershipStartRuns ?? 0
+   408→   408→  let partnershipStartBalls = inn.partnershipStartBalls ?? 0
+   409→   409→  // Free-hit tracking. `isFreeHit` = the CURRENT ball is a free hit (only
+   410→   410→  // applies in limited-overs matches — maxOvers > 0). `freeHit` is the value
+   411→   411→  // that will be carried into the NEXT ball's state.
+   412→   412→  const limitedOvers = state.maxOvers > 0
+   413→   413→  const isFreeHit = limitedOvers && inn.freeHit
+   414→   414→  let freeHit = inn.freeHit
+   415→   415→  let fallOfWickets = inn.fallOfWickets
+   416→   416→  let strikerId = state.strikerId
+   417→   417→  let nonStrikerId = state.nonStrikerId
+   418→   418→  let bowlerId = state.bowlerId
+   419→   419→  let note = state.note
+   420→   420→  let commentary = state.commentary
+   421→   421→
+   422→   422→  const striker = batsmen[strikerIdx]
+   423→   423→  const bowler = bowlers[bowlerIdx]
+   424→   424→  let isLegal = true
+   425→   425→  let eventText = ""
+   426→   426→  let eventKind: CommentaryEntry["kind"] = "run"
+   427→   427→
+   428→   428→  switch (event.kind) {
+   429→   429→    case "run": {
+   430→   430→      const r = event.runs
+   431→   431→      runs += r
+   432→   432→      striker.runs += r
+   433→   433→      striker.balls += 1
+   434→   434→      bowler.runsConceded += r
+   435→   435→      bowler.overRuns += r
+   436→   436→      if (r === 0) {
+   437→   437→        bowler.dots += 1
+   438→   438→        // Don't leave the commentary text blank for a dot ball — show a
+   439→   439→        // visible "0 · dot ball" entry so the commentary feed reads
+   440→   440→        // ball-by-ball without gaps.
+   441→   441→        eventText = "0 · dot ball"
+   442→   442→        eventKind = "dot"
+   443→   443→      } else if (r === 4) {
+   444→   444→        striker.fours += 1
+   445→   445→        bowler.foursConceded += 1
+   446→   446→        eventText = `FOUR! ${striker.name} ${r}`
+   447→   447→        eventKind = "boundary"
+   448→   448→      } else if (r === 6) {
+   449→   449→        striker.sixes += 1
+   450→   450→        bowler.sixesConceded += 1
+   451→   451→        eventText = `SIX! ${striker.name} ${r}`
+   452→   452→        eventKind = "six"
+   453→   453→      } else {
+   454→   454→        eventText = `${r} run${r !== 1 ? "s" : ""} — ${striker.name}`
+   455→   455→        eventKind = "run"
+   456→   456→      }
+   457→   457→      if (r % 2 === 1) {
+   458→   458→        const tmp = strikerId
+   459→   459→        strikerId = nonStrikerId
+   460→   460→        nonStrikerId = tmp
+   461→   461→      }
+   462→   462→      break
+   463→   463→    }
+   464→   464→    case "wide": {
+   465→   465→      runs += 1
+   466→   466→      bowler.runsConceded += 1
+   467→   467→      bowler.overRuns += 1
+   468→   468→      bowler.wides += 1
+   469→   469→      extrasWides += 1
+   470→   470→      isLegal = false
+   471→   471→      eventText = "Wide (+1)"
+   472→   472→      eventKind = "extra"
+   473→   473→      break
+   474→   474→    }
+   475→   475→    case "noball": {
+   476→   476→      runs += 1
+   477→   477→      bowler.runsConceded += 1
+   478→   478→      bowler.overRuns += 1
+   479→   479→      bowler.noballs += 1
+   480→   480→      extrasNoBalls += 1
+   481→   481→      isLegal = false
+   482→   482→      // Free-hit policy (limited-overs only): a no-ball makes the next
+   483→   483→      // LEGAL delivery a free hit. Wides + no-balls that follow keep it
+   484→   484→      // pending until a legal ball is bowled. See the post-switch block
+   485→   485→      // for the carry-over logic.
+   486→   486→      if (limitedOvers) {
+   487→   487→        freeHit = true
+   488→   488→        eventText = "No ball (+1) — FREE HIT next ball"
+   489→   489→      } else {
+   490→   490→        eventText = "No ball (+1)"
+   491→   491→      }
+   492→   492→      eventKind = "extra"
+   493→   493→      break
+   494→   494→    }
+   495→   495→    case "bye":
+   496→   496→    case "legbye": {
+   497→   497→      const r = event.runs
+   498→   498→      runs += r
+   499→   499→      striker.balls += 1
+   500→   500→      if (r === 0) bowler.dots += 1
+   501→   501→      // byes/legbyes: not credited to batsman runs or bowler runs
+   502→   502→      if (event.kind === "bye") {
+   503→   503→        extrasByes += r
+   504→   504→      } else {
+   505→   505→        extrasLegByes += r
+   506→   506→      }
+   507→   507→      eventText = `${event.kind === "bye" ? "Bye" : "Leg bye"} ${r}`
+   508→   508→      eventKind = "extra"
+   509→   509→      if (r % 2 === 1) {
+   510→   510→        const tmp = strikerId
+   511→   511→        strikerId = nonStrikerId
+   512→   512→        nonStrikerId = tmp
+   513→   513→      }
+   514→   514→      break
+   515→   515→    }
+   516→   516→    case "wicket": {
+   517→   517→      // Resolve which batsman got out — must be the striker or the
+   518→   518→      // non-striker (run-out can happen at the non-striker's end).
+   519→   519→      const isStrikerOut = event.outBatsmanId === strikerId
+   520→   520→      const isNonStrikerOut =
+   521→   521→        event.outBatsmanId === nonStrikerId && event.outBatsmanId !== strikerId
+   522→   522→      if (!isStrikerOut && !isNonStrikerOut) {
+   523→   523→        // Unknown batsman id — bail out without changing state.
+   524→   524→        return state
+   525→   525→      }
+   526→   526→      const outBatsman = batsmen.find((b) => b.id === event.outBatsmanId)
+   527→   527→      if (!outBatsman) return state
+   528→   528→
+   529→   529→      // Free-hit policy (limited-overs only): bowler-credited dismissals
+   530→   530→      // (bowled / caught / lbw / stumped / hit-wkt) are NOT allowed on a
+   531→   531→      // free hit — only run-out, retired-hurt, and retired-out stand.
+   532→   532→      // The striker still faces the ball, the ball still counts, but the
+   533→   533→      // dismissal is void and the batsman survives. Log a commentary line
+   534→   534→      // + an "info"-styled entry so the admin sees the rejection.
+   535→   535→      if (
+   536→   536→        isFreeHit &&
+   537→   537→        BOWLER_CREDITED_WICKETS.has(event.wicketType)
+   538→   538→      ) {
+   539→   539→        // The striker faced this delivery — credit the ball.
+   540→   540→        if (isStrikerOut) {
+   541→   541→          outBatsman.balls += 1
+   542→   542→        }
+   543→   543→        // Consume the free hit — next ball is normal.
+   544→   544→        freeHit = false
+   545→   545→        eventText = `FREE HIT! ${outBatsman.name} survives (${event.wicketType} not allowed on free hit)`
+   546→   546→        eventKind = "info"
+   547→   547→        break
+   548→   548→      }
+   549→   549→
+   550→   550→      // Retired-hurt: NOT a dismissal. The batsman left the field injured
+   551→   551→      // and may return. Doesn't bowl a delivery, doesn't count as a wicket,
+   552→   552→      // doesn't credit the bowler, doesn't add to fall-of-wickets. The
+   553→   553→      // batsman's `out` flag stays false. Only the slot is cleared so a
+   554→   554→      // replacement batsman can come in (the original can return later
+   555→   555→      // via the standard bringInBatsman flow).
+   556→   556→      if (event.wicketType === "retiredHurt") {
+   557→   557→        isLegal = false  // no delivery was bowled
+   558→   558→        outBatsman.dismissal = event.dismissal  // "retired hurt" — stored but `out` stays false
+   559→   559→        // Clear the slot so the picker re-shows for the replacement batsman.
+   560→   560→        if (isStrikerOut) {
+   561→   561→          strikerId = null
+   562→   562→        } else {
+   563→   563→          nonStrikerId = null
+   564→   564→        }
+   565→   565→        eventText = `RETIRED HURT — ${outBatsman.name} left the field (may return)`
+   566→   566→        eventKind = "info"
+   567→   567→        break
+   568→   568→      }
+   569→   569→
+   570→   570→      // Retired-out: a dismissal that doesn't bowl a delivery, so the
+   571→   571→      // ball count for the over and the bowler's figures stay untouched.
+   572→   572→      // Unlike retired-hurt, this counts as a wicket — the batsman is
+   573→   573→      // permanently out and cannot return.
+   574→   574→      if (event.wicketType === "retiredOut") {
+   575→   575→        isLegal = false
+   576→   576→      }
+   577→   577→
+   578→   578→      outBatsman.out = true
+   579→   579→      outBatsman.dismissal = event.dismissal
+   580→   580→      // Only the striker has faced this delivery — the non-striker didn't
+   581→   581→      // (and on a retired-out, no delivery was bowled at all).
+   582→   582→      if (isStrikerOut && event.wicketType !== "retiredOut") {
+   583→   583→        outBatsman.balls += 1
+   584→   584→      }
+   585→   585→
+   586→   586→      wickets += 1
+   587→   587→
+   588→   588→      // Credit the bowler only for these dismissal types (not retired-out
+   589→   589→      // or retired-hurt — but retired-hurt already broke above).
+   590→   590→      if (BOWLER_CREDITED_WICKETS.has(event.wicketType)) {
+   591→   591→        bowler.wickets += 1
+   592→   592→        bowler.overWickets += 1
+   593→   593→      }
+   594→   594→
+   595→   595→      fallOfWickets = [
+   596→   596→        ...fallOfWickets,
+   597→   597→        {
+   598→   598→          wktNo: wickets,
+   599→   599→          score: runs,
+   600→   600→          over: oversString(balls),
+   601→   601→          batsman: outBatsman.name,
+   602→   602→        },
+   603→   603→      ]
+   604→   604→
+   605→   605→      // Record the completed partnership (runs + balls since the last
+   606→   606→      // wicket / innings start). The other batsman is the one NOT out.
+   607→   607→      const otherBatsman = batsmen.find(
+   608→   608→        (b) => b.id === (isStrikerOut ? nonStrikerId : strikerId)
+   609→   609→      )
+   610→   610→      partnerships = [
+   611→   611→        ...partnerships,
+   612→   612→        {
+   613→   613→          wicket: wickets,
+   614→   614→          runs: runs - partnershipStartRuns,
+   615→   615→          balls: balls - partnershipStartBalls,
+   616→   616→          batsman1: outBatsman.name,
+   617→   617→          batsman2: otherBatsman?.name ?? "?",
+   618→   618→        },
+   619→   619→      ]
+   620→   620→      // Reset the start for the next partnership.
+   621→   621→      partnershipStartRuns = runs
+   622→   622→      partnershipStartBalls = balls
+   623→   623→
+   624→   624→      // Set the right slot to null so the UI prompts for the replacement at
+   625→   625→      // the correct end.
+   626→   626→      if (isStrikerOut) {
+   627→   627→        strikerId = null
+   628→   628→      } else {
+   629→   629→        nonStrikerId = null
+   630→   630→      }
+   631→   631→      eventText = `WICKET! ${outBatsman.name} ${event.dismissal}`
+   632→   632→      eventKind = "wicket"
+   633→   633→      break
+   634→   634→    }
+   635→   635→  }
+   636→   636→
+   637→   637→  if (isLegal) {
+   638→   638→    balls += 1
+   639→   639→    bowler.balls += 1
+   640→   640→    bowler.overBalls += 1
+   641→   641→    state = { ...state, ballNo: state.ballNo + 1 }
+   642→   642→  }
+   643→   643→
+   644→   644→  // Free-hit consumption: a legal delivery (run/bye/legbye, or an allowed
+   645→   645→  // non-retired wicket) consumes the free hit — the NEXT ball is normal
+   646→   646→  // play. No-balls already set `freeHit = true` above (the next legal ball
+   647→   647→  // will be a free hit too). Wides carry the prior status forward (the wide
+   648→   648→  // case doesn't touch `freeHit`). Retired-out (no delivery) doesn't consume
+   649→   649→  // the free hit either. The wicket-rejection branch already set
+   650→   650→  // `freeHit = false` itself; the wicket-allowed branch needs the explicit
+   651→   651→  // consume below.
+   652→   652→  if (isLegal) {
+   653→   653→    if (
+   654→   654→      event.kind === "run" ||
+   655→   655→      event.kind === "bye" ||
+   656→   656→      event.kind === "legbye" ||
+   657→   657→      (event.kind === "wicket" &&
+   658→   658→        event.wicketType !== "retiredOut" &&
+   659→   659→        event.wicketType !== "retiredHurt")
+   660→   660→    ) {
+   661→   661→      freeHit = false
+   662→   662→    }
+   663→   663→  }
+   664→   664→
+   665→   665→  // Over complete?
+   666→   666→  const ballsThisOver = balls % 6
+   667→   667→  let overComplete = false
+   668→   668→  if (isLegal && ballsThisOver === 0 && balls > 0) {
+   669→   669→    overComplete = true
+   670→   670→    // maiden detection for this bowler's just-finished over
+   671→   671→    if (bowler.overRuns === 0 && bowler.overWickets === 0) {
+   672→   672→      bowler.maidens += 1
+   673→   673→    }
+   674→   674→    bowler.overRuns = 0
+   675→   675→    bowler.overWickets = 0
+   676→   676→    bowler.overBalls = 0
+   677→   677→    // end of over: swap ends
+   678→   678→    const tmp = strikerId
+   679→   679→    strikerId = nonStrikerId
+   680→   680→    nonStrikerId = tmp
+   681→   681→    bowlerId = null // awaiting new bowler
+   682→   682→  }
+   683→   683→
+   684→   684→  const newInnings: ScorerInnings = {
+   685→   685→    ...inn,
+   686→   686→    runs,
+   687→   687→    wickets,
+   688→   688→    balls,
+   689→   689→    batsmen,
+   690→   690→    bowlers,
+   691→   691→    fallOfWickets,
+   692→   692→    extrasByes,
+   693→   693→    extrasLegByes,
+   694→   694→    extrasWides,
+   695→   695→    extrasNoBalls,
+   696→   696→    freeHit,
+   697→   697→    partnerships,
+   698→   698→    partnershipStartRuns,
+   699→   699→    partnershipStartBalls,
+   700→   700→    followOn: inn.followOn ?? false,
+   701→   701→    isSuperOver: inn.isSuperOver ?? false,
+   702→   702→  }
+   703→   703→  const innings = [...state.innings]
+   704→   704→  innings[state.currentInnings] = newInnings
+   705→   705→
+   706→   706→  let status = state.status
+   707→   707→  let result = state.result
+   708→   708→  let target = inn.target
+   709→   709→  let next: LiveMatchState = {
+   710→   710→    ...state,
+   711→   711→    innings,
+   712→   712→    strikerId,
+   713→   713→    nonStrikerId,
+   714→   714→    bowlerId,
+   715→   715→    note,
+   716→   716→  }
+   717→   717→
+   718→   718→  // Commentary
+   719→   719→  const overLabel = oversString(balls)
+   720→   720→  commentary = pushCommentary(next, eventText, eventKind, overLabel)
+   721→   721→  if (overComplete) {
+   722→   722→    commentary = [
+   723→   723→      {
+   724→   724→        id: uid(),
+   725→   725→        ballNo: next.ballNo,
+   726→   726→        over: oversString(balls),
+   727→   727→        text: `End of over ${Math.floor(balls / 6)} — ${inn.battingTeamShortName} ${runs}/${wickets} (${oversString(balls)})`,
+   728→   728→        kind: "over",
+   729→   729→      },
+   730→   730→      ...commentary,
+   731→   731→    ].slice(0, 120)
+   732→   732→  }
+   733→   733→  next.commentary = commentary
+   734→   734→
+   735→   735→  // Innings end checks
+   736→   736→  const allOut = wickets >= 10
+   737→   737→  const oversDone = next.maxOvers > 0 && balls >= next.maxOvers * 6
+   738→   738→  const targetReached = target !== null && runs >= target
+   739→   739→
+   740→   740→  if (allOut || oversDone || targetReached) {
+   741→   741→    next = endInnings(next, allOut ? "all out" : oversDone ? "overs complete" : "target reached")
+   742→   742→  }
+   743→   743→
+   744→   744→  return next
+   745→   745→}
+   746→   746→
+   747→   747→export function endInnings(state: LiveMatchState, reason: string): LiveMatchState {
+   748→   748→  const inn = state.innings[state.currentInnings]
+   749→   749→  const inningsCount = state.innings.length
+   750→   750→  const innings = [...state.innings]
+   751→   751→  // Mark the current innings as ended (and `declared` if the captain declared).
+   752→   752→  innings[state.currentInnings] = {
+   753→   753→    ...inn,
+   754→   754→    declared: reason === "declared" ? true : inn.declared,
+   755→   755→  }
+   756→   756→
+   757→   757→  let commentary = state.commentary
+   758→   758→  commentary = [
+   759→   759→    {
+   760→   760→      id: uid(),
+   761→   761→      ballNo: state.ballNo,
+   762→   762→      over: oversString(inn.balls),
+   763→   763→      text: `Innings end — ${inn.battingTeamShortName} ${inn.runs}/${inn.wickets} (${reason})`,
+   764→   764→      kind: "info",
+   765→   765→    },
+   766→   766→    ...commentary,
+   767→   767→  ].slice(0, 120)
+   768→   768→
+   769→   769→  // Test matches (maxOvers === 0) play up to 4 innings; limited-overs matches
+   770→   770→  // (maxOvers > 0) play 2 innings.
+   771→   771→  const isTest = state.maxOvers === 0
+   772→   772→  const maxInnings = isTest ? 4 : 2
+   773→   773→
+   774→   774→  // Super-over special case: if the current innings was a super-over, the
+   775→   775→  // normal maxInnings check doesn't apply (we already had 2 innings before
+   776→   776→  // the super-over started). Instead, count super-over innings: if this is
+   777→   777→  // the 1st, create the 2nd (chase target); if this is the 2nd, compute
+   778→   778→  // the super-over result.
+   779→   779→  if (inn.isSuperOver) {
+   780→   780→    const soInnings = innings.filter((i) => i.isSuperOver)
+   781→   781→    if (soInnings.length < 2) {
+   782→   782→      // This was the 1st super-over innings → create the 2nd with chase.
+   783→   783→      const target = inn.runs + 1
+   784→   784→      const newSO: ScorerInnings = {
+   785→   785→        battingTeamId: inn.bowlingTeamId,
+   786→   786→        battingTeamShortName: inn.bowlingTeamShortName,
+   787→   787→        bowlingTeamId: inn.battingTeamId,
+   788→   788→        bowlingTeamShortName: inn.battingTeamShortName,
+   789→   789→        runs: 0, wickets: 0, balls: 0,
+   790→   790→        batsmen: [], bowlers: [], fallOfWickets: [],
+   791→   791→        declared: false, target,
+   792→   792→        extrasByes: 0, extrasLegByes: 0, extrasWides: 0, extrasNoBalls: 0,
+   793→   793→        squad: [], freeHit: false,
+   794→   794→        partnerships: [], partnershipStartRuns: 0, partnershipStartBalls: 0,
+   795→   795→        followOn: false,
+   796→   796→        isSuperOver: true,
+   797→   797→      }
+   798→   798→      innings.push(newSO)
+   799→   799→      return {
+   800→   800→        ...state,
+   801→   801→        innings,
+   802→   802→        currentInnings: inningsCount,
+   803→   803→        strikerId: null, nonStrikerId: null, bowlerId: null,
+   804→   804→        note: `Super Over: ${inn.battingTeamShortName} scored ${inn.runs}. ${inn.bowlingTeamShortName} needs ${target} to win.`,
+   805→   805→        commentary: [
+   806→   806→          {
+   807→   807→            id: uid(),
+   808→   808→            ballNo: state.ballNo,
+   809→   809→            over: "0",
+   810→   810→            text: `Super Over: ${inn.battingTeamShortName} ${inn.runs}/${inn.wickets}. ${inn.bowlingTeamShortName} needs ${target}.`,
+   811→   811→            kind: "info" as const,
+   812→   812→          },
+   813→   813→          ...commentary,
+   814→   814→        ].slice(0, 120),
+   815→   815→      }
+   816→   816→    }
+   817→   817→    // Both super-over innings done → compute the result.
+   818→   818→    return computeSuperOverResult(state, innings, commentary)
+   819→   819→  }
+   820→   820→
+   821→   821→  // Follow-on special case: if the current innings was a follow-on (Team B
+   822→   822→  // batting again in a Test), and Team B's overall total is still less than
+   823→   823→  // Team A's 1st innings total, Team A wins by an innings + runs (no need
+   824→   824→  // for Team A's 2nd innings). Otherwise, Team A bats their 2nd innings
+   825→   825→  // (innings 3) chasing Team B's overall total + 1.
+   826→   826→  if (inn.followOn) {
+   827→   827→    const teamATotal = innings[0].runs
+   828→   828→    const teamBOverall = innings[1].runs + innings[2].runs
+   829→   829→    if (teamBOverall < teamATotal) {
+   830→   830→      // Team A wins by an innings + runs. Match ends.
+   831→   831→      const margin = teamATotal - teamBOverall
+   832→   832→      const result = `${innings[0].battingTeamShortName} won by an innings and ${margin} run${margin !== 1 ? "s" : ""}`
+   833→   833→      return {
+   834→   834→        ...state,
+   835→   835→        innings,
+   836→   836→        status: "completed",
+   837→   837→        result,
+   838→   838→        note: result,
+   839→   839→        strikerId: null, nonStrikerId: null, bowlerId: null,
+   840→   840→        commentary: [
+   841→   841→          {
+   842→   842→            id: uid(),
+   843→   843→            ballNo: state.ballNo,
+   844→   844→            over: oversString(inn.balls),
+   845→   845→            text: `Result: ${result}`,
+   846→   846→            kind: "info" as const,
+   847→   847→          },
+   848→   848→          ...commentary,
+   849→   849→        ].slice(0, 120),
+   850→   850→      }
+   851→   851→    }
+   852→   852→    // Team B surpassed Team A → Team A bats innings 3, chasing.
+   853→   853→    const target = teamBOverall - teamATotal + 1
+   854→   854→    const newInnings: ScorerInnings = {
+   855→   855→      battingTeamId: innings[0].battingTeamId,
+   856→   856→      battingTeamShortName: innings[0].battingTeamShortName,
+   857→   857→      bowlingTeamId: innings[1].battingTeamId,
+   858→   858→      bowlingTeamShortName: innings[1].battingTeamShortName,
+   859→   859→      runs: 0, wickets: 0, balls: 0,
+   860→   860→      batsmen: [], bowlers: [], fallOfWickets: [],
+   861→   861→      declared: false, target,
+   862→   862→      extrasByes: 0, extrasLegByes: 0, extrasWides: 0, extrasNoBalls: 0,
+   863→   863→      squad: [], freeHit: false,
+   864→   864→      partnerships: [], partnershipStartRuns: 0, partnershipStartBalls: 0,
+   865→   865→      followOn: false,
+   866→   866→      isSuperOver: false,
+   867→   867→    }
+   868→   868→    innings.push(newInnings)
+   869→   869→    return {
+   870→   870→      ...state,
+   871→   871→      innings,
+   872→   872→      currentInnings: inningsCount,
+   873→   873→      strikerId: null, nonStrikerId: null, bowlerId: null,
+   874→   874→      note: `Team A needs ${target} runs to win.`,
+   875→   875→      commentary,
+   876→   876→    }
+   877→   877→  }
+   878→   878→
+   879→   879→  // If this was the final innings of the match, compute the result.
+   880→   880→  if (inningsCount >= maxInnings) {
+   881→   881→    return computeMatchResult(state, innings, commentary)
+   882→   882→  }
+   883→   883→
+   884→   884→  // Otherwise, set up the next innings. Swap batting/bowling sides — in a
+   885→   885→  // 4-innings Test the same team bats in innings 0 + 2 (and the other in
+   886→   886→  // 1 + 3), which is exactly what swapping from the previous innings gives:
+   887→   887→  //   innings 0: A bats, B bowls   →  innings 1: B bats, A bowls
+   888→   888→  //   innings 1: B bats, A bowls   →  innings 2: A bats, B bowls
+   889→   889→  //   innings 2: A bats, B bowls  →  innings 3: B bats, A bowls
+   890→   890→  const newInnings: ScorerInnings = {
+   891→   891→    battingTeamId: inn.bowlingTeamId,
+   892→   892→    battingTeamShortName: inn.bowlingTeamShortName,
+   893→   893→    bowlingTeamId: inn.battingTeamId,
+   894→   894→    bowlingTeamShortName: inn.battingTeamShortName,
+   895→   895→    runs: 0,
+   896→   896→    wickets: 0,
+   897→   897→    balls: 0,
+   898→   898→    batsmen: [],
+   899→   899→    bowlers: [],
+   900→   900→    fallOfWickets: [],
+   901→   901→    declared: false,
+   902→   902→    target: null,
+   903→   903→    extrasByes: 0,
+   904→   904→    extrasLegByes: 0,
+   905→   905→    extrasWides: 0,
+   906→   906→    extrasNoBalls: 0,
+   907→   907→    squad: [],
+   908→   908→    freeHit: false,
+   909→   909→    partnerships: [],
+   910→   910→    partnershipStartRuns: 0,
+   911→   911→    partnershipStartBalls: 0,
+   912→   912→    followOn: false,
+   913→   913→    isSuperOver: false,
+   914→   914→  }
+   915→   915→
+   916→   916→  // Chase target: only set on the FINAL innings of the match (the team
+   917→   917→  // batting last needs to know how many to win).
+   918→   918→  //   • Limited-overs (2 innings): innings 1 target = innings[0].runs + 1
+   919→   919→  //   • Test (4 innings): innings 3 target =
+   920→   920→  //     (innings[0].runs + innings[2].runs) - innings[1].runs + 1
+   921→   921→  //     (Team A's two innings totals, minus Team B's first innings, plus 1 to win)
+   922→   922→  let targetNote = ""
+   923→   923→  if (!isTest && inningsCount === 1) {
+   924→   924→    // Limited-overs 2nd innings chase.
+   925→   925→    newInnings.target = innings[0].runs + 1
+   926→   926→    targetNote = `${inn.battingTeamShortName} set ${newInnings.target} to win. ${inn.bowlingTeamShortName} to chase.`
+   927→   927→  } else if (isTest && inningsCount === 3) {
+   928→   928→    // Test 4th innings chase.
+   929→   929→    // innings[0] = Team A 1st innings
+   930→   930→    // innings[1] = Team B 1st innings
+   931→   931→    // innings[2] = Team A 2nd innings (just ended — A's total)
+   932→   932→    // innings[3] = Team B 2nd innings (about to start — chasing)
+   933→   933→    const teamATotal = innings[0].runs + innings[2].runs
+   934→   934→    const teamBFirstInnings = innings[1].runs
+   935→   935→    const target = teamATotal - teamBFirstInnings + 1
+   936→   936→    newInnings.target = target
+   937→   937→    targetNote = `${inn.battingTeamShortName} declared at ${inn.runs}/${inn.wickets}. ${inn.bowlingTeamShortName} needs ${target} runs to win.`
+   938→   938→  } else {
+   939→   939→    targetNote = `${inn.battingTeamShortName} innings ended (${reason}). ${inn.bowlingTeamShortName} to bat next.`
+   940→   940→  }
+   941→   941→
+   942→   942→  innings.push(newInnings)
+   943→   943→  return {
+   944→   944→    ...state,
+   945→   945→    innings,
+   946→   946→    currentInnings: inningsCount,
+   947→   947→    strikerId: null,
+   948→   948→    nonStrikerId: null,
+   949→   949→    bowlerId: null,
+   950→   950→    note: targetNote,
+   951→   951→    commentary,
+   952→   952→  }
+   953→   953→}
+   954→   954→
+   955→   955→/**
+   956→   956→ * Compute the final match result from the completed innings.
+   957→   957→ *
+   958→   958→ * Limited-overs (2 innings): the chasing team won / tied / lost based on
+   959→   959→ * whether they reached the target.
+   960→   960→ *
+   961→   961→ * Test (4 innings): compare Team A's total (innings 0 + 2) vs Team B's total
+   962→   962→ * (innings 1 + 3). If the chasing team (B in innings 3) reached the target,
+   963→   963→ * they won by wickets. If they were bowled out short, Team A won by runs.
+   964→   964→ * If time ran out (innings 3 ended without all-out or target reached), draw.
+   965→   965→ */
+   966→   966→function computeMatchResult(
+   967→   967→  state: LiveMatchState,
+   968→   968→  innings: ScorerInnings[],
+   969→   969→  commentary: CommentaryEntry[]
+   970→   970→): LiveMatchState {
+   971→   971→  const isTest = state.maxOvers === 0
+   972→   972→
+   973→   973→  let result = ""
+   974→   974→  let note = ""
+   975→   975→
+   976→   976→  if (!isTest) {
+   977→   977→    // Limited-overs: innings[1] is the chase.
+   978→   978→    const chase = innings[1]
+   979→   979→    const target = chase.target ?? 0
+   980→   980→    const chaser = chase.battingTeamShortName
+   981→   981→    const setter = chase.bowlingTeamShortName
+   982→   982→    if (chase.runs >= target) {
+   983→   983→      const wktsLeft = 10 - chase.wickets
+   984→   984→      result = `${chaser} won by ${wktsLeft} wicket${wktsLeft !== 1 ? "s" : ""}`
+   985→   985→    } else if (chase.runs === target - 1) {
+   986→   986→      result = "Match tied"
+   987→   987→    } else {
+   988→   988→      const margin = target - 1 - chase.runs
+   989→   989→      result = `${setter} won by ${margin} run${margin !== 1 ? "s" : ""}`
+   990→   990→    }
+   991→   991→    note = result
+   992→   992→  } else {
+   993→   993→    // Test: compare Team A (innings 0 + 2) vs Team B (innings 1 + 3).
+   994→   994→    const teamA = innings[0].battingTeamShortName
+   995→   995→    const teamB = innings[1].battingTeamShortName
+   996→   996→    const teamATotal = innings[0].runs + innings[2].runs
+   997→   997→    const teamBTotal = innings[1].runs + innings[3].runs
+   998→   998→    const chase = innings[3]
+   999→   999→    const target = chase.target ?? Infinity
+  1000→  1000→    if (chase.runs >= target) {
+  1001→  1001→      // Team B chased it down — won by wickets.
+  1002→  1002→      const wktsLeft = 10 - chase.wickets
+  1003→  1003→      result = `${teamB} won by ${wktsLeft} wicket${wktsLeft !== 1 ? "s" : ""}`
+  1004→  1004→    } else if (chase.wickets >= 10) {
+  1005→  1005→      // Team B all out short — Team A won by runs (margin = A's total - B's total).
+  1006→  1006→      const margin = teamATotal - teamBTotal
+  1007→  1007→      result = `${teamA} won by ${Math.abs(margin)} run${Math.abs(margin) !== 1 ? "s" : ""}`
+  1008→  1008→    } else {
+  1009→  1009→      // Innings ended (declaration or time) without a result — Test draw.
+  1010→  1010→      result = "Match drawn"
+  1011→  1011→    }
+  1012→  1012→    note = result
+  1013→  1013→  }
+  1014→  1014→
+  1015→  1015→  return {
+  1016→  1016→    ...state,
+  1017→  1017→    innings,
+  1018→  1018→    status: "completed",
+  1019→  1019→    result,
+  1020→  1020→    note,
+  1021→  1021→    strikerId: null,
+  1022→  1022→    nonStrikerId: null,
+  1023→  1023→    bowlerId: null,
+  1024→  1024→    commentary: [
+  1025→  1025→      {
+  1026→  1026→        id: uid(),
+  1027→  1027→        ballNo: state.ballNo,
+  1028→  1028→        over: oversString(innings[innings.length - 1].balls),
+  1029→  1029→        text: `Result: ${result}`,
+  1030→  1030→        kind: "info",
+  1031→  1031→      },
+  1032→  1032→      ...commentary,
+  1033→  1033→    ].slice(0, 120),
+  1034→  1034→  }
+  1035→  1035→}
+  1036→  1036→
+  1037→  1037→/**
+  1038→  1038→ * Compute the super-over result. The team with more runs in their super-over
+  1039→  1039→ * innings wins. If equal, it's a tie (no further super-overs in our MVP —
+  1040→  1040→ * the admin can manually start another one via the Super Over button if
+  1041→  1041→ * the match is still tied).
+  1042→  1042→ */
+  1043→  1043→function computeSuperOverResult(
+  1044→  1044→  state: LiveMatchState,
+  1045→  1045→  innings: ScorerInnings[],
+  1046→  1046→  commentary: CommentaryEntry[]
+  1047→  1047→): LiveMatchState {
+  1048→  1048→  const soInnings = innings.filter((i) => i.isSuperOver)
+  1049→  1049→  const teamA = soInnings[0]
+  1050→  1050→  const teamB = soInnings[1]
+  1051→  1051→  let result = ""
+  1052→  1052→  if (teamA.runs > teamB.runs) {
+  1053→  1053→    result = `${teamA.battingTeamShortName} won the Super Over`
+  1054→  1054→  } else if (teamB.runs > teamA.runs) {
+  1055→  1055→    result = `${teamB.battingTeamShortName} won the Super Over`
+  1056→  1056→  } else {
+  1057→  1057→    result = "Super Over tied"
+  1058→  1058→  }
+  1059→  1059→  return {
+  1060→  1060→    ...state,
+  1061→  1061→    innings,
+  1062→  1062→    status: "completed",
+  1063→  1063→    result,
+  1064→  1064→    note: result,
+  1065→  1065→    strikerId: null,
+  1066→  1066→    nonStrikerId: null,
+  1067→  1067→    bowlerId: null,
+  1068→  1068→    commentary: [
+  1069→  1069→      {
+  1070→  1070→        id: uid(),
+  1071→  1071→        ballNo: state.ballNo,
+  1072→  1072→        over: "0",
+  1073→  1073→        text: `Super Over Result: ${result}`,
+  1074→  1074→        kind: "info" as const,
+  1075→  1075→      },
+  1076→  1076→      ...commentary,
+  1077→  1077→    ].slice(0, 120),
+  1078→  1078→  }
+  1079→  1079→}
+  1080→  1080→
+  1081→  1081→/**
+  1082→  1082→ * Captain declares the current innings closed. Only valid for Test matches
+  1083→  1083→ * (limited-overs matches don't have declarations). Sets `declared: true`
+  1084→  1084→ * on the current innings, then triggers the standard endInnings flow with
+  1085→  1085→ * reason "declared" so the next innings is set up correctly.
+  1086→  1086→ *
+  1087→  1087→ * The declaration can happen at any point — the captain doesn't need to be
+  1088→  1088→ * all out or out of overs. Common reasons: setting a chase target for the
+  1089→  1089→ * opposition, time preservation, etc.
+  1090→  1090→ */
+  1091→  1091→export function declareInnings(state: LiveMatchState): LiveMatchState {
+  1092→  1092→  if (state.maxOvers > 0) {
+  1093→  1093→    // Limited-overs — declarations aren't allowed.
+  1094→  1094→    return state
+  1095→  1095→  }
+  1096→  1096→  // Add a commentary note before calling endInnings so the declaration is
+  1097→  1097→  // visible in the feed.
+  1098→  1098→  const inn = state.innings[state.currentInnings]
+  1099→  1099→  const declaredCommentary = [
+  1100→  1100→    {
+  1101→  1101→      id: uid(),
+  1102→  1102→      ballNo: state.ballNo,
+  1103→  1103→      over: oversString(inn.balls),
+  1104→  1104→      text: `${inn.battingTeamShortName} declared at ${inn.runs}/${inn.wickets}`,
+  1105→  1105→      kind: "info" as const,
+  1106→  1106→    },
+  1107→  1107→    ...state.commentary,
+  1108→  1108→  ].slice(0, 120)
+  1109→  1109→  return endInnings(
+  1110→  1110→    { ...state, commentary: declaredCommentary },
+  1111→  1111→    "declared"
+  1112→  1112→  )
+  1113→  1113→}
+  1114→  1114→
+  1115→  1115→/**
+  1116→  1116→ * Enforce the follow-on in a Test match. Only valid when:
+  1117→  1117→ *   • It's a Test (maxOvers === 0)
+  1118→  1118→ *   • We're at the end of innings 1 (Team B's first innings just finished)
+  1119→  1119→ *   • Team A's lead (innings[0].runs - innings[1].runs) is >= 200 runs
+  1120→  1120→ *
+  1121→  1121→ * When enforced, Team B bats again immediately (their 2nd innings becomes
+  1122→  1122→ * innings 2, and if Team B is bowled out short of Team A's total, Team A
+  1123→  1123→ * wins by an innings + runs — no need for Team A's 2nd innings at all).
+  1124→  1124→ *
+  1125→  1125→ * Without the follow-on, the standard endInnings flow would create innings
+  1126→  1126→ * 2 with Team A batting (their 2nd innings). With the follow-on, we create
+  1127→  1127→ * innings 2 with Team B batting again (same batting/bowling sides as
+  1128→  1128→ * innings 1, not swapped).
+  1129→  1129→ */
+  1130→  1130→export function enforceFollowOn(state: LiveMatchState): LiveMatchState {
+  1131→  1131→  if (state.maxOvers > 0) return state  // Tests only
+  1132→  1132→  if (state.innings.length !== 2) return state  // must be after innings 1 (0-indexed)
+  1133→  1133→  const lead = state.innings[0].runs - state.innings[1].runs
+  1134→  1134→  if (lead < 200) return state  // need 200+ run lead
+  1135→  1135→
+  1136→  1136→  const inn = state.innings[1]  // Team B's 1st innings (just ended)
+  1137→  1137→  // Create Team B's 2nd innings — same batting side, same bowling side
+  1138→  1138→  // (no swap — that's the whole point of the follow-on).
+  1139→  1139→  const newInnings: ScorerInnings = {
+  1140→  1140→    battingTeamId: inn.battingTeamId,
+  1141→  1141→    battingTeamShortName: inn.battingTeamShortName,
+  1142→  1142→    bowlingTeamId: inn.bowlingTeamId,
+  1143→  1143→    bowlingTeamShortName: inn.bowlingTeamShortName,
+  1144→  1144→    runs: 0, wickets: 0, balls: 0,
+  1145→  1145→    batsmen: [], bowlers: [], fallOfWickets: [],
+  1146→  1146→    declared: false, target: null,
+  1147→  1147→    extrasByes: 0, extrasLegByes: 0, extrasWides: 0, extrasNoBalls: 0,
+  1148→  1148→    squad: [], freeHit: false,
+  1149→  1149→    partnerships: [], partnershipStartRuns: 0, partnershipStartBalls: 0,
+  1150→  1150→    followOn: true,
+  1151→  1151→    isSuperOver: false,
+  1152→  1152→  }
+  1153→  1153→  const innings = [...state.innings, newInnings]
+  1154→  1154→  const commentary = [
+  1155→  1155→    {
+  1156→  1156→      id: uid(),
+  1157→  1157→      ballNo: state.ballNo,
+  1158→  1158→      over: "0",
+  1159→  1159→      text: `${inn.battingTeamShortName} follow-on enforced — they bat again (lead was ${lead} runs)`,
+  1160→  1160→      kind: "info" as const,
+  1161→  1161→    },
+  1162→  1162→    ...state.commentary,
+  1163→  1163→  ].slice(0, 120)
+  1164→  1164→  return {
+  1165→  1165→    ...state,
+  1166→  1166→    innings,
+  1167→  1167→    currentInnings: 2,
+  1168→  1168→    strikerId: null,
+  1169→  1169→    nonStrikerId: null,
+  1170→  1170→    bowlerId: null,
+  1171→  1171→    note: `Follow-on enforced. ${inn.battingTeamShortName} bats again.`,
+  1172→  1172→    commentary,
+  1173→  1173→  }
+  1174→  1174→}
+  1175→  1175→
+  1176→  1176→/**
+  1177→  1177→ * Start a super-over after a tied limited-overs match. Creates 2 new
+  1178→  1178→ * innings (1 over each):
+  1179→  1179→ *   • innings N:   Team 1 bats (1 over, no target)
+  1180→  1180→ *   • innings N+1: Team 2 bats (1 over, target = Team 1's super-over score + 1)
+  1181→  1181→ *
+  1182→  1182→ * Only valid for limited-overs matches (maxOvers > 0) where the match
+  1183→  1183→ * result is "Match tied". The super-over has its own maxOvers = 1.
+  1184→  1184→ */
+  1185→  1185→export function startSuperOver(state: LiveMatchState): LiveMatchState {
+  1186→  1186→  if (state.maxOvers <= 0) return state  // limited-overs only
+  1187→  1187→  if (state.status !== "completed") return state
+  1188→  1188→  if (state.result !== "Match tied") return state
+  1189→  1189→
+  1190→  1190→  const inn1 = state.innings[0]  // Team A's innings
+  1191→  1191→  // Super-over innings 1: Team A bats again (same batting side)
+  1192→  1192→  const so1: ScorerInnings = {
+  1193→  1193→    battingTeamId: inn1.battingTeamId,
+  1194→  1194→    battingTeamShortName: inn1.battingTeamShortName,
+  1195→  1195→    bowlingTeamId: inn1.bowlingTeamId,
+  1196→  1196→    bowlingTeamShortName: inn1.bowlingTeamShortName,
+  1197→  1197→    runs: 0, wickets: 0, balls: 0,
+  1198→  1198→    batsmen: [], bowlers: [], fallOfWickets: [],
+  1199→  1199→    declared: false, target: null,
+  1200→  1200→    extrasByes: 0, extrasLegByes: 0, extrasWides: 0, extrasNoBalls: 0,
+  1201→  1201→    squad: [], freeHit: false,
+  1202→  1202→    partnerships: [], partnershipStartRuns: 0, partnershipStartBalls: 0,
+  1203→  1203→    followOn: false,
+  1204→  1204→    isSuperOver: true,
+  1205→  1205→  }
+  1206→  1206→  const innings = [...state.innings, so1]
+  1207→  1207→  const commentary = [
+  1208→  1208→    {
+  1209→  1209→      id: uid(),
+  1210→  1210→      ballNo: state.ballNo,
+  1211→  1211→      over: "0",
+  1212→  1212→      text: `SUPER OVER — ${inn1.battingTeamShortName} to bat first`,
+  1213→  1213→      kind: "info" as const,
+  1214→  1214→    },
+  1215→  1215→    ...state.commentary,
+  1216→  1216→  ].slice(0, 120)
+  1217→  1217→  return {
+  1218→  1218→    ...state,
+  1219→  1219→    innings,
+  1220→  1220→    currentInnings: innings.length - 1,
+  1221→  1221→    maxOvers: 1,  // super-over = 1 over per side
+  1222→  1222→    status: "live",
+  1223→  1223→    result: "",
+  1224→  1224→    strikerId: null,
+  1225→  1225→    nonStrikerId: null,
+  1226→  1226→    bowlerId: null,
+  1227→  1227→    note: `Super Over — ${inn1.battingTeamShortName} bats first (1 over)`,
+  1228→  1228→    commentary,
+  1229→  1229→  }
+  1230→  1230→}
+  1231→  1231→
+  1232→  1232→/** Convert the live state to the public Scorecard format (read by ScorecardView). */
+  1233→  1233→export function stateToScorecard(state: LiveMatchState): Scorecard {
+  1234→  1234→  const innings: Innings[] = state.innings.map((inn) => {
+  1235→  1235→    const batting: BattingLine[] = inn.batsmen.map((b) => ({
+  1236→  1236→      name: b.name,
+  1237→  1237→      playerId: b.id,
+  1238→  1238→      runs: b.runs,
+  1239→  1239→      balls: b.balls,
+  1240→  1240→      fours: b.fours,
+  1241→  1241→      sixes: b.sixes,
+  1242→  1242→      strikeRate: b.balls > 0 ? Number(((b.runs / b.balls) * 100).toFixed(1)) : 0,
+  1243→  1243→      dismissal: b.out ? b.dismissal : "not out",
+  1244→  1244→      isBatting: !b.out && (b.id === state.strikerId || b.id === state.nonStrikerId),
+  1245→  1245→      isCaptain: b.isCaptain,
+  1246→  1246→      isKeeper: b.isKeeper,
+  1247→  1247→    }))
+  1248→  1248→    // order: striker first, non-striker second, then out batsmen in order
+  1249→  1249→    batting.sort((a, b) => {
+  1250→  1250→      const aLive = a.isBatting ? 0 : 1
+  1251→  1251→      const bLive = b.isBatting ? 0 : 1
+  1252→  1252→      return aLive - bLive
+  1253→  1253→    })
+  1254→  1254→    // add Extras line with breakdown
+  1255→  1255→    const extrasRuns = Math.max(
+  1256→  1256→      0,
+  1257→  1257→      inn.runs - inn.batsmen.reduce((s, b) => s + b.runs, 0)
+  1258→  1258→    )
+  1259→  1259→    batting.push({
+  1260→  1260→      name: "Extras",
+  1261→  1261→      runs: extrasRuns,
+  1262→  1262→      balls: 0,
+  1263→  1263→      fours: 0,
+  1264→  1264→      sixes: 0,
+  1265→  1265→      strikeRate: 0,
+  1266→  1266→      dismissal: `(b ${inn.extrasByes || 0}, lb ${inn.extrasLegByes || 0}, w ${inn.extrasWides || 0}, nb ${inn.extrasNoBalls || 0})`,
+  1267→  1267→      isBatting: false,
+  1268→  1268→    })
+  1269→  1269→    const bowling: BowlingLine[] = inn.bowlers.map((b) => ({
+  1270→  1270→      name: b.name,
+  1271→  1271→      playerId: b.id,
+  1272→  1272→      overs: oversString(b.balls),
+  1273→  1273→      maidens: b.maidens,
+  1274→  1274→      runs: b.runsConceded,
+  1275→  1275→      wickets: b.wickets,
+  1276→  1276→      economy: b.balls > 0 ? Number(((b.runsConceded / b.balls) * 6).toFixed(2)) : 0,
+  1277→  1277→      wides: b.wides || 0,
+  1278→  1278→      noballs: b.noballs || 0,
+  1279→  1279→      dots: b.dots || 0,
+  1280→  1280→      foursConceded: b.foursConceded || 0,
+  1281→  1281→      sixesConceded: b.sixesConceded || 0,
+  1282→  1282→      isBowling: b.id === state.bowlerId,
+  1283→  1283→    }))
+  1284→  1284→    return {
+  1285→  1285→      teamId: inn.battingTeamId,
+  1286→  1286→      teamShortName: inn.battingTeamShortName,
+  1287→  1287→      total: `${inn.runs}/${inn.wickets}`,
+  1288→  1288→      totalRuns: inn.runs,
+  1289→  1289→      totalWickets: inn.wickets,
+  1290→  1290→      totalOvers: oversString(inn.balls),
+  1291→  1291→      batting,
+  1292→  1292→      bowling,
+  1293→  1293→      fallOfWickets: inn.fallOfWickets.map(
+  1294→  1294→        (f) => `${f.score}-${f.wktNo} (${f.batsman}, ${f.over} ov)`
+  1295→  1295→      ),
+  1296→  1296→      declared: inn.declared,
+  1297→  1297→      extrasBreakdown: {
+  1298→  1298→        byes: inn.extrasByes || 0,
+  1299→  1299→        legByes: inn.extrasLegByes || 0,
+  1300→  1300→        wides: inn.extrasWides || 0,
+  1301→  1301→        noBalls: inn.extrasNoBalls || 0,
+  1302→  1302→      },
+  1303→  1303→      didNotBat: (inn.squad || []).
+  1304→  1304→        filter((s) => !inn.batsmen.some((b) => b.id === s.id))
+  1305→  1305→        .map((s) => ({ name: s.name, isCaptain: s.isCaptain, isKeeper: s.isKeeper })),
+  1306→  1306→      partnerships: (inn.partnerships ?? []).map((p) =>
+  1307→  1307→        `${p.wicket}-${p.runs} (${p.batsman1} & ${p.batsman2}, ${oversString(p.balls)} balls)`
+  1308→  1308→      ),
+  1309→  1309→      isFollowOn: inn.followOn ?? false,
+  1310→  1310→      isSuperOver: inn.isSuperOver ?? false,
+  1311→  1311→    }
+  1312→  1312→  })
+  1313→  1313→  return {
+  1314→  1314→    innings,
+  1315→  1315→    note: state.note,
+  1316→  1316→    commentary: state.commentary.map((c) => ({
+  1317→  1317→      id: c.id,
+  1318→  1318→      over: c.over,
+  1319→  1319→      text: c.text,
+  1320→  1320→      kind: c.kind,
+  1321→  1321→    })),
+  1322→  1322→  }
+  1323→  1323→}
+  1324→  1324→
+  1325→  1325→/** Quick summary line for the live strip, e.g. "IND 217/4 (42.4)". */
+  1326→  1326→export function inningsSummaryLine(inn: ScorerInnings): string {
+  1327→  1327→  return `${inn.battingTeamShortName} ${inn.runs}/${inn.wickets} (${oversString(inn.balls)})`
+  1328→  1328→}
+  1329→  1329→

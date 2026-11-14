@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react"
 import { useAppStore } from "@/lib/store"
 import { useArticles, useMatches } from "@/lib/use-data"
+import { PageNumbers } from "@/components/site/page-numbers"
 import { ArticleCard } from "@/components/cricket/article-card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
-import { Newspaper, Search, ChevronLeft, ChevronRight, Tag } from "lucide-react"
+import { Newspaper, Search, Tag } from "lucide-react"
 import { InnerPageLayout } from "@/components/site/inner-layout"
 import { CustomSidebarBlocks } from "@/components/site/custom-sidebar-blocks"
 import { NewsletterWidget, RecentResultsWidget } from "@/components/site/sidebar-widgets"
@@ -224,30 +225,16 @@ export function NewsView() {
             </div>
 
             {totalPages > 1 && (
-              <div className="flex items-center justify-between gap-2 border-t pt-4">
+              <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs text-muted-foreground">
                   Page {page} of {totalPages} · {total} article{total !== 1 ? "s" : ""}
                 </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => goToPage(page - 1)}
-                    disabled={page <= 1 || loading}
-                    className="gap-1"
-                  >
-                    <ChevronLeft className="h-3.5 w-3.5" /> Prev
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => goToPage(page + 1)}
-                    disabled={page >= totalPages || loading}
-                    className="gap-1"
-                  >
-                    Next <ChevronRight className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
+                <PageNumbers
+                  page={page}
+                  totalPages={totalPages}
+                  loading={loading}
+                  onGoTo={goToPage}
+                />
               </div>
             )}
           </>

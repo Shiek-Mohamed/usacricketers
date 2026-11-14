@@ -225,13 +225,12 @@ export function NewsView() {
             </div>
 
             {totalPages > 1 && (
-              <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs text-muted-foreground">
-                  Page {page} of {totalPages} · {total} article{total !== 1 ? "s" : ""}
-                </p>
+              <div className="flex flex-col items-center gap-2 border-t pt-4">
                 <PageNumbers
                   page={page}
                   totalPages={totalPages}
+                  pageSize={10}
+                  total={total}
                   loading={loading}
                   onGoTo={goToPage}
                 />

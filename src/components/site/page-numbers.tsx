@@ -1,26 +1,35 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 /**
- * PageNumbers — pagination with clickable page numbers + prev/next arrows.
+ * PageNumbers — Material-style pagination bar.
  *
- * Shows up to 7 page buttons with ellipsis for large page counts:
- *   ← 1 2 [3] 4 5 ... 10 →
+ *   «  ‹  |  1  2  [3]  4  5  |  ›  »
+ *   Showing 21 - 40 of 628
  *
- * Usage:
- *   <PageNumbers page={3} totalPages={10} onGoTo={(p) => setPage(p)} />
+ * Features:
+ *   - First page («) and Last page (») buttons
+ *   - Previous (‹) and Next (›) arrow buttons
+ *   - Page numbers with current page in bold
+ *   - Ellipsis (...) for large page counts
+ *   - White pill container with dividers
+ *   - "Showing X - Y of Z" summary below
+ *   - Disabled state (gray) for first/prev when on page 1, next/last when on last page
  */
+
 export function PageNumbers({
   page,
   totalPages,
+  pageSize = 10,
+  total,
   loading,
   onGoTo,
 }: {
   page: number
   totalPages: number
+  pageSize?: number
+  total?: number
   loading?: boolean
   onGoTo: (page: number) => void
 }) {
@@ -28,87 +37,118 @@ export function PageNumbers({
 
   // Calculate which page numbers to show
   const pages: (number | "...")[] = []
-  const maxVisible = 5 // max numbered buttons shown at once
+  const maxVisible = 5
 
   if (totalPages <= maxVisible + 2) {
-    // Show all pages if total is small
     for (let i = 1; i <= totalPages; i++) pages.push(i)
   } else {
-    // Always show page 1
     pages.push(1)
-
-    if (page > 3) {
-      pages.push("...")
-    }
-
-    // Show pages around current
+    if (page > 3) pages.push("...")
     const start = Math.max(2, page - 1)
     const end = Math.min(totalPages - 1, page + 1)
-    for (let i = start; i <= end; i++) {
-      pages.push(i)
-    }
-
-    if (page < totalPages - 2) {
-      pages.push("...")
-    }
-
-    // Always show last page
+    for (let i = start; i <= end; i++) pages.push(i)
+    if (page < totalPages - 2) pages.push("...")
     pages.push(totalPages)
   }
 
+  // Calculate "Showing X - Y of Z"
+  const startItem = (page - 1) * pageSize + 1
+  const endItem = Math.min(page * pageSize, total ?? page * pageSize)
+
+  const btnBase =
+    "grid place-items-center transition-colors select-none"
+  const btnSize = "h-9 w-9 text-sm"
+  const enabled = "text-blue-600 hover:bg-blue-50 cursor-pointer"
+  const disabled = "text-gray-300 cursor-default"
+
   return (
-    <div className="flex items-center gap-1">
-      {/* Previous button */}
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={() => onGoTo(page - 1)}
-        disabled={page <= 1 || loading}
-        className="h-8 w-8"
-        aria-label="Previous page"
-      >
-        <ChevronLeft className="h-3.5 w-3.5" />
-      </Button>
+    <div className="flex flex-col items-center gap-2">
+      {/* Pagination bar — white pill with dividers */}
+      <div className="inline-flex items-center rounded-lg border bg-white shadow-sm">
+        {/* First page */}
+        <button
+          onClick={() => page > 1 && !loading && onGoTo(1)}
+          disabled={page <= 1 || loading}
+          className={cn(btnBase, btnSize, "rounded-l-lg", page <= 1 ? disabled : enabled)}
+          aria-label="First page"
+        >
+          «
+        </button>
 
-      {/* Page number buttons */}
-      {pages.map((p, i) =>
-        p === "..." ? (
-          <span
-            key={`ellipsis-${i}`}
-            className="px-1.5 text-sm text-muted-foreground select-none"
-          >
-            …
-          </span>
-        ) : (
-          <button
-            key={p}
-            onClick={() => onGoTo(p)}
-            disabled={loading}
-            className={cn(
-              "grid h-8 min-w-8 place-items-center rounded-md px-2 text-sm font-medium transition-colors",
-              p === page
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "border border-input bg-background hover:bg-accent hover:text-accent-foreground"
-            )}
-            aria-label={`Go to page ${p}`}
-            aria-current={p === page ? "page" : undefined}
-          >
-            {p}
-          </button>
-        )
+        {/* Previous */}
+        <button
+          onClick={() => page > 1 && !loading && onGoTo(page - 1)}
+          disabled={page <= 1 || loading}
+          className={cn(btnBase, btnSize, page <= 1 ? disabled : enabled)}
+          aria-label="Previous page"
+        >
+          ‹
+        </button>
+
+        {/* Divider */}
+        <div className="h-5 w-px bg-gray-200" />
+
+        {/* Page numbers */}
+        {pages.map((p, i) =>
+          p === "..." ? (
+            <span
+              key={`ellipsis-${i}`}
+              className="grid h-9 w-9 place-items-center text-sm text-gray-400 select-none"
+            >
+              …
+            </span>
+          ) : (
+            <button
+              key={p}
+              onClick={() => !loading && onGoTo(p)}
+              disabled={loading}
+              className={cn(
+                btnBase,
+                btnSize,
+                p === page
+                  ? "font-bold text-gray-900"
+                  : "text-gray-600 hover:bg-gray-50 cursor-pointer"
+              )}
+              aria-label={`Go to page ${p}`}
+              aria-current={p === page ? "page" : undefined}
+            >
+              {p}
+            </button>
+          )
+        )}
+
+        {/* Divider */}
+        <div className="h-5 w-px bg-gray-200" />
+
+        {/* Next */}
+        <button
+          onClick={() => page < totalPages && !loading && onGoTo(page + 1)}
+          disabled={page >= totalPages || loading}
+          className={cn(btnBase, btnSize, page >= totalPages ? disabled : enabled)}
+          aria-label="Next page"
+        >
+          ›
+        </button>
+
+        {/* Last page */}
+        <button
+          onClick={() => page < totalPages && !loading && onGoTo(totalPages)}
+          disabled={page >= totalPages || loading}
+          className={cn(btnBase, btnSize, "rounded-r-lg", page >= totalPages ? disabled : enabled)}
+          aria-label="Last page"
+        >
+          »
+        </button>
+      </div>
+
+      {/* Summary */}
+      {typeof total === "number" && (
+        <p className="text-xs text-gray-500">
+          Showing <span className="font-medium text-gray-700">{startItem}</span> -{" "}
+          <span className="font-medium text-gray-700">{endItem}</span> of{" "}
+          <span className="font-medium text-gray-700">{total.toLocaleString()}</span>
+        </p>
       )}
-
-      {/* Next button */}
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={() => onGoTo(page + 1)}
-        disabled={page >= totalPages || loading}
-        className="h-8 w-8"
-        aria-label="Next page"
-      >
-        <ChevronRight className="h-3.5 w-3.5" />
-      </Button>
     </div>
   )
 }

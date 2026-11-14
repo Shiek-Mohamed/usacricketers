@@ -69,7 +69,19 @@ import { LeagueAdminStatsView } from "@/components/site/views/league-admin-stats
 import { LeagueAdminOfficialsView } from "@/components/site/views/league-admin-officials-view"
 import { useLeagueAdminSession } from "@/lib/league-admin-session"
 import { ViewErrorBoundary } from "@/components/site/view-error-boundary"
+import { LiveScoreTicker } from "@/components/site/live-score-ticker"
 import { useEffect } from "react"
+
+/** Auth/login views where the global live-score ticker would be visual
+ *  noise on an otherwise focused flow. Excluded from ticker rendering. */
+const NO_TICKER_VIEWS = new Set([
+  "admin-login",
+  "admin-reset-password",
+  "scorer-login",
+  "scorer-landing",
+  "league-admin-login",
+  "league-admin-signup",
+])
 
 export default function Home() {
   const view = useAppStore((s) => s.view)
@@ -304,9 +316,14 @@ export default function Home() {
     )
   }
 
+  // Global live-score ticker: shown only in public mode and only on
+  // content views (hidden on auth/login flows where it would be noise).
+  const showTicker = mode === "public" && !NO_TICKER_VIEWS.has(view)
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
+      {showTicker && <LiveScoreTicker />}
       <main className="flex-1 w-full">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6">
           {/* Per-view error boundary: if a single view crashes during render,

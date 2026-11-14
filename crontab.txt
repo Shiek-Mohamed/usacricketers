@@ -1,0 +1,3 @@
+# Refresh CricAPI match data every 3 hours (UTC)
+# Uses ~3 API calls per run, 8 runs/day = 24 calls/day (under 100/day limit)
+0 */3 * * * /bin/bash /app/scripts/cron-refresh.sh

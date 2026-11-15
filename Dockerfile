@@ -12,6 +12,14 @@ RUN bun install --frozen-lockfile
 
 # Copy prisma schema + generate client
 COPY prisma ./prisma
+# Swap the datasource provider from sqlite -> postgresql for the production
+# build. The local dev schema uses sqlite (sandbox has no Postgres), but
+# production runs on Fly.io Postgres. Without this swap, prisma generate
+# produces a SQLite client that rejects the postgres:// DATABASE_URL at
+# runtime with "the URL must start with the protocol file:" (HTTP 500 on
+# every API route). Only matches the datasource block — the generator block's
+# provider is "prisma-client-js", so it is left untouched.
+RUN sed -i 's/provider *= *"sqlite"/provider = "postgresql"/' prisma/schema.prisma
 # Set dummy DATABASE_URL + DIRECT_URL during build so prisma generate can
 # validate the schema. Real values are set as runtime secrets on fly.io.
 ENV DATABASE_URL=postgresql://dummy:dummy@dummy:5432/dummy

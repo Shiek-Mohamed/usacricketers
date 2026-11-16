@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Raleway } from "next/font/google";
+import { Geist, Geist_Mono, Raleway, Barlow_Condensed } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
@@ -23,6 +23,16 @@ const displayFont = Raleway({
   variable: "--font-display",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700", "800"],
+});
+
+// Barlow Condensed — a tall, athletic condensed grotesk used selectively on
+// sports/scoreboard surfaces (scorer landing headlines, scorecard numbers)
+// to give them the punchy editorial feel ESPNcricinfo / The Athletic use.
+// NOT applied globally — opt in via `style={{ fontFamily: 'var(--font-condensed)' }}`.
+const condensedFont = Barlow_Condensed({
+  variable: "--font-condensed",
+  subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -134,7 +144,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${displayFont.variable} antialiased bg-background text-foreground`}
+        className={`${geistSans.variable} ${geistMono.variable} ${displayFont.variable} ${condensedFont.variable} antialiased bg-background text-foreground`}
       >
         <ThemeProvider
           attribute="class"

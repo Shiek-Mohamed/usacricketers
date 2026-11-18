@@ -317,8 +317,13 @@ export default function Home() {
   }
 
   // Global live-score ticker: shown only in public mode and only on
-  // content views (hidden on auth/login flows where it would be noise).
-  const showTicker = mode === "public" && !NO_TICKER_VIEWS.has(view)
+  // content views. Hidden on every admin view (even when the page was
+  // loaded via a ?view=admin-* URL so mode is still "public"), and on
+  // auth/login flows where it would be noise.
+  const showTicker =
+    mode === "public" &&
+    !view.startsWith("admin-") &&
+    !NO_TICKER_VIEWS.has(view)
 
   return (
     <div className="flex min-h-screen flex-col bg-background">

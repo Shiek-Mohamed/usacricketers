@@ -7,6 +7,7 @@ import { useAppStore } from "@/lib/store"
 import { StatusPill, formatMatchDate, TeamBadge } from "@/components/cricket/ui"
 import { MiniScorecard } from "@/components/cricket/mini-scorecard"
 import { Standings } from "@/components/cricket/standings"
+import { SeriesHighlights } from "@/components/cricket/series-highlights"
 import { InnerPageLayout } from "@/components/site/inner-layout"
 import { CustomSidebarBlocks } from "@/components/site/custom-sidebar-blocks"
 import {
@@ -119,6 +120,10 @@ export function SeriesDetailView() {
             </p>
           </div>
         </div>
+
+        {/* Series Highlights — aggregate stats grid (hidden until matches
+            have been scored, so upcoming series don't show a wall of 0s) */}
+        <SeriesHighlights matches={seriesMatches} />
 
         {/* Tabs — Standings / Matches / Top Performers */}
         <Tabs defaultValue={seriesMatches.some((m) => m.status === "completed") ? "standings" : "matches"} className="w-full">

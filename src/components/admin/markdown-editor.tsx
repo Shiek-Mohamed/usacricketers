@@ -27,6 +27,7 @@ import {
   Quote,
   Link as LinkIcon,
   Image as ImageIcon,
+  Images,
   AlignLeft,
   AlignCenter,
   AlignRight,
@@ -35,6 +36,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { MediaBrowserDialog } from "@/components/admin/media-browser"
 
 const LIBRARY_IMAGES = [
   "/cricket/hero-trophy.png",
@@ -73,6 +75,7 @@ export function MarkdownEditor({
   const pendingSel = useRef<PendingSel | null>(null)
 
   const [imgOpen, setImgOpen] = useState(false)
+  const [browseOpen, setBrowseOpen] = useState(false)
   const [tab, setTab] = useState<"library" | "upload">("library")
   const [libChoice, setLibChoice] = useState<string>(LIBRARY_IMAGES[0])
   const [customUrl, setCustomUrl] = useState("")
@@ -183,6 +186,13 @@ export function MarkdownEditor({
     applyInsert(md)
   }
 
+  // Insert an image chosen from the shared media-library browser. Reuses the
+  // same applyInsert() cursor logic the upload path uses, so the markdown lands
+  // at the caret (or appends) exactly like an uploaded image would.
+  function handleBrowseInsert(url: string) {
+    applyInsert(`![image](${url})\n\n`)
+  }
+
   const btn = "h-8 w-8 p-0"
 
   return (
@@ -209,6 +219,9 @@ export function MarkdownEditor({
         </Button>
         <Button type="button" variant="ghost" size="icon" className={btn} title="Insert photo" onClick={() => setImgOpen(true)}>
           <ImageIcon className="h-4 w-4" />
+        </Button>
+        <Button type="button" variant="ghost" size="icon" className={btn} title="Browse media library" onClick={() => setBrowseOpen(true)}>
+          <Images className="h-4 w-4" />
         </Button>
         <span className="mx-1 h-5 w-px bg-border" />
         <Button type="button" variant="ghost" size="icon" className={cn(btn)} title="Align left" onClick={() => applyWrap('<div style="text-align:left">', "</div>", "Left-aligned text")}>
@@ -366,6 +379,13 @@ export function MarkdownEditor({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Media library browser — picks from every previously uploaded image */}
+      <MediaBrowserDialog
+        open={browseOpen}
+        onOpenChange={setBrowseOpen}
+        onSelect={handleBrowseInsert}
+      />
     </div>
   )
 }

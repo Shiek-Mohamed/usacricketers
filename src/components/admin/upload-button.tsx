@@ -4,6 +4,7 @@ import { useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Loader2, Upload } from "lucide-react"
 import { toast } from "sonner"
+import { BrowseMediaButton } from "@/components/admin/media-browser"
 
 /**
  * A small "Upload" button that posts a chosen image file to /api/upload and
@@ -15,6 +16,10 @@ import { toast } from "sonner"
  *
  * Pass `authToken` for league-admin auth (Bearer token). When omitted, the
  * button falls back to the CSRF cookie used by site-admins.
+ *
+ * Pass `withBrowse` to render a "Browse" button beside the Upload button that
+ * opens the shared media-library dialog. The browse `onSelect` calls the same
+ * `onUploaded` callback, so callers don't need to change anything.
  */
 export function UploadButton({
   onUploaded,
@@ -22,12 +27,14 @@ export function UploadButton({
   resize,
   className,
   authToken,
+  withBrowse = false,
 }: {
   onUploaded: (url: string) => void
   label?: string
   resize?: number
   className?: string
   authToken?: string | null
+  withBrowse?: boolean
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
@@ -97,6 +104,9 @@ export function UploadButton({
         )}
         {label}
       </Button>
+      {withBrowse && (
+        <BrowseMediaButton onSelect={onUploaded} authToken={authToken} />
+      )}
     </>
   )
 }

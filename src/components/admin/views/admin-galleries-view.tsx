@@ -5,6 +5,7 @@ import { useGalleries } from "@/lib/use-data"
 import { api } from "@/lib/api"
 import { AdminShell } from "@/components/admin/admin-shell"
 import { UploadButton } from "@/components/admin/upload-button"
+import { BrowseMediaButton } from "@/components/admin/media-browser"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -218,7 +219,7 @@ function GalleryEditor({ gallery, onSave, onCancel }: { gallery: Gallery | null;
             <Label>Cover image</Label>
             <div className="flex items-center gap-2">
               <Input value={coverImage} onChange={(e) => setCoverImage(e.target.value)} placeholder="Auto-uses first photo if blank" className="flex-1" />
-              <UploadButton label="Upload" onUploaded={setCoverImage} />
+              <UploadButton label="Upload" onUploaded={setCoverImage} withBrowse />
             </div>
           </div>
           <div className="flex items-center gap-2"><Switch checked={published} onCheckedChange={setPublished} /><Label className="text-sm font-medium">Published</Label></div>
@@ -245,6 +246,8 @@ function GalleryEditor({ gallery, onSave, onCancel }: { gallery: Gallery | null;
                 <Input value={urlInput} onChange={(e) => setUrlInput(e.target.value)} placeholder="Paste image URL…" className="h-9 w-52 text-sm" onKeyDown={(e) => e.key === "Enter" && addByUrl()} />
                 <Button type="button" variant="outline" size="sm" onClick={addByUrl} className="gap-1.5"><LinkIcon className="h-3.5 w-3.5" /> Add</Button>
               </div>
+              {/* Browse the full media library (every previously uploaded image) */}
+              <BrowseMediaButton onSelect={(url) => addFromLibrary(url)} label="Browse library" />
             </div>
 
             {/* Library picker */}

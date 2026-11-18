@@ -173,20 +173,22 @@ export function LeagueAdminHomeView() {
         </div>
       )}
 
-      {/* Quick actions */}
-      <div className="flex flex-wrap gap-2">
-        <Button size="sm" className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => navigate("league-admin-matches")}>
-          <Plus className="h-3.5 w-3.5" /> New Match
-        </Button>
-        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate("league-admin-players")}>
-          <UserPlus className="h-3.5 w-3.5" /> Add Player
-        </Button>
-        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate("league-admin-teams")}>
-          <Users className="h-3.5 w-3.5" /> Manage Teams
-        </Button>
+      {/* Quick Links — CricClub-style action card grid */}
+      <div>
+        <h2 className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+          <Sparkles className="h-3.5 w-3.5" /> Quick Links
+        </h2>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          <QuickLink icon={Trophy} label="New Series" color="text-amber-600 bg-amber-500/10" onClick={() => navigate("league-admin-series-edit", "new")} />
+          <QuickLink icon={Users} label="Teams" color="text-blue-600 bg-blue-500/10" onClick={() => navigate("league-admin-teams")} />
+          <QuickLink icon={UserPlus} label="Players" color="text-emerald-600 bg-emerald-500/10" onClick={() => navigate("league-admin-players")} />
+          <QuickLink icon={CalendarPlus} label="Matches" color="text-rose-600 bg-rose-500/10" onClick={() => navigate("league-admin-matches")} />
+          <QuickLink icon={Radio} label="Scorers" color="text-purple-600 bg-purple-500/10" onClick={() => navigate("league-admin-scorers")} />
+          <QuickLink icon={Pencil} label="Officials" color="text-cyan-600 bg-cyan-500/10" onClick={() => navigate("league-admin-officials")} />
+        </div>
         {liveMatches.length > 0 && (
-          <Button size="sm" variant="outline" className="gap-1.5 border-red-300 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/40" onClick={() => navigate("live-scorer", liveMatches[0].id)}>
-            <Radio className="h-3.5 w-3.5" /> Score Live
+          <Button size="sm" variant="outline" className="mt-2 gap-1.5 border-red-300 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/40" onClick={() => navigate("live-scorer", liveMatches[0].id)}>
+            <Radio className="h-3.5 w-3.5" /> Score Live Match
           </Button>
         )}
       </div>
@@ -440,5 +442,31 @@ function LeagueCard({
         </div>
       </div>
     </Card>
+  )
+}
+
+/** Quick Links action card — icon + label, used in the dashboard grid. */
+function QuickLink({
+  icon: Icon,
+  label,
+  color,
+  onClick,
+}: {
+  icon: React.ElementType
+  label: string
+  color: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-2.5 rounded-lg border bg-card p-3 text-left transition-all hover:shadow-md hover:-translate-y-0.5"
+    >
+      <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${color}`}>
+        <Icon className="h-4 w-4" />
+      </span>
+      <span className="text-xs font-semibold leading-tight">{label}</span>
+    </button>
   )
 }

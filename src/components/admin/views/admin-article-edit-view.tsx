@@ -347,6 +347,7 @@ export function AdminArticleEditView() {
             <div className="mt-1 flex flex-wrap items-center gap-3">
               <UploadButton
                 label="Upload hero photo"
+                withBrowse
                 onUploaded={(url) =>
                   setForm((f) => ({ ...f, imageUrl: url }))
                 }

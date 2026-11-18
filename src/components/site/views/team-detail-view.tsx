@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
-import { ArrowLeft, CalendarClock, Users } from "lucide-react"
+import { ArrowLeft, Users, Activity, CalendarDays } from "lucide-react"
 import { useTeam, usePlayers, useMatches } from "@/lib/use-data"
 import { useAppStore } from "@/lib/store"
 import { TeamBadge, PlayerAvatar } from "@/components/cricket/ui"
@@ -14,9 +14,10 @@ import {
   RecentResultsWidget,
 } from "@/components/site/sidebar-widgets"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import type { Player } from "@/lib/types"
 
@@ -71,6 +72,22 @@ export function TeamDetailView() {
     }
     return g
   }, [players])
+
+  // Completed results (recent first) + upcoming schedule (next first),
+  // split out for the Results / Schedule tabs.
+  const teamResults = useMemo(() => {
+    if (!matches || !id) return []
+    return matches
+      .filter((m) => (m.team1Id === id || m.team2Id === id) && m.status === "completed")
+      .sort((a, b) => +new Date(b.startDate) - +new Date(a.startDate))
+  }, [matches, id])
+
+  const teamSchedule = useMemo(() => {
+    if (!matches || !id) return []
+    return matches
+      .filter((m) => (m.team1Id === id || m.team2Id === id) && m.status === "upcoming")
+      .sort((a, b) => +new Date(a.startDate) - +new Date(b.startDate))
+  }, [matches, id])
 
   if (teamLoading) {
     return (
@@ -150,82 +167,120 @@ export function TeamDetailView() {
       }
     >
       <div className="space-y-5">
-        {/* Squad — begins below the header card */}
-        <Card className="gap-0 py-0">
-          <CardHeader className="border-b px-5 sm:px-6">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Users className="size-4 text-emerald-600" />
+        {/* Tabbed content — Squad / Results / Schedule (CricClub-style) */}
+        <Tabs defaultValue="squad" className="w-full">
+          <TabsList className="flex w-full justify-start gap-0 rounded-none border-b border-border bg-transparent p-0">
+            <TabsTrigger value="squad" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none">
+              <Users className="size-4" />
               Squad
-              <span className="ml-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                {players?.length ?? 0}
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className={cn("p-0", SCROLLBAR_CLASS)}>
-            <div className={cn("max-h-96 overflow-y-auto", SCROLLBAR_CLASS)}>
-              {playersLoading ? (
-                <div className="space-y-2 p-4">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <Skeleton key={i} className="h-14 w-full rounded-md" />
-                  ))}
-                </div>
-              ) : players && players.length > 0 ? (
-                <ul className="divide-y">
-                  {ROLE_GROUPS.map((grp) => {
-                    const list = grouped[grp.label] ?? []
-                    if (list.length === 0) return null
-                    return (
-                      <li key={grp.label}>
-                        <div className="bg-muted/40 px-5 py-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                          {grp.label} ({list.length})
-                        </div>
-                        {list.map((p) => (
-                          <PlayerRow
-                            key={p.id}
-                            player={p}
-                          />
-                        ))}
-                      </li>
-                    )
-                  })}
-                </ul>
-              ) : (
-                <div className="p-6 text-center text-sm text-muted-foreground">
-                  No players in this squad yet.
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+              <CountPill count={players?.length ?? 0} />
+            </TabsTrigger>
+            <TabsTrigger value="results" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none">
+              <Activity className="size-4" />
+              Results
+              <CountPill count={teamResults.length} />
+            </TabsTrigger>
+            <TabsTrigger value="schedule" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none">
+              <CalendarDays className="size-4" />
+              Schedule
+              <CountPill count={teamSchedule.length} />
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Recent matches */}
-        <div>
-          <h2 className="mb-3 flex items-center gap-2 text-lg font-bold">
-            <CalendarClock className="size-5 text-emerald-600" />
-            Recent Matches
-          </h2>
-          {matchesLoading ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-40 w-full rounded-lg" />
-              ))}
-            </div>
-          ) : recentMatches.length === 0 ? (
-            <Card>
-              <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                No recent matches for this team.
+          {/* Squad tab */}
+          <TabsContent value="squad" className="mt-4">
+            <Card className="gap-0 py-0">
+              <CardContent className={cn("p-0", SCROLLBAR_CLASS)}>
+                <div className={cn("max-h-[60vh] overflow-y-auto", SCROLLBAR_CLASS)}>
+                  {playersLoading ? (
+                    <div className="space-y-2 p-4">
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <Skeleton key={i} className="h-14 w-full rounded-md" />
+                      ))}
+                    </div>
+                  ) : players && players.length > 0 ? (
+                    <ul className="divide-y">
+                      {ROLE_GROUPS.map((grp) => {
+                        const list = grouped[grp.label] ?? []
+                        if (list.length === 0) return null
+                        return (
+                          <li key={grp.label}>
+                            <div className="bg-muted/40 px-5 py-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                              {grp.label} ({list.length})
+                            </div>
+                            {list.map((p) => (
+                              <PlayerRow key={p.id} player={p} />
+                            ))}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  ) : (
+                    <div className="p-6 text-center text-sm text-muted-foreground">
+                      No players in this squad yet.
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {recentMatches.map((m) => (
-                <MiniScorecard key={m.id} match={m} />
-              ))}
-            </div>
-          )}
-        </div>
+          </TabsContent>
+
+          {/* Results tab — completed matches, recent first */}
+          <TabsContent value="results" className="mt-4">
+            {matchesLoading ? (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-40 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : teamResults.length === 0 ? (
+              <Card>
+                <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                  No completed matches for this team yet.
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {teamResults.map((m) => (
+                  <MiniScorecard key={m.id} match={m} />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Schedule tab — upcoming matches, next first */}
+          <TabsContent value="schedule" className="mt-4">
+            {matchesLoading ? (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-40 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : teamSchedule.length === 0 ? (
+              <Card>
+                <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                  No upcoming matches scheduled for this team.
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {teamSchedule.map((m) => (
+                  <MiniScorecard key={m.id} match={m} />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </InnerPageLayout>
+  )
+}
+
+function CountPill({ count }: { count: number }) {
+  return (
+    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold tabular-nums text-muted-foreground data-[state=active]:bg-white/20 data-[state=active]:text-white">
+      {count}
+    </span>
   )
 }
 

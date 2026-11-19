@@ -1,9 +1,16 @@
 "use client"
 
-import { useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useAppStore } from "@/lib/store"
 import type { Match, Team } from "@/lib/types"
 import { TeamBadge } from "./ui"
+
+interface PenaltyItem {
+  id: string
+  type: string
+  value: number
+  reason: string
+}
 
 interface StandingRow {
   teamId: string
@@ -19,6 +26,11 @@ interface StandingRow {
   runsAgainst: number
   oversBowled: number
   nrr: number
+  penaltyPoints: number
+  penaltyNrr: number
+  effectivePoints: number
+  effectiveNrr: number
+  penalties: PenaltyItem[]
 }
 
 /**
@@ -62,13 +74,54 @@ function matchOutcome(match: Match): { team1: "W" | "L" | "T" | "NR"; team2: "W"
   return null
 }
 
+/**
+ * Standings table for a series. Derives W/L/T/NR + NRR from the matches
+ * passed in, then overlays any Penalties & Deductions (points deductions,
+ * NRR adjustments) fetched from /api/series/:id/penalties when `seriesId`
+ * is supplied. Without `seriesId` the table behaves exactly as before
+ * (pure match-derived).
+ */
 export function Standings({
   matches,
+  seriesId,
 }: {
   matches: Match[]
   teams?: Team[]
+  seriesId?: string
 }) {
   const navigate = useAppStore((s) => s.navigate)
+  const [penaltyMap, setPenaltyMap] = useState<Map<string, PenaltyItem[]> | null>(null)
+
+  useEffect(() => {
+    if (!seriesId) return
+    let cancelled = false
+    fetch(`/api/series/${seriesId}/penalties`)
+      .then((r) => r.json())
+      .then(
+        (
+          d: {
+            items?: Array<{ teamId: string; id: string; type: string; value: number; reason: string }>
+          },
+        ) => {
+          if (cancelled) return
+          const items = Array.isArray(d?.items) ? d.items : []
+          const m = new Map<string, PenaltyItem[]>()
+          for (const it of items) {
+            const arr = m.get(it.teamId) ?? []
+            arr.push({ id: it.id, type: it.type, value: it.value, reason: it.reason })
+            m.set(it.teamId, arr)
+          }
+          setPenaltyMap(m)
+        },
+      )
+      .catch(() => {
+        if (!cancelled) setPenaltyMap(new Map())
+      })
+    return () => {
+      cancelled = true
+      setPenaltyMap(null)
+    }
+  }, [seriesId])
 
   const rows = useMemo(() => {
     // Derive teams from the matches themselves (team1/team2) — more robust
@@ -86,6 +139,8 @@ export function Standings({
         team,
         played: 0, won: 0, lost: 0, tied: 0, noResult: 0, points: 0,
         runsFor: 0, oversFaced: 0, runsAgainst: 0, oversBowled: 0, nrr: 0,
+        penaltyPoints: 0, penaltyNrr: 0, effectivePoints: 0, effectiveNrr: 0,
+        penalties: [],
       })
     }
     for (const m of matches) {
@@ -122,10 +177,28 @@ export function Standings({
       const rpoAgainst = row.oversBowled > 0 ? row.runsAgainst / row.oversBowled : 0
       row.nrr = rpo - rpoAgainst
     }
+    // Apply penalties: points deduction + signed NRR adjustment.
+    for (const row of map.values()) {
+      const items = penaltyMap?.get(row.teamId)
+      if (items && items.length > 0) {
+        row.penalties = items
+        for (const p of items) {
+          if (p.type === "points") row.penaltyPoints += p.value
+          else if (p.type === "nrr") row.penaltyNrr += p.value
+        }
+      }
+      row.effectivePoints = row.points - row.penaltyPoints
+      row.effectiveNrr = Number((row.nrr + row.penaltyNrr).toFixed(3))
+    }
     return Array.from(map.values())
-      .filter(r => r.played > 0)
-      .sort((a, b) => b.points - a.points || b.won - a.won || b.nrr - a.nrr)
-  }, [matches])
+      .filter((r) => r.played > 0)
+      .sort(
+        (a, b) =>
+          b.effectivePoints - a.effectivePoints ||
+          b.won - a.won ||
+          b.effectiveNrr - a.effectiveNrr,
+      )
+  }, [matches, penaltyMap])
 
   if (rows.length === 0) return null
 
@@ -172,9 +245,29 @@ export function Standings({
                 <td className="py-2 px-2 text-right tabular-nums">{r.lost}</td>
                 <td className="py-2 px-2 text-right tabular-nums hidden sm:table-cell">{r.tied}</td>
                 <td className="py-2 px-2 text-right tabular-nums hidden sm:table-cell">{r.noResult}</td>
-                <td className="py-2 px-2 text-right tabular-nums font-bold">{r.points}</td>
+                <td className="py-2 px-2 text-right tabular-nums font-bold">
+                  {r.effectivePoints}
+                  {r.penaltyPoints > 0 && (
+                    <span
+                      className="ml-1 text-[10px] font-medium text-red-500"
+                      title={`−${r.penaltyPoints} from penalties`}
+                    >
+                      (−{r.penaltyPoints})
+                    </span>
+                  )}
+                </td>
                 <td className="py-2 pl-2 pr-4 text-right tabular-nums text-muted-foreground hidden md:table-cell">
-                  {r.nrr !== 0 ? r.nrr.toFixed(3) : "0.000"}
+                  {r.effectiveNrr !== 0
+                    ? (r.effectiveNrr > 0 ? "+" : "") + r.effectiveNrr.toFixed(3)
+                    : "0.000"}
+                  {r.penaltyNrr !== 0 && (
+                    <span
+                      className="ml-1 text-[10px] text-amber-600"
+                      title={`${r.penaltyNrr > 0 ? "+" : ""}${r.penaltyNrr.toFixed(3)} NRR adjustment`}
+                    >
+                      *
+                    </span>
+                  )}
                 </td>
               </tr>
             ))}

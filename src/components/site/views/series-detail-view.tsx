@@ -161,7 +161,7 @@ export function SeriesDetailView() {
 
           {seriesMatches.some((m) => m.status === "completed") && (
             <TabsContent value="standings" className="mt-4">
-              <Standings matches={seriesMatches} />
+              <Standings matches={seriesMatches} seriesId={id ?? undefined} />
             </TabsContent>
           )}
 

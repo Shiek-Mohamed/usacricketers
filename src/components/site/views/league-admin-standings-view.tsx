@@ -30,6 +30,10 @@ interface Standing {
   forOvers: number
   againstRuns: number
   againstOvers: number
+  penaltyPoints?: number
+  penaltyNrr?: number
+  effectivePoints?: number
+  effectiveNrr?: number
 }
 
 export function LeagueAdminStandingsView() {
@@ -218,12 +222,22 @@ function StandingsTable({ standings }: { standings: Standing[] }) {
           <span className="w-10 text-right font-display text-sm font-semibold tabular-nums text-emerald-600">{s.won}</span>
           <span className="w-10 text-right font-display text-sm font-semibold tabular-nums text-red-500">{s.lost}</span>
           <span className="w-10 text-right font-display text-sm font-semibold tabular-nums text-gray-500">{s.tied}</span>
-          <span className="w-12 text-right font-display text-base font-black tabular-nums text-black">{s.points}</span>
+          <span className="w-12 text-right font-display text-base font-black tabular-nums text-black">
+            {s.effectivePoints ?? s.points}
+            {!!s.penaltyPoints && (
+              <span className="ml-0.5 text-[10px] font-medium text-red-500" title={`−${s.penaltyPoints} from penalties`}>
+                (−{s.penaltyPoints})
+              </span>
+            )}
+          </span>
           <span className={cn(
             "w-16 text-right font-display text-sm font-semibold tabular-nums",
-            s.nrr > 0 ? "text-emerald-600" : s.nrr < 0 ? "text-red-500" : "text-gray-500",
+            (s.effectiveNrr ?? s.nrr) > 0 ? "text-emerald-600" : (s.effectiveNrr ?? s.nrr) < 0 ? "text-red-500" : "text-gray-500",
           )}>
-            {s.nrr > 0 ? "+" : ""}{s.nrr.toFixed(3)}
+            {(s.effectiveNrr ?? s.nrr) > 0 ? "+" : ""}{(s.effectiveNrr ?? s.nrr).toFixed(3)}
+            {!!s.penaltyNrr && s.penaltyNrr !== 0 && (
+              <span className="ml-0.5 text-[10px] text-amber-600" title={`${s.penaltyNrr > 0 ? "+" : ""}${s.penaltyNrr.toFixed(3)} NRR adjustment`}>*</span>
+            )}
           </span>
         </div>
       ))}

@@ -45,6 +45,7 @@ model Team {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   players      Player[]
+  penalties    Penalty[]
   matchesAsT1  Match[]  @relation("Team1Matches")
   matchesAsT2  Match[]  @relation("Team2Matches")
   tournamentTeams TournamentTeam[]
@@ -86,6 +87,7 @@ model Series {
   description String   @default("")
   matches      Match[]
   tournamentTeams TournamentTeam[]
+  penalties    Penalty[]
   scorerAssignments ScorerAssignment[]
   leagueAdminAssignments LeagueAdminAssignment[]
   createdAt    DateTime @default(now())
@@ -353,6 +355,27 @@ model Standing {
 
   @@unique([seriesId, teamId])
   @@index([seriesId])
+}
+
+// Penalties & deductions applied to a team within a series — e.g. points
+// docked for slow over-rate, NRR adjustments, walkover penalties. Read at
+// standings-compute time (GET /api/standings) so they stay auditable and
+// removable: the raw match-derived points/NRR are never mutated.
+//   type="points": `value` is points to DEDUCT (positive number).
+//   type="nrr":    `value` is a signed NRR adjustment ADDED to the team's NRR.
+model Penalty {
+  id        String   @id @default(cuid())
+  seriesId  String
+  teamId    String
+  type      String   // "points" | "nrr"
+  value     Float
+  reason    String   @default("")
+  createdAt DateTime @default(now())
+  series    Series   @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([seriesId])
+  @@index([teamId])
 }
 
 model NewsletterSubscriber {

@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils"
 import type { Series, Team } from "@/lib/types"
 import { BulkPlayersDialog } from "@/components/admin/bulk-players/bulk-players-dialog"
 import { parsePlayerRows } from "@/components/admin/bulk-players/bulk-players-dialog"
+import { PenaltiesCard } from "@/components/admin/penalties-card"
 
 const SCROLLBAR = "[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border"
 const FORMATS = ["Test", "ODI", "T20I", "T10", "T25", "T30", "T35", "Custom"] as const
@@ -409,6 +410,10 @@ function TournamentEditor({
               )}
             </CardContent>
           </Card>
+        )}
+
+        {tournament?.id && (
+          <PenaltiesCard seriesId={tournament.id} />
         )}
 
         {/* Save / Cancel */}

@@ -47,6 +47,7 @@ import { AdminScorerView } from "@/components/admin/views/admin-scorers-view"
 import { AdminLeagueAdminsView } from "@/components/admin/views/admin-league-admins-view"
 import { AdminFeedbackView } from "@/components/admin/views/admin-feedback-view"
 import { AdminLoginView } from "@/components/site/views/admin-login-view"
+import { AdminTopBar } from "@/components/admin/admin-top-bar"
 import { AdminResetPasswordView } from "@/components/site/views/admin-reset-password-view"
 import { LiveScorerView } from "@/components/admin/views/live-scorer-view"
 import { ScorerLoginView } from "@/components/site/views/scorer-login-view"
@@ -325,21 +326,38 @@ export default function Home() {
     !view.startsWith("admin-") &&
     !NO_TICKER_VIEWS.has(view)
 
+  const isAdmin = view.startsWith("admin-")
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <Header />
-      {showTicker && <LiveScoreTicker />}
-      <main className="flex-1 w-full">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6">
-          {/* Per-view error boundary: if a single view crashes during render,
-              only this area shows the error card — the header, footer, and
-              navigation stay fully usable so the user can click away. */}
-          <ViewErrorBoundary key={view} label={view}>
-            {renderView()}
-          </ViewErrorBoundary>
-        </div>
-      </main>
-      {mode === "public" && <Footer />}
+      {isAdmin ? (
+        <>
+          <AdminTopBar />
+          <main className="flex-1 w-full">
+            <div className="mx-auto max-w-screen-2xl px-4 py-5 sm:px-6">
+              <ViewErrorBoundary key={view} label={view}>
+                {renderView()}
+              </ViewErrorBoundary>
+            </div>
+          </main>
+        </>
+      ) : (
+        <>
+          <Header />
+          {showTicker && <LiveScoreTicker />}
+          <main className="flex-1 w-full">
+            <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6">
+              {/* Per-view error boundary: if a single view crashes during render,
+                  only this area shows the error card — the header, footer, and
+                  navigation stay fully usable so the user can click away. */}
+              <ViewErrorBoundary key={view} label={view}>
+                {renderView()}
+              </ViewErrorBoundary>
+            </div>
+          </main>
+          {mode === "public" && <Footer />}
+        </>
+      )}
     </div>
   )
 }

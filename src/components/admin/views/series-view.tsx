@@ -393,7 +393,7 @@ function TournamentEditor({
             <CardContent className="p-4 sm:p-6 space-y-3">
               <div className="flex items-center justify-between">
                 <h2 className="flex items-center gap-2 text-base font-bold"><Trophy className="h-5 w-5 text-emerald-600" /> Matches ({tournamentMatches.length})</h2>
-                <Button size="sm" onClick={createMatchAndScore} disabled={tournamentTeams.length < 2} className="gap-1.5 bg-red-600 text-white hover:bg-red-700">
+                <Button size="sm" onClick={createMatchAndScore} disabled={tournamentTeams.length < 2} className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700">
                   <Radio className="h-3.5 w-3.5" /> Create match &amp; score live
                 </Button>
               </div>

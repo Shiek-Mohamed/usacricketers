@@ -179,36 +179,34 @@ export function DashboardView() {
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {stats.map((s) => {
           const Icon = s.icon
+          const accent = s.color.replace("text-", "border-")
           return (
-            <Card key={s.label} className="overflow-hidden">
-              <CardContent className="p-4 flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <span
-                    className={`grid h-9 w-9 place-items-center rounded-lg ${s.bg}`}
-                  >
-                    <Icon className={`h-4 w-4 ${s.color}`} />
-                  </span>
-                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/50" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">
-                    {loading ? (
-                      <Skeleton className="h-7 w-10" />
-                    ) : (
-                      s.count
-                    )}
+            <Card
+              key={s.label}
+              className={`overflow-hidden border-l-4 ${accent} transition-shadow hover:shadow-md`}
+            >
+              <button
+                onClick={() => navigate(s.view)}
+                className="w-full text-left"
+              >
+                <CardContent className="p-4 flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className={`grid h-9 w-9 place-items-center rounded-lg ${s.bg}`}>
+                      <Icon className={`h-4 w-4 ${s.color}`} />
+                    </span>
+                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/50" />
                   </div>
-                  <div className="text-xs text-muted-foreground">{s.label}</div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="justify-start px-0 text-xs h-auto py-0.5 text-muted-foreground hover:text-foreground"
-                  onClick={() => navigate(s.view)}
-                >
-                  Manage →
-                </Button>
-              </CardContent>
+                  <div>
+                    <div className="text-2xl font-bold tabular-nums">
+                      {loading ? <Skeleton className="h-7 w-10" /> : s.count}
+                    </div>
+                    <div className="text-xs text-muted-foreground">{s.label}</div>
+                  </div>
+                  <div className="text-xs font-medium text-muted-foreground">
+                    Manage →
+                  </div>
+                </CardContent>
+              </button>
             </Card>
           )
         })}
@@ -419,32 +417,6 @@ export function DashboardView() {
         </CardContent>
       </Card>
 
-      {/* Quick actions */}
-      <Card>
-        <CardHeader className="border-b">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Zap className="h-4 w-4 text-amber-600" /> Quick Actions
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-            {stats.map((s) => {
-              const Icon = s.icon
-              return (
-                <Button
-                  key={s.label}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate(s.view)}
-                  className="justify-start gap-1.5"
-                >
-                  <Icon className="h-3.5 w-3.5" /> {s.label}
-                </Button>
-              )
-            })}
-          </div>
-        </CardContent>
-      </Card>
     </AdminShell>
   )
 }

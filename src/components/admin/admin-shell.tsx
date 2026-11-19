@@ -23,6 +23,8 @@ import {
   Megaphone,
   Upload,
   MessageSquare,
+  ShieldCheck,
+  AlertCircle,
 } from "lucide-react"
 import type { ViewKey } from "@/lib/types"
 
@@ -60,10 +62,11 @@ const navGroups: { title: string; views: Set<ViewKey> }[] = [
   { title: "System", views: new Set<ViewKey>(["admin-scorers", "admin-league-admins", "admin-feedback"]) },
 ]
 
-function getGroup(view: ViewKey): string {
-  for (const g of navGroups) if (g.views.has(view)) return g.title
-  return "Overview"
-}
+/** Active nav button — emerald-tinted bg + left accent bar + emerald text. */
+const activeNavCls =
+  "relative bg-emerald-50 text-emerald-700 font-semibold ring-1 ring-inset ring-emerald-200 " +
+  "before:absolute before:left-0 before:top-1/2 before:h-5 before:-translate-y-1/2 before:w-1 before:rounded-full before:bg-emerald-500"
+const idleNavCls = "relative hover:bg-accent text-foreground"
 
 export function AdminShell({
   title,
@@ -80,7 +83,6 @@ export function AdminShell({
       {/* Mobile horizontal nav — grouped by section, scrollable */}
       <div className="lg:hidden -mx-3 px-3">
         <div className="flex gap-1 overflow-x-auto pb-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
-          {/* Dashboard first (always visible), then grouped sections */}
           {(() => {
             const dash = navItems.find((i) => i.view === "admin-dashboard")!
             const Icon = dash.icon
@@ -90,7 +92,10 @@ export function AdminShell({
                 key={dash.view}
                 size="sm"
                 variant={active ? "default" : "outline"}
-                className="shrink-0 gap-1.5"
+                className={cn(
+                  "shrink-0 gap-1.5",
+                  active && "bg-emerald-600 text-white hover:bg-emerald-700",
+                )}
                 onClick={() => navigate(dash.view)}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -113,7 +118,10 @@ export function AdminShell({
                       key={item.view}
                       size="sm"
                       variant={active ? "default" : "outline"}
-                      className="shrink-0 gap-1.5"
+                      className={cn(
+                        "shrink-0 gap-1.5",
+                        active && "bg-emerald-600 text-white hover:bg-emerald-700",
+                      )}
                       onClick={() => navigate(item.view)}
                     >
                       <Icon className="h-3.5 w-3.5" />
@@ -127,12 +135,13 @@ export function AdminShell({
       </div>
 
       <div className="flex gap-6">
-        {/* Desktop sidebar — grouped with section headings */}
-        <aside className="hidden lg:flex lg:w-60 lg:flex-col lg:sticky lg:top-20 self-start">
-          <div className="rounded-xl border bg-card p-4">
+        {/* Desktop sidebar — branded, navy section headers, emerald active */}
+        <aside className="hidden lg:flex lg:w-60 lg:flex-col lg:sticky lg:top-16 self-start">
+          {/* Brand header */}
+          <div className="rounded-xl border bg-card p-3">
             <div className="flex items-center gap-2">
-              <span className="grid h-9 w-9 place-items-center rounded-md bg-primary text-primary-foreground font-extrabold text-lg">
-                c
+              <span className="grid h-8 w-8 place-items-center rounded-md bg-amber-400 text-[#1e2a5e]">
+                <ShieldCheck className="h-4 w-4" />
               </span>
               <div className="leading-tight">
                 <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -142,6 +151,7 @@ export function AdminShell({
               </div>
             </div>
           </div>
+
           <nav className="mt-3 flex flex-col gap-3 rounded-xl border bg-card p-2">
             {/* Dashboard — always at top, outside groups */}
             {(() => {
@@ -152,10 +162,8 @@ export function AdminShell({
                 <button
                   onClick={() => navigate(dash.view)}
                   className={cn(
-                    "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                    active
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "hover:bg-accent text-foreground"
+                    "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+                    active ? activeNavCls : idleNavCls,
                   )}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
@@ -163,10 +171,9 @@ export function AdminShell({
                 </button>
               )
             })()}
-            {/* Grouped sections */}
             {navGroups.map((group) => (
               <div key={group.title} className="flex flex-col gap-0.5">
-                <div className="px-3 pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <div className="px-3 pt-1 pb-0.5 text-[10px] font-bold uppercase tracking-wide text-[#1e2a5e]/70">
                   {group.title}
                 </div>
                 {navItems
@@ -179,10 +186,8 @@ export function AdminShell({
                         key={item.view}
                         onClick={() => navigate(item.view)}
                         className={cn(
-                          "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                          active
-                            ? "bg-primary text-primary-foreground shadow-sm"
-                            : "hover:bg-accent text-foreground"
+                          "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+                          active ? activeNavCls : idleNavCls,
                         )}
                       >
                         <Icon className="h-4 w-4 shrink-0" />
@@ -193,13 +198,16 @@ export function AdminShell({
               </div>
             ))}
           </nav>
-          <p className="mt-3 px-2 text-[11px] text-muted-foreground">
-            Admin mode — changes are live
-          </p>
         </aside>
 
         {/* Main */}
         <section className="flex-1 min-w-0 space-y-4">
+          {/* Persistent admin-mode banner — critical safety info */}
+          <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            Admin mode — changes are live on the public site
+          </div>
+
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-xl font-bold tracking-tight">{title}</h1>
             {typeof count === "number" && (
@@ -209,7 +217,7 @@ export function AdminShell({
             )}
             <div className="ml-auto flex items-center gap-2">
               {actionLabel && onAction && (
-                <Button onClick={onAction} size="sm" className="gap-1.5">
+                <Button onClick={onAction} size="sm" className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700">
                   <Plus className="h-4 w-4" />
                   {actionLabel}
                 </Button>

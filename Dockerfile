@@ -81,6 +81,11 @@ COPY --from=builder /app/sync-db.js ./sync-db.js
 COPY --from=builder /app/migrate-to-postgres.js ./migrate-to-postgres.js
 COPY --from=builder /app/migration ./migration
 
+# Raw-SQL schema fallback — guarantees the Penalty table exists on boot even
+# if `prisma db push` fails to apply DDL (pooled connection / npx hiccup).
+# Idempotent + non-fatal. Runs by start-all.sh after prisma db push.
+COPY --from=builder /app/ensure-schema.js ./ensure-schema.js
+
 # Copy the score-service mini-service
 COPY --from=builder /app/mini-services ./mini-services
 

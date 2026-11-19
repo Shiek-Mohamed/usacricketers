@@ -10,7 +10,11 @@ set -e
 # if this fails, e.g. during a temporary DB outage).
 echo "📦 Pushing Prisma schema to PostgreSQL..."
 cd /app
-npx prisma db push --accept-data-loss 2>&1 || echo "⚠️ prisma db push failed — app will start with existing schema"
+# Invoke the prisma CLI directly (not via npx) — npx can fail to resolve the
+# local prisma binary on boot and silently no-op, leaving new tables uncreated.
+node /app/node_modules/prisma/build/index.js db push --accept-data-loss 2>&1 || echo "⚠️ prisma db push failed (exit $?) — continuing with existing schema"
+echo "📦 Ensuring required tables exist (raw-SQL fallback)..."
+node /app/ensure-schema.js 2>&1 || echo "⚠️ ensure-schema failed — continuing"
 
 # Migrate data from SQLite (runs only if the database is empty — idempotent)
 echo "📦 Running data migration (SQLite → PostgreSQL)..."

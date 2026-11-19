@@ -33,6 +33,7 @@ import type { Series, Team } from "@/lib/types"
 import { BulkPlayersDialog } from "@/components/admin/bulk-players/bulk-players-dialog"
 import { parsePlayerRows } from "@/components/admin/bulk-players/bulk-players-dialog"
 import { PenaltiesCard } from "@/components/admin/penalties-card"
+import { UploadButton } from "@/components/admin/upload-button"
 
 const SCROLLBAR = "[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border"
 const FORMATS = ["Test", "ODI", "T20I", "T10", "T25", "T30", "T35", "Custom"] as const
@@ -143,6 +144,13 @@ function TournamentEditor({
   const [description, setDescription] = useState(tournament?.description ?? "")
   const [startDate, setStartDate] = useState(tournament?.startDate?.slice(0, 10) ?? new Date().toISOString().slice(0, 10))
   const [endDate, setEndDate] = useState(tournament?.endDate?.slice(0, 10) ?? new Date().toISOString().slice(0, 10))
+  // Classification & playing-rules metadata (CricClub "Create Series Info")
+  const [ballType, setBallType] = useState(tournament?.ballType ?? "Leather")
+  const [category, setCategory] = useState(tournament?.category ?? "Men")
+  const [level, setLevel] = useState(tournament?.level ?? "Club")
+  const [playersPerTeam, setPlayersPerTeam] = useState(tournament?.playersPerTeam ?? 11)
+  const [squadLimit, setSquadLimit] = useState(tournament?.squadLimit ?? 0)
+  const [logoUrl, setLogoUrl] = useState(tournament?.logoUrl ?? "")
   const [saving, setSaving] = useState(false)
 
   // New-team quick-create form
@@ -171,7 +179,7 @@ function TournamentEditor({
       // When "Custom" is selected, store as "T{N}" (e.g. "T12", "T8") so
       // maxOversForFormat() can parse it.
       const actualFormat = format === "Custom" ? `T${customOvers}` : format
-      const payload = { name, shortName: shortName || name.slice(0, 20), format: actualFormat, season, status, description, startDate, endDate }
+      const payload = { name, shortName: shortName || name.slice(0, 20), format: actualFormat, season, status, description, startDate, endDate, ballType, category, level, playersPerTeam: Number(playersPerTeam), squadLimit: Number(squadLimit), logoUrl: logoUrl || null }
       if (tournament) { await api.series.update(tournament.id, payload); toast.success("Tournament saved") }
       else { await api.series.create(payload); toast.success("Tournament created") }
       onSave()
@@ -326,6 +334,22 @@ function TournamentEditor({
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-1.5"><Label>Start date</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></div>
                 <div className="grid gap-1.5"><Label>End date</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></div>
+              </div>
+              {/* Classification & playing rules (CricClub Create Series Info) */}
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <div className="grid gap-1.5"><Label>Ball type</Label><Select value={ballType} onValueChange={setBallType}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{["Leather","Hard Tennis","Soft Tennis","Tape Ball"].map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></div>
+                <div className="grid gap-1.5"><Label>Category</Label><Select value={category} onValueChange={setCategory}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{["Men","Women","Mixed","Boys","Girls"].map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></div>
+                <div className="grid gap-1.5"><Label>Level</Label><Select value={level} onValueChange={setLevel}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{["International","State","District","Club","School","Corporate"].map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></div>
+                <div className="grid gap-1.5"><Label>Players per team</Label><Input type="number" min={1} max={20} value={playersPerTeam} onChange={(e) => setPlayersPerTeam(Number(e.target.value) || 11)} /></div>
+                <div className="grid gap-1.5"><Label>Squad limit (0 = unlimited)</Label><Input type="number" min={0} value={squadLimit} onChange={(e) => setSquadLimit(Number(e.target.value) || 0)} /></div>
+              </div>
+              <div className="grid gap-1.5">
+                <Label>Series logo</Label>
+                <div className="flex flex-wrap items-center gap-3">
+                  {logoUrl ? <img src={logoUrl} alt="Series logo" className="h-12 w-12 rounded-lg border object-cover" /> : null}
+                  <UploadButton label="Upload logo" withBrowse onUploaded={(url) => setLogoUrl(url)} />
+                  {logoUrl && <Button type="button" variant="ghost" size="sm" onClick={() => setLogoUrl("")}>Remove</Button>}
+                </div>
               </div>
               <div className="grid gap-1.5"><Label htmlFor="t-desc">Description</Label><Textarea id="t-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} /></div>
             </CardContent></Card>

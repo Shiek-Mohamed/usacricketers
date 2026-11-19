@@ -150,6 +150,12 @@ export interface Series {
   endDate: string
   status: string
   description: string
+  ballType: string
+  category: string
+  level: string
+  playersPerTeam: number
+  squadLimit: number
+  logoUrl: string | null
   teams: Team[]
   createdAt: string
   updatedAt: string

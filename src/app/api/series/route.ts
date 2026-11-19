@@ -31,6 +31,12 @@ export async function POST(req: NextRequest) {
       endDate: body.endDate ? new Date(body.endDate) : new Date(),
       status: body.status || "upcoming",
       description: body.description || "",
+      ballType: body.ballType || "Leather",
+      category: body.category || "Men",
+      level: body.level || "Club",
+      playersPerTeam: body.playersPerTeam ? Number(body.playersPerTeam) : 11,
+      squadLimit: body.squadLimit ? Number(body.squadLimit) : 0,
+      logoUrl: body.logoUrl || null,
     },
     include: { tournamentTeams: { include: { team: true } } },
   })

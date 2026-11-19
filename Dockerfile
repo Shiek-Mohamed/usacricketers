@@ -20,6 +20,10 @@ COPY prisma ./prisma
 # every API route). Only matches the datasource block — the generator block's
 # provider is "prisma-client-js", so it is left untouched.
 RUN sed -i 's/provider *= *"sqlite"/provider = "postgresql"/' prisma/schema.prisma
+# Add directUrl (non-pooled) so `prisma db push` on boot can run DDL against
+# the prod Postgres. Without it, db push tries DDL over the pooled DATABASE_URL
+# and silently fails — new tables/columns never get created on deploy.
+RUN sed -i '/url *= *env("DATABASE_URL")/a\  directUrl = env("DIRECT_URL")' prisma/schema.prisma
 # Set dummy DATABASE_URL + DIRECT_URL during build so prisma generate can
 # validate the schema. Real values are set as runtime secrets on fly.io.
 ENV DATABASE_URL=postgresql://dummy:dummy@dummy:5432/dummy

@@ -85,6 +85,15 @@ model Series {
   endDate     DateTime
   status      String   @default("ongoing") // upcoming, ongoing, completed
   description String   @default("")
+  // Classification & playing-rules metadata (mirrors the CricClub "Create
+  // Series Info" screen). All optional with sensible defaults so existing
+  // series + the create flow keep working without setting them.
+  ballType        String   @default("Leather") // Hard Tennis / Leather / Soft Tennis / Tape Ball
+  category        String   @default("Men") // Men / Women / Mixed / Boys / Girls
+  level           String   @default("Club") // International / State / District / Club / School / Corporate
+  playersPerTeam  Int      @default(11)
+  squadLimit      Int      @default(0) // 0 = unlimited squad size
+  logoUrl         String?
   matches      Match[]
   tournamentTeams TournamentTeam[]
   penalties    Penalty[]

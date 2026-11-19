@@ -20,7 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Users, CalendarDays as CalIcon } from "lucide-react"
-import type { Match, Scorecard } from "@/lib/types"
+import type { Match, Scorecard, Team } from "@/lib/types"
 
 export function SeriesDetailView() {
   const id = useAppStore((s) => s.id)
@@ -34,6 +34,17 @@ export function SeriesDetailView() {
       .filter((m) => m.seriesId === id)
       .sort((a, b) => +new Date(a.startDate) - +new Date(b.startDate))
   }, [matches, id])
+
+  // Teams participating in this series — derived from the matches (team1 +
+  // team2), since the TournamentTeam association isn't always populated.
+  const seriesTeams = useMemo(() => {
+    const map = new Map<string, Team>()
+    for (const m of seriesMatches) {
+      if (m.team1) map.set(m.team1.id, m.team1)
+      if (m.team2) map.set(m.team2.id, m.team2)
+    }
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name))
+  }, [seriesMatches])
 
   if (seriesLoading) {
     return (
@@ -138,6 +149,10 @@ export function SeriesDetailView() {
               <CalIcon className="h-4 w-4" />
               Matches
             </TabsTrigger>
+            <TabsTrigger value="teams" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none">
+              <Users className="h-4 w-4" />
+              Teams
+            </TabsTrigger>
             <TabsTrigger value="performers" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none">
               <BarChart3 className="h-4 w-4" />
               Top Performers
@@ -159,6 +174,30 @@ export function SeriesDetailView() {
               seriesMatches.map((m) => (
                 <MiniScorecard key={m.id} match={m} />
               ))
+            )}
+          </TabsContent>
+
+          <TabsContent value="teams" className="mt-4">
+            {seriesTeams.length === 0 ? (
+              <Card className="p-6 text-center text-sm text-muted-foreground">
+                No teams in this series yet.
+              </Card>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                {seriesTeams.map((t) => (
+                  <a
+                    key={t.id}
+                    href={`/teams/${t.id}`}
+                    className="flex items-center gap-3 rounded-lg border bg-card p-3 transition-all hover:shadow-md hover:-translate-y-0.5"
+                  >
+                    <TeamBadge team={t} size="md" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">{t.name}</p>
+                      <p className="truncate text-xs text-muted-foreground">{t.shortName}</p>
+                    </div>
+                  </a>
+                ))}
+              </div>
             )}
           </TabsContent>
 
@@ -221,11 +260,11 @@ function TopPerformers({ matches }: { matches: Match[] }) {
     const topBatters = Array.from(batMap.values())
       .filter(b => b.runs > 0)
       .sort((a, b) => b.runs - a.runs)
-      .slice(0, 5)
+      .slice(0, 10)
     const topBowlers = Array.from(bowlMap.values())
       .filter(b => b.wickets > 0)
       .sort((a, b) => b.wickets - a.wickets || a.runs - b.runs)
-      .slice(0, 5)
+      .slice(0, 10)
     return { topBatters, topBowlers }
   }, [matches])
 

@@ -23,8 +23,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import {
-  Plus, Pencil, Trash2, Save, ArrowLeft, Trophy, Users, X, Radio,
+  Plus, Pencil, Trash2, Save, ArrowLeft, Trophy, Users, X, Radio, Scale,
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -270,156 +271,191 @@ function TournamentEditor({
       <div className="space-y-5">
         <Button variant="ghost" size="sm" onClick={onCancel} className="-ml-2 gap-1"><ArrowLeft className="h-4 w-4" /> Back to tournaments</Button>
 
-        {/* Details */}
-        <Card><CardContent className="grid gap-4 p-4 sm:p-6">
-          <div className="grid gap-1.5"><Label htmlFor="t-name">Tournament name</Label><Input id="t-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Sunday T20 League 2025" /></div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="grid gap-1.5"><Label>Short name</Label><Input value={shortName} onChange={(e) => setShortName(e.target.value)} placeholder="STL 2025" /></div>
-            <div className="grid gap-1.5">
-              <Label>Format</Label>
-              <Select
-                value={format === "Custom" || /^T\d+$/i.test(format) ? "Custom" : format}
-                onValueChange={(v) => setFormat(v)}
-              >
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>{FORMATS.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
-              </Select>
-              {format === "Custom" && (
-                <div className="flex items-center gap-2 mt-1">
-                  <Input
-                    type="number"
-                    min="1"
-                    max="50"
-                    value={customOvers}
-                    onChange={(e) => setCustomOvers(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
-                    className="w-20"
-                  />
-                  <span className="text-xs text-muted-foreground">overs per side</span>
-                </div>
-              )}
-            </div>
-            <div className="grid gap-1.5"><Label>Season</Label><Input value={season} onChange={(e) => setSeason(e.target.value)} placeholder="2025" /></div>
-            <div className="grid gap-1.5"><Label>Status</Label><Select value={status} onValueChange={setStatus}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{STATUSES.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent></Select></div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5"><Label>Start date</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></div>
-            <div className="grid gap-1.5"><Label>End date</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></div>
-          </div>
-          <div className="grid gap-1.5"><Label htmlFor="t-desc">Description</Label><Textarea id="t-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} /></div>
-        </CardContent></Card>
-
-        {/* Teams */}
-        <Card>
-          <CardContent className="p-4 sm:p-6 space-y-4">
-            <div className="flex items-center gap-2"><Users className="h-5 w-5 text-emerald-600" /><h2 className="text-base font-bold">Teams ({tournamentTeams.length})</h2></div>
-
-            {tournamentTeams.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {tournamentTeams.map((t) => (
-                  <span key={t.id} className="inline-flex items-center gap-2 rounded-full border bg-muted/30 py-1 pl-2 pr-1">
-                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold text-white" style={{ background: t.primaryColor }}>{t.shortName.slice(0, 2)}</span>
-                    <span className="text-xs font-medium">{t.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => setBulkFor(t)}
-                      title="Bulk add players to this team"
-                      className="grid h-5 w-5 place-items-center rounded-full text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950"
-                    >
-                      <Users className="h-3 w-3" />
-                    </button>
-                    <button onClick={() => removeTeam(t.id)} className="grid h-5 w-5 place-items-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><X className="h-3 w-3" /></button>
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">No teams yet. Add existing teams or create new ones below.</p>
+        <Tabs defaultValue="details" className="w-full">
+          <TabsList className="flex w-full justify-start gap-0 rounded-none border-b border-border bg-transparent p-0">
+            <TabsTrigger value="details" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none whitespace-nowrap">
+              <Trophy className="h-4 w-4" /> Details
+            </TabsTrigger>
+            <TabsTrigger value="teams" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none whitespace-nowrap">
+              <Users className="h-4 w-4" /> Teams
+            </TabsTrigger>
+            {tournament && (
+              <TabsTrigger value="matches" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none whitespace-nowrap">
+                <Radio className="h-4 w-4" /> Matches
+              </TabsTrigger>
             )}
-
-            {/* Add existing team */}
-            {availableTeams.length > 0 && (
-              <div className="flex items-center gap-2">
-                <Select value={addExistingId} onValueChange={setAddExistingId}>
-                  <SelectTrigger className="h-9 w-52 text-sm"><SelectValue placeholder="Add existing team…" /></SelectTrigger>
-                  <SelectContent>{availableTeams.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
-                </Select>
-                <Button type="button" variant="outline" size="sm" onClick={addExistingTeam} disabled={addingTeam || !addExistingId} className="gap-1.5"><Plus className="h-3.5 w-3.5" /> Add</Button>
-              </div>
+            {tournament?.id && (
+              <TabsTrigger value="penalties" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none whitespace-nowrap">
+                <Scale className="h-4 w-4" /> Penalties
+              </TabsTrigger>
             )}
+          </TabsList>
 
-            {/* Quick-create new team */}
-            <div className="rounded-lg border bg-muted/20 p-3">
-              <p className="mb-2 text-xs font-semibold text-muted-foreground">Create a new team</p>
-              <div className="flex flex-wrap items-center gap-2">
-                <Input value={newTeamName} onChange={(e) => setNewTeamName(e.target.value)} placeholder="Team name" className="h-9 w-40 text-sm" />
-                <Input value={newTeamShort} onChange={(e) => setNewTeamShort(e.target.value)} placeholder="ABBR" maxLength={4} className="h-9 w-16 text-sm uppercase" />
-                <input type="color" value={newTeamColor} onChange={(e) => setNewTeamColor(e.target.value)} className="h-9 w-9 cursor-pointer rounded border" title="Team color" />
-                <Button type="button" variant="outline" size="sm" onClick={createNewTeam} disabled={addingTeam || !newTeamName.trim()} className="gap-1.5"><Plus className="h-3.5 w-3.5" /> Create &amp; Add</Button>
-              </div>
-              {/* Optional bulk players for the new team — parsed + added in one shot alongside team creation */}
-              <div className="mt-3 grid gap-1.5">
-                <label className="text-xs font-medium text-muted-foreground">
-                  Players (optional — one per line, or CSV: name, role, bat, bowl)
-                </label>
-                <Textarea
-                  value={newTeamPlayersText}
-                  onChange={(e) => setNewTeamPlayersText(e.target.value)}
-                  rows={4}
-                  placeholder={
-                    [
-                      "Babar Azam, Batsman, Right-hand bat",
-                      "Shaheen Afridi, Bowler, Left-hand bat, Left-arm fast",
-                      "Mohammad Rizwan, Wicket-keeper",
-                      "",
-                      "# or just names:",
-                      "Shadab Khan",
-                    ].join("\n")
-                  }
-                  className="font-mono text-xs"
-                />
-                {newTeamPlayersText.trim() && (
-                  <p className="text-xs text-emerald-700 dark:text-emerald-400">
-                    {parsePlayerRows(newTeamPlayersText).length} player{parsePlayerRows(newTeamPlayersText).length === 1 ? "" : "s"} will be imported when the team is created.
-                  </p>
-                )}
-              </div>
-              <p className="mt-1.5 text-xs text-muted-foreground">Tip: you can also bulk-add players to an existing tournament team using the green <Users className="inline h-3 w-3 -translate-y-0.5" /> button on each team chip above.</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Matches + Score */}
-        {tournament && (
-          <Card>
-            <CardContent className="p-4 sm:p-6 space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="flex items-center gap-2 text-base font-bold"><Trophy className="h-5 w-5 text-emerald-600" /> Matches ({tournamentMatches.length})</h2>
-                <Button size="sm" onClick={createMatchAndScore} disabled={tournamentTeams.length < 2} className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700">
-                  <Radio className="h-3.5 w-3.5" /> Create match &amp; score live
-                </Button>
-              </div>
-              {tournamentTeams.length < 2 && <p className="text-xs text-amber-600">Add at least 2 teams to create a match.</p>}
-              {tournamentMatches.length > 0 && (
-                <div className="space-y-1 text-sm">
-                  {tournamentMatches.map((m) => (
-                    <div key={m.id} className="flex items-center justify-between rounded-md border px-3 py-2">
-                      <span>{m.matchNo} · {m.team1?.shortName} v {m.team2?.shortName} · <span className="capitalize text-muted-foreground">{m.status}</span></span>
-                      <Button size="sm" variant="ghost" onClick={() => navigate("live-scorer", m.id)} className="gap-1 text-red-600 hover:bg-red-50"><Radio className="h-3 w-3" /> Score</Button>
+          {/* Details */}
+          <TabsContent value="details">
+            <Card><CardContent className="grid gap-4 p-4 sm:p-6">
+              <div className="grid gap-1.5"><Label htmlFor="t-name">Tournament name</Label><Input id="t-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Sunday T20 League 2025" /></div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="grid gap-1.5"><Label>Short name</Label><Input value={shortName} onChange={(e) => setShortName(e.target.value)} placeholder="STL 2025" /></div>
+                <div className="grid gap-1.5">
+                  <Label>Format</Label>
+                  <Select
+                    value={format === "Custom" || /^T\d+$/i.test(format) ? "Custom" : format}
+                    onValueChange={(v) => setFormat(v)}
+                  >
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>{FORMATS.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
+                  </Select>
+                  {format === "Custom" && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <Input
+                        type="number"
+                        min="1"
+                        max="50"
+                        value={customOvers}
+                        onChange={(e) => setCustomOvers(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
+                        className="w-20"
+                      />
+                      <span className="text-xs text-muted-foreground">overs per side</span>
                     </div>
-                  ))}
+                  )}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+                <div className="grid gap-1.5"><Label>Season</Label><Input value={season} onChange={(e) => setSeason(e.target.value)} placeholder="2025" /></div>
+                <div className="grid gap-1.5"><Label>Status</Label><Select value={status} onValueChange={setStatus}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{STATUSES.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent></Select></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5"><Label>Start date</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></div>
+                <div className="grid gap-1.5"><Label>End date</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></div>
+              </div>
+              <div className="grid gap-1.5"><Label htmlFor="t-desc">Description</Label><Textarea id="t-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} /></div>
+            </CardContent></Card>
+          </TabsContent>
 
-        {tournament?.id && (
-          <PenaltiesCard seriesId={tournament.id} />
-        )}
+          {/* Teams */}
+          <TabsContent value="teams">
+            <Card>
+              <CardContent className="p-4 sm:p-6 space-y-4">
+                <div className="flex items-center gap-2"><Users className="h-5 w-5 text-emerald-600" /><h2 className="text-base font-bold">Teams ({tournamentTeams.length})</h2></div>
 
-        {/* Save / Cancel */}
-        <div className="flex gap-2">
-          <Button onClick={handleSave} disabled={saving} className="gap-2"><Save className="h-4 w-4" /> {saving ? "Saving…" : tournament ? "Save Changes" : "Create Tournament"}</Button>
-          <Button variant="outline" onClick={onCancel}>Cancel</Button>
+                {tournamentTeams.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {tournamentTeams.map((t) => (
+                      <span key={t.id} className="inline-flex items-center gap-2 rounded-full border bg-muted/30 py-1 pl-2 pr-1">
+                        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold text-white" style={{ background: t.primaryColor }}>{t.shortName.slice(0, 2)}</span>
+                        <span className="text-xs font-medium">{t.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setBulkFor(t)}
+                          title="Bulk add players to this team"
+                          className="grid h-5 w-5 place-items-center rounded-full text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950"
+                        >
+                          <Users className="h-3 w-3" />
+                        </button>
+                        <button onClick={() => removeTeam(t.id)} className="grid h-5 w-5 place-items-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><X className="h-3 w-3" /></button>
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed bg-muted/20 py-8 text-center">
+                    <Users className="h-7 w-7 text-emerald-600" />
+                    <p className="text-sm font-medium">No teams yet</p>
+                    <p className="text-xs text-muted-foreground">Add an existing team or create a new one to get started.</p>
+                  </div>
+                )}
+
+                {/* Add existing team */}
+                {availableTeams.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Select value={addExistingId} onValueChange={setAddExistingId}>
+                      <SelectTrigger className="h-9 w-52 text-sm"><SelectValue placeholder="Add existing team…" /></SelectTrigger>
+                      <SelectContent>{availableTeams.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <Button type="button" variant="outline" size="sm" onClick={addExistingTeam} disabled={addingTeam || !addExistingId} className="gap-1.5"><Plus className="h-3.5 w-3.5" /> Add</Button>
+                  </div>
+                )}
+
+                {/* Quick-create new team */}
+                <div className="rounded-lg border bg-muted/20 p-3">
+                  <p className="mb-2 text-xs font-semibold text-muted-foreground">Create a new team</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Input value={newTeamName} onChange={(e) => setNewTeamName(e.target.value)} placeholder="Team name" className="h-9 w-40 text-sm" />
+                    <Input value={newTeamShort} onChange={(e) => setNewTeamShort(e.target.value)} placeholder="ABBR" maxLength={4} className="h-9 w-16 text-sm uppercase" />
+                    <input type="color" value={newTeamColor} onChange={(e) => setNewTeamColor(e.target.value)} className="h-9 w-9 cursor-pointer rounded border" title="Team color" />
+                    <Button type="button" variant="outline" size="sm" onClick={createNewTeam} disabled={addingTeam || !newTeamName.trim()} className="gap-1.5"><Plus className="h-3.5 w-3.5" /> Create &amp; Add</Button>
+                  </div>
+                  {/* Optional bulk players for the new team — parsed + added in one shot alongside team creation */}
+                  <div className="mt-3 grid gap-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">
+                      Players (optional — one per line, or CSV: name, role, bat, bowl)
+                    </label>
+                    <Textarea
+                      value={newTeamPlayersText}
+                      onChange={(e) => setNewTeamPlayersText(e.target.value)}
+                      rows={4}
+                      placeholder={
+                        [
+                          "Babar Azam, Batsman, Right-hand bat",
+                          "Shaheen Afridi, Bowler, Left-hand bat, Left-arm fast",
+                          "Mohammad Rizwan, Wicket-keeper",
+                          "",
+                          "# or just names:",
+                          "Shadab Khan",
+                        ].join("\n")
+                      }
+                      className="font-mono text-xs"
+                    />
+                    {newTeamPlayersText.trim() && (
+                      <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                        {parsePlayerRows(newTeamPlayersText).length} player{parsePlayerRows(newTeamPlayersText).length === 1 ? "" : "s"} will be imported when the team is created.
+                      </p>
+                    )}
+                  </div>
+                  <p className="mt-1.5 text-xs text-muted-foreground">Tip: you can also bulk-add players to an existing tournament team using the green <Users className="inline h-3 w-3 -translate-y-0.5" /> button on each team chip above.</p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Matches + Score */}
+          {tournament && (
+            <TabsContent value="matches">
+              <Card>
+                <CardContent className="p-4 sm:p-6 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h2 className="flex items-center gap-2 text-base font-bold"><Trophy className="h-5 w-5 text-emerald-600" /> Matches ({tournamentMatches.length})</h2>
+                    <Button size="sm" onClick={createMatchAndScore} disabled={tournamentTeams.length < 2} className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700">
+                      <Radio className="h-3.5 w-3.5" /> Create match &amp; score live
+                    </Button>
+                  </div>
+                  {tournamentTeams.length < 2 && <p className="text-xs text-amber-600">Add at least 2 teams to create a match.</p>}
+                  {tournamentMatches.length > 0 && (
+                    <div className="space-y-1 text-sm">
+                      {tournamentMatches.map((m) => (
+                        <div key={m.id} className="flex items-center justify-between rounded-md border px-3 py-2">
+                          <span>{m.matchNo} · {m.team1?.shortName} v {m.team2?.shortName} · <span className="capitalize text-muted-foreground">{m.status}</span></span>
+                          <Button size="sm" variant="ghost" onClick={() => navigate("live-scorer", m.id)} className="gap-1 text-red-600 hover:bg-red-50"><Radio className="h-3 w-3" /> Score</Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+
+          {tournament?.id && (
+            <TabsContent value="penalties">
+              <PenaltiesCard seriesId={tournament.id} />
+            </TabsContent>
+          )}
+        </Tabs>
+
+        {/* Sticky save bar — always visible while scrolling a tab's content */}
+        <div className="sticky bottom-0 z-20 -mx-4 mt-6 border-t bg-card/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
+          <div className="flex gap-2">
+            <Button onClick={handleSave} disabled={saving} className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700"><Save className="h-4 w-4" /> {saving ? "Saving…" : tournament ? "Save Changes" : "Create Tournament"}</Button>
+            <Button variant="outline" onClick={onCancel}>Cancel</Button>
+          </div>
         </div>
       </div>
 

@@ -29,7 +29,7 @@ import {
   TableCell,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Users, Upload, ClipboardPaste, CheckCircle2, AlertTriangle } from "lucide-react"
+import { Users, Upload, ClipboardPaste, CheckCircle2, AlertTriangle, Copy, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
 const ROLES = [
@@ -200,6 +200,76 @@ export function BulkPlayersDialog({
   const [defaultRole, setDefaultRole] = useState<string>("Batsman")
   const [busy, setBusy] = useState(false)
 
+  // "Copy from Team" state — fetches the teams list when the dialog opens
+  // so the admin can pick a source team whose roster to duplicate.
+  const [copyBusy, setCopyBusy] = useState(false)
+  const [teams, setTeams] = useState<{ id: string; name: string }[] | null>(null)
+  const [sourceTeamId, setSourceTeamId] = useState("")
+
+  useEffect(() => {
+    if (!open) return
+    fetch("/api/teams")
+      .then((r) => r.json())
+      .then((t) => {
+        const list = (Array.isArray(t) ? t : [])
+          .filter((x: { id: string }) => x.id !== teamId)
+          .map((x: { id: string; name: string }) => ({ id: x.id, name: x.name }))
+        setTeams(list)
+      })
+      .catch(() => setTeams([]))
+  }, [open, teamId])
+
+  async function handleCopy() {
+    if (!sourceTeamId) {
+      toast.error("Select a team to copy from")
+      return
+    }
+    if (!teamId) {
+      toast.error("No target team selected")
+      return
+    }
+    setCopyBusy(true)
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" }
+      if (authToken) {
+        headers["Authorization"] = `Bearer ${authToken}`
+      } else {
+        headers["X-CSRF-Token"] =
+          typeof document !== "undefined"
+            ? document.cookie.match(/csrf-token=([^;]+)/)?.[1] || ""
+            : ""
+      }
+      const res = await fetch("/api/players/copy", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ sourceTeamId, targetTeamId: teamId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(data.error || "Copy failed")
+        return
+      }
+      const sourceName = teams?.find((t) => t.id === sourceTeamId)?.name || "team"
+      if (data.created > 0) {
+        toast.success(
+          `Copied ${data.created} player${data.created === 1 ? "" : "s"} from ${sourceName}`,
+          data.skipped > 0
+            ? { description: `${data.skipped} skipped (already exist)` }
+            : undefined,
+        )
+      } else {
+        toast.info(data.message || "No players copied — all already exist")
+      }
+      onDone?.(data.created)
+      onOpenChange(false)
+      setSourceTeamId("")
+    } catch (e) {
+      toast.error("Copy failed", { description: String(e) })
+    } finally {
+      setCopyBusy(false)
+    }
+  }
+
   const parsed = useMemo(() => parsePlayerRows(text), [text])
 
   // Apply the default-role override to rows that have no role field set
@@ -292,6 +362,43 @@ export function BulkPlayersDialog({
         </DialogHeader>
 
         <div className="grid gap-4 py-2">
+          {/* Copy roster from another team — CricClub "Copy from Previous" */}
+          <div className="rounded-md border bg-muted/20 p-3">
+            <div className="mb-2 flex items-center gap-2">
+              <Copy className="h-4 w-4 text-emerald-600" />
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Copy roster from another team
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={sourceTeamId} onValueChange={setSourceTeamId}>
+                <SelectTrigger className="h-9 w-full text-sm sm:w-64">
+                  <SelectValue placeholder="Select source team…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(teams ?? []).map((t) => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                size="sm"
+                onClick={handleCopy}
+                disabled={copyBusy || !sourceTeamId}
+                className="gap-1.5"
+              >
+                {copyBusy ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )}
+                Copy Roster
+              </Button>
+            </div>
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              Duplicates all players from the selected team into {teamName}. Names that already exist are skipped.
+            </p>
+          </div>
           <div className="grid gap-1.5">
             <Label htmlFor="bulk-text">Players (paste from a spreadsheet, CSV, or just one name per line)</Label>
             <Textarea

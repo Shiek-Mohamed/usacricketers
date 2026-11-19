@@ -799,13 +799,12 @@ export function LiveScorerView() {
     >
       {/* Match header */}
       <Card className="overflow-hidden p-0">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-4 py-3 sm:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-2 bg-[#1e2a5e] px-4 py-3 text-white sm:px-6">
           <div className="flex flex-wrap items-center gap-2 min-w-0">
             <FormatBadge format={match.format} />
-            <span className="truncate text-sm font-semibold">{match.matchNo}</span>
-            <span className="text-xs text-muted-foreground">
-              {match.series?.shortName}
-            </span>
+            <span className="truncate text-sm font-bold uppercase">{t1?.shortName} <span className="text-white/50">v</span> {t2?.shortName}</span>
+            <span className="text-xs text-white/60">· {match.matchNo}</span>
+            <span className="text-xs text-white/50">{match.series?.shortName}</span>
           </div>
           <div className="flex items-center gap-2">
             <ConnectionPill connected={connected} reconnecting={reconnecting} />
@@ -915,16 +914,27 @@ export function LiveScorerView() {
                connecting + we haven't received the first state snapshot.
                Prevents the setup screen from flashing when the scorer
                navigates away + comes back. */
-            <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-sm font-medium text-muted-foreground">
-                {connected
-                  ? "Loading live scoring state…"
-                  : "Reconnecting to live scoring…"}
-              </p>
+            <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 py-12 text-center">
+              <div className="flex items-center gap-2 text-amber-600">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span className="text-sm font-semibold">
+                  {connected ? "Loading live scoring state…" : "Reconnecting to live scoring…"}
+                </span>
+              </div>
+              <div className="w-full max-w-md space-y-3">
+                <Skeleton className="h-20 w-full rounded-lg" />
+                <Skeleton className="h-11 w-full rounded-lg" />
+                <div className="grid grid-cols-4 gap-2">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <Skeleton key={i} className="h-11 rounded-lg" />
+                  ))}
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="gap-1.5">
+                <RotateCcw className="h-3.5 w-3.5" /> Retry / refresh
+              </Button>
               <p className="max-w-xs text-xs text-muted-foreground/70">
-                If this takes more than a few seconds, the scoring session may
-                have ended. Refresh the page to start a new session.
+                If this takes more than a few seconds, the scoring session may have ended.
               </p>
             </div>
           ) : showSetup ? (

@@ -327,6 +327,7 @@ export default function Home() {
     !NO_TICKER_VIEWS.has(view)
 
   const isAdmin = view.startsWith("admin-")
+  const isScorerConsole = view === "live-scorer"
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -341,15 +342,18 @@ export default function Home() {
             </div>
           </main>
         </>
+      ) : isScorerConsole ? (
+        <main className="flex-1 w-full">
+          <ViewErrorBoundary key={view} label={view}>
+            {renderView()}
+          </ViewErrorBoundary>
+        </main>
       ) : (
         <>
           <Header />
           {showTicker && <LiveScoreTicker />}
           <main className="flex-1 w-full">
             <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6">
-              {/* Per-view error boundary: if a single view crashes during render,
-                  only this area shows the error card — the header, footer, and
-                  navigation stay fully usable so the user can click away. */}
               <ViewErrorBoundary key={view} label={view}>
                 {renderView()}
               </ViewErrorBoundary>

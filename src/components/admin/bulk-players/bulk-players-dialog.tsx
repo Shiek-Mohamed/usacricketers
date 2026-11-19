@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { api } from "@/lib/api"
 import {
   Dialog,
@@ -170,6 +170,23 @@ export function parsePlayerRows(input: string): ParsedPlayerRow[] {
     .filter((p) => p.name)
 }
 
+export interface CopySourceTeam {
+  id: string
+  name: string
+  shortName: string
+  playerCount: number
+}
+
+export interface CopySource {
+  id: string
+  name: string
+  shortName: string
+  season: string
+  format: string
+  status: string
+  teams: CopySourceTeam[]
+}
+
 export interface BulkPlayersDialogProps {
   open: boolean
   onOpenChange: (v: boolean) => void
@@ -200,23 +217,42 @@ export function BulkPlayersDialog({
   const [defaultRole, setDefaultRole] = useState<string>("Batsman")
   const [busy, setBusy] = useState(false)
 
-  // "Copy from Team" state — fetches the teams list when the dialog opens
-  // so the admin can pick a source team whose roster to duplicate.
+  // "Copy from previous series" state — one fetch builds the whole picker:
+  // recent series → their teams (target team excluded) with player counts.
+  // The most recent series/team is auto-selected so one click copies.
   const [copyBusy, setCopyBusy] = useState(false)
-  const [teams, setTeams] = useState<{ id: string; name: string }[] | null>(null)
+  const [sources, setSources] = useState<CopySource[] | null>(null)
+  const [sourceSeriesId, setSourceSeriesId] = useState("")
   const [sourceTeamId, setSourceTeamId] = useState("")
+
+  const sourceSeries = sources?.find((s) => s.id === sourceSeriesId) ?? null
+  const sourceTeams = sourceSeries?.teams ?? []
 
   useEffect(() => {
     if (!open) return
-    fetch("/api/teams")
+    let cancelled = false
+    setSources(null)
+    setSourceSeriesId("")
+    setSourceTeamId("")
+    fetch(
+      `/api/players/copy-sources?excludeTeamId=${encodeURIComponent(teamId)}`,
+    )
       .then((r) => r.json())
-      .then((t) => {
-        const list = (Array.isArray(t) ? t : [])
-          .filter((x: { id: string }) => x.id !== teamId)
-          .map((x: { id: string; name: string }) => ({ id: x.id, name: x.name }))
-        setTeams(list)
+      .then((d: { sources?: CopySource[] }) => {
+        if (cancelled) return
+        const list = Array.isArray(d?.sources) ? d.sources : []
+        setSources(list)
+        if (list[0]) {
+          setSourceSeriesId(list[0].id)
+          setSourceTeamId(list[0].teams[0]?.id ?? "")
+        }
       })
-      .catch(() => setTeams([]))
+      .catch(() => {
+        if (!cancelled) setSources([])
+      })
+    return () => {
+      cancelled = true
+    }
   }, [open, teamId])
 
   async function handleCopy() {
@@ -249,7 +285,8 @@ export function BulkPlayersDialog({
         toast.error(data.error || "Copy failed")
         return
       }
-      const sourceName = teams?.find((t) => t.id === sourceTeamId)?.name || "team"
+      const sourceName =
+        sourceTeams.find((t) => t.id === sourceTeamId)?.name || "team"
       if (data.created > 0) {
         toast.success(
           `Copied ${data.created} player${data.created === 1 ? "" : "s"} from ${sourceName}`,
@@ -362,42 +399,86 @@ export function BulkPlayersDialog({
         </DialogHeader>
 
         <div className="grid gap-4 py-2">
-          {/* Copy roster from another team — CricClub "Copy from Previous" */}
+          {/* Copy roster from a previous series — CricClub "Copy from Previous" */}
           <div className="rounded-md border bg-muted/20 p-3">
-            <div className="mb-2 flex items-center gap-2">
-              <Copy className="h-4 w-4 text-emerald-600" />
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Copy roster from another team
-              </span>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Copy className="h-4 w-4 text-emerald-600" />
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Copy roster from a previous series
+                </span>
+              </div>
+              {sources === null && (
+                <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Loading…
+                </span>
+              )}
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Select value={sourceTeamId} onValueChange={setSourceTeamId}>
-                <SelectTrigger className="h-9 w-full text-sm sm:w-64">
-                  <SelectValue placeholder="Select source team…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(teams ?? []).map((t) => (
-                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                size="sm"
-                onClick={handleCopy}
-                disabled={copyBusy || !sourceTeamId}
-                className="gap-1.5"
-              >
-                {copyBusy ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Copy className="h-3.5 w-3.5" />
-                )}
-                Copy Roster
-              </Button>
-            </div>
-            <p className="mt-1.5 text-[11px] text-muted-foreground">
-              Duplicates all players from the selected team into {teamName}. Names that already exist are skipped.
-            </p>
+            {sources !== null && sources.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                No previous series with player rosters found yet — add players
+                to a team first, or use the paste option below.
+              </p>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Select
+                    value={sourceSeriesId}
+                    onValueChange={(id) => {
+                      setSourceSeriesId(id)
+                      const s = sources?.find((x) => x.id === id)
+                      setSourceTeamId(s?.teams[0]?.id ?? "")
+                    }}
+                    disabled={sources === null}
+                  >
+                    <SelectTrigger className="h-9 w-full text-sm sm:w-56">
+                      <SelectValue placeholder="Select series…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(sources ?? []).map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}
+                          {s.season ? ` · ${s.season}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={sourceTeamId}
+                    onValueChange={setSourceTeamId}
+                    disabled={sources === null || sourceTeams.length === 0}
+                  >
+                    <SelectTrigger className="h-9 w-full text-sm sm:w-56">
+                      <SelectValue placeholder="Select team…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sourceTeams.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.name} · {t.playerCount} player{t.playerCount === 1 ? "" : "s"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="sm"
+                    onClick={handleCopy}
+                    disabled={copyBusy || !sourceTeamId}
+                    className="gap-1.5"
+                  >
+                    {copyBusy ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Copy className="h-3.5 w-3.5" />
+                    )}
+                    Copy Roster
+                  </Button>
+                </div>
+                <p className="mt-1.5 text-[11px] text-muted-foreground">
+                  Duplicates every player from the selected team into {teamName}. Names that already exist are skipped.
+                </p>
+              </>
+            )}
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="bulk-text">Players (paste from a spreadsheet, CSV, or just one name per line)</Label>

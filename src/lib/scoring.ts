@@ -13,6 +13,12 @@ export interface ScorerBatsman {
   dismissal: string
   isCaptain?: boolean
   isKeeper?: boolean
+  /** True when this batter retired hurt and is AVAILABLE TO RETURN to the
+   *  crease (not out, not currently batting). Set when a `retiredHurt`
+   *  wicket event is processed; cleared when the batter is brought back in
+   *  via the UI's bringInBatsman flow. The batter's `out` flag stays false
+   *  throughout — retired-hurt is NOT a dismissal. */
+  retiredHurt?: boolean
 }
 
 export interface ScorerBowler {
@@ -167,7 +173,20 @@ export const NOT_OUT_DISMISSALS: ReadonlySet<WicketType> = new Set([
 export type BallEvent =
   | { kind: "run"; runs: number }
   | { kind: "wide" }
-  | { kind: "noball" }
+  | {
+      kind: "noball"
+      /** Runs scored off the bat on the no-ball (e.g. a four hit off a
+       *  no-ball = 4). Default 0 — the common case is just the +1 penalty.
+       *  Runs off the bat DO count against the bowler and DO count as a
+       *  ball faced by the striker. */
+      runsOffBat?: number
+      /** Byes scored off the no-ball (rare). Added to innings total +
+       *  extras breakdown, but NOT against the bowler and NOT a ball
+       *  faced. Default 0. */
+      byes?: number
+      /** Leg-byes scored off the no-ball (rare). Same accounting as byes. */
+      legByes?: number
+    }
   | {
       kind: "wicket"
       wicketType: WicketType
@@ -479,11 +498,55 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
       break
     }
     case "noball": {
+      // Cricket accounting for a no-ball:
+      //   • +1 no-ball penalty → extras (no-balls), against the bowler, and
+      //     breaks a maiden. Counts towards the innings total.
+      //   • runsOffBat (e.g. a four hit off a no-ball) → striker's runs +
+      //     balls faced + fours/sixes; ALSO against the bowler (runs off the
+      //     bat on a no-ball DO count against the bowler).
+      //   • byes / legByes (rare on a no-ball) → innings total + extras
+      //     breakdown, but NOT against the bowler and NOT a ball faced
+      //     (matches the existing bye/legbye convention).
+      //   • A no-ball counts as a ball faced by the striker.
+      //   • Strike rotates only if (runsOffBat + byes + legByes) is odd —
+      //     the +1 penalty itself doesn't rotate the strike.
+      //   • A no-ball is NOT one of the six legal balls in the over
+      //     (isLegal = false) — it's re-bowled.
+      //   • Limited-overs: the next LEGAL delivery is a free hit.
+      const runsOffBat = event.runsOffBat ?? 0
+      const byes = event.byes ?? 0
+      const legByes = event.legByes ?? 0
+      // +1 no-ball penalty
       runs += 1
       bowler.runsConceded += 1
       bowler.overRuns += 1
       bowler.noballs += 1
       extrasNoBalls += 1
+      // Runs off the bat → striker + bowler (counts as a ball faced below)
+      if (runsOffBat > 0) {
+        runs += runsOffBat
+        striker.runs += runsOffBat
+        bowler.runsConceded += runsOffBat
+        bowler.overRuns += runsOffBat
+        if (runsOffBat === 4) {
+          striker.fours += 1
+          bowler.foursConceded += 1
+        } else if (runsOffBat === 6) {
+          striker.sixes += 1
+          bowler.sixesConceded += 1
+        }
+      }
+      // A no-ball counts as a ball faced by the striker.
+      striker.balls += 1
+      // Byes / leg-byes → innings + extras, NOT striker, NOT bowler.
+      if (byes > 0) {
+        runs += byes
+        extrasByes += byes
+      }
+      if (legByes > 0) {
+        runs += legByes
+        extrasLegByes += legByes
+      }
       isLegal = false
       // Free-hit policy (limited-overs only): a no-ball makes the next
       // LEGAL delivery a free hit. Wides + no-balls that follow keep it
@@ -491,11 +554,35 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
       // for the carry-over logic.
       if (limitedOvers) {
         freeHit = true
-        eventText = "No ball (+1) — FREE HIT next ball"
-      } else {
-        eventText = "No ball (+1)"
       }
-      eventKind = "extra"
+      // Build the commentary text — show the breakdown so the feed reads
+      // correctly even when runs were scored off the no-ball.
+      const parts: string[] = ["No ball (+1)"]
+      if (runsOffBat === 4) {
+        parts.push(`FOUR! ${striker.name} ${runsOffBat}`)
+      } else if (runsOffBat === 6) {
+        parts.push(`SIX! ${striker.name} ${runsOffBat}`)
+      } else if (runsOffBat > 0) {
+        parts.push(`${runsOffBat} run${runsOffBat !== 1 ? "s" : ""} — ${striker.name}`)
+      }
+      if (byes > 0) parts.push(`+${byes} bye${byes !== 1 ? "s" : ""}`)
+      if (legByes > 0) parts.push(`+${legByes} leg bye${legByes !== 1 ? "s" : ""}`)
+      if (limitedOvers) parts.push("FREE HIT next ball")
+      eventText = parts.join(" ")
+      if (runsOffBat === 4) {
+        eventKind = "boundary"
+      } else if (runsOffBat === 6) {
+        eventKind = "six"
+      } else {
+        eventKind = "extra"
+      }
+      // Strike rotation — swap if (runsOffBat + byes + legByes) is odd.
+      // The +1 penalty itself doesn't rotate the strike.
+      if ((runsOffBat + byes + legByes) % 2 === 1) {
+        const tmp = strikerId
+        strikerId = nonStrikerId
+        nonStrikerId = tmp
+      }
       break
     }
     case "bye":
@@ -558,10 +645,15 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
       // doesn't credit the bowler, doesn't add to fall-of-wickets. The
       // batsman's `out` flag stays false. Only the slot is cleared so a
       // replacement batsman can come in (the original can return later
-      // via the standard bringInBatsman flow).
+      // via the standard bringInBatsman flow). The `retiredHurt` flag on
+      // the batsman entry marks them as AVAILABLE TO RETURN — the UI uses
+      // it to include them in the new-batsman picker (batters already in
+      // inn.batsmen are normally excluded, but retired-hurt ones are
+      // re-selectable until they return).
       if (event.wicketType === "retiredHurt") {
         isLegal = false  // no delivery was bowled
         outBatsman.dismissal = event.dismissal  // "retired hurt" — stored but `out` stays false
+        outBatsman.retiredHurt = true  // available to return via bringInBatsman
         // Clear the slot so the picker re-shows for the replacement batsman.
         if (isStrikerOut) {
           strikerId = null

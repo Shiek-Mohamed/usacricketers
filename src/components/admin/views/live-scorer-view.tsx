@@ -47,6 +47,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import {
@@ -131,7 +141,7 @@ export function LiveScorerView() {
   }, [scorerToken])
 
   const token = scorerToken ?? adminToken
-  const { liveState, connected, reconnecting, stateReceived, pushState } = useLiveScore(id, token)
+  const { liveState, connected, reconnecting, stateReceived, pushState, clearState } = useLiveScore(id, token)
 
   // localStorage backup — MUST be called before any early returns so
   // React's rules-of-hooks are satisfied. Saves the live state to
@@ -216,6 +226,20 @@ export function LiveScorerView() {
   // admin pick dismissal type + fielder(s) involved, then sends the structured
   // wicket BallEvent to applyBall via handleBall.
   const [wicketOpen, setWicketOpen] = useState(false)
+  // No-ball-dialog open state — the No Ball button (and the Shift+N keyboard
+  // shortcut) opens a modal that lets the scorer optionally enter runs scored
+  // off the bat (e.g. a four hit off a no-ball) plus rare byes/leg-byes. The
+  // common case (just the +1 no-ball penalty) is the default — runsOffBat=0,
+  // byes=0, legByes=0 — so the scorer can confirm immediately for a bare
+  // no-ball, matching the old single-click behaviour.
+  const [noballOpen, setNoballOpen] = useState(false)
+  // Reset-confirmation dialog open state — Reset is destructive (clears all
+  // scoring for the match), so it's gated behind an AlertDialog confirm.
+  const [resetOpen, setResetOpen] = useState(false)
+  // Jump-to-ball confirmation — when the scorer clicks a past ball in the
+  // commentary feed more than a few balls back, confirm before discarding the
+  // balls scored since (the bounded, safe version of "edit a past ball").
+  const [jumpBackTarget, setJumpBackTarget] = useState<number | null>(null)
   // Free-text commentary input — the scorer types a note ("DRS review taken",
   // "Rain stops play", etc.) and presses Enter / clicks Send. The entry is
   // added to liveState.commentary with kind="manual" and broadcast via the
@@ -420,6 +444,8 @@ export function LiveScorerView() {
   /* ------------------ Keyboard shortcuts (power-user scorers) ------------------
    * 0,1,2,3,4,6 → score N runs | . / - → dot | w → wicket dialog |
    * e → swap ends | u → undo | d → declare (Test) | s → save.
+   * Shift+W → wide | Shift+N → no-ball dialog (opens the runs-off-bat prompt)
+   * Shift+B → bye (1) | Shift+L → leg-bye (1).
    * No deps array → re-subscribes on every render with the latest closures.
    * The function declarations (handleBall, swapEnds, etc.) are hoisted by
    * JS so they're in scope at call-time even though defined later in the
@@ -438,8 +464,36 @@ export function LiveScorerView() {
       if (e.metaKey || e.ctrlKey || e.altKey) return
       if (isTyping(document.activeElement)) return
       if (wicketOpen) return
+      if (noballOpen) return
+      // Block scoring shortcuts while a destructive confirm dialog is open
+      // (Reset / jump-back) — the modal already traps focus, but keyboard
+      // events can still bubble on some browsers/platforms.
+      if (resetOpen) return
+      if (jumpBackTarget !== null) return
       if (!liveState || liveState.status !== "live") return
       if (!liveState.strikerId || !liveState.nonStrikerId || !liveState.bowlerId) return
+      // Shift-modified keys → extras (Shift+W/N/B/L). Checked BEFORE the
+      // lowercase single-key shortcuts so they don't collide with the bare
+      // `w` (wicket dialog) shortcut. Any other Shift+key combo is a no-op
+      // (returns without falling through) so the scorer doesn't accidentally
+      // score a ball while reaching for a capital letter elsewhere.
+      if (e.shiftKey) {
+        const sk = e.key.toLowerCase()
+        if (sk === "w") {
+          e.preventDefault()
+          handleBall({ kind: "wide" })
+        } else if (sk === "n") {
+          e.preventDefault()
+          setNoballOpen(true)
+        } else if (sk === "b") {
+          e.preventDefault()
+          handleBall({ kind: "bye", runs: 1 })
+        } else if (sk === "l") {
+          e.preventDefault()
+          handleBall({ kind: "legbye", runs: 1 })
+        }
+        return
+      }
       const k = e.key.toLowerCase()
       if (["0", "1", "2", "3", "4", "6"].includes(k)) {
         e.preventDefault()
@@ -618,6 +672,83 @@ export function LiveScorerView() {
     if (id) logAudit(id, prev.scorerId ?? null, "undo", prev.ballNo, "Reverted last action", token)
   }
 
+  /* ------------------ Jump-to-ball undo (bounded edit-past-ball) ------------------
+   * The scorer clicks a past ball in the commentary feed → restore the state
+   * to right after that ball was scored, in one click (instead of clicking
+   * Undo N times). Uses the existing `history` stack — no snapshot+replay.
+   *
+   * Mechanics: `history[i]` is the state AFTER ball i was scored (history[0]
+   * = initial state, history[N-1] = state before the latest ball). The
+   * current `liveState` = state_N. Each handleBall call pushes exactly one
+   * ball-type commentary entry, so the K-th newest ball entry in the
+   * commentary feed corresponds to history[N - K + 1] (or liveState if K=1).
+   *
+   * Truncates history to the entries before the target so Undo continues
+   * naturally from the restored point. Guarded: only backward jumps, and a
+   * confirm dialog for jumps more than 3 balls back (destructive — balls
+   * scored since then are lost). */
+  const BALL_COMMENTARY_KINDS = new Set([
+    "run",
+    "boundary",
+    "six",
+    "wicket",
+    "extra",
+    "dot",
+  ])
+
+  function handleJumpToBall(commentaryId: string) {
+    if (!liveState) return
+    // Find the clicked entry's ball index (1-indexed from newest ball).
+    let ballIndex = -1
+    let count = 0
+    for (const c of liveState.commentary) {
+      if (BALL_COMMENTARY_KINDS.has(c.kind)) {
+        count++
+        if (c.id === commentaryId) {
+          ballIndex = count
+          break
+        }
+      }
+    }
+    if (ballIndex < 1) return // not a ball entry — not clickable
+    if (ballIndex === 1) {
+      toast.info("Already at the latest ball")
+      return
+    }
+    // Target history index = history.length - ballIndex + 1.
+    // (history.length = N handleBall calls; target = state_{N - ballIndex + 1}.)
+    const targetIdx = history.length - ballIndex + 1
+    if (targetIdx < 0 || targetIdx >= history.length) {
+      // Out of history range (too far back — history is capped at 50).
+      toast.error("Can't jump back that far", {
+        description: "History only keeps the last 50 balls. Use Reset to start over.",
+      })
+      return
+    }
+    const ballsDiscarded = ballIndex - 1
+    if (ballsDiscarded > 3) {
+      // Destructive — confirm before discarding more than 3 balls.
+      setJumpBackTarget(targetIdx)
+      return
+    }
+    executeJumpBack(targetIdx)
+  }
+
+  function executeJumpBack(targetIdx: number) {
+    if (!liveState) return
+    const target = history[targetIdx]
+    if (!target) return
+    const ballsDiscarded = history.length - targetIdx
+    // Restore the target state and truncate history to entries before it,
+    // so Undo continues naturally from the restored point.
+    setHistory((h) => h.slice(0, targetIdx))
+    pushState(target)
+    persist(target)
+    toast.success(`Jumped back ${ballsDiscarded} ball${ballsDiscarded !== 1 ? "s" : ""}`)
+    if (id) logAudit(id, target.scorerId ?? null, "jump_back", target.ballNo, `Jumped back ${ballsDiscarded} balls to ball ${target.ballNo}`, token)
+    setJumpBackTarget(null)
+  }
+
   function startInnings(
     battingFirstId: string,
     strikerId: string,
@@ -674,10 +805,28 @@ export function LiveScorerView() {
       isCaptain: !!p.isCaptain,
       isKeeper: !!p.isKeeper,
     })
+    // If this batter is RETURNING from retired-hurt, clear the flag (they're
+    // back at the crease — no longer "available to return"). Also reset the
+    // dismissal string (it was "retired hurt" while away; now they're batting
+    // again, so dismissal should be empty until/unless they're actually out).
+    // addBatsman dedupes by id (won't overwrite the existing entry), so we
+    // patch the batsman entry directly here.
+    const inn = state.innings[state.currentInnings]
+    const batIdx = inn.batsmen.findIndex((b) => b.id === p.id)
+    if (batIdx >= 0 && inn.batsmen[batIdx].retiredHurt) {
+      const newBatsmen = inn.batsmen.map((b) =>
+        b.id === p.id ? { ...b, retiredHurt: false, dismissal: "" } : b
+      )
+      const newInnings = [...state.innings]
+      newInnings[state.currentInnings] = { ...inn, batsmen: newBatsmen }
+      state = { ...state, innings: newInnings }
+    }
     // Fill whichever slot is currently empty — the striker's end if a normal
     // wicket fell (strikerId === null), or the non-striker's end if a run-out
-    // happened at the non-striker's end (nonStrikerId === null). If both are
-    // empty (innings restart, edge case), default to striker.
+    // happened at the non-striker's end (nonStrikerId === null). A retired-
+    // hurt batter returning fills the slot they vacated (the engine cleared
+    // the slot they retired from). If both are empty (innings restart, edge
+    // case), default to striker.
     const fillStriker = liveState.strikerId === null
     const fillNonStriker = !fillStriker && liveState.nonStrikerId === null
     state = {
@@ -766,11 +915,40 @@ export function LiveScorerView() {
     toast.success("Ends swapped")
   }
 
+  /** Destructive reset — clears ALL scoring for this match and returns to a
+   *  fresh empty innings. Gated behind an AlertDialog confirm (set `resetOpen`
+   *  to true to show it). Wired to:
+   *    1. `clearState()` — clears the score-service cache + emits null so
+   *       viewers see "waiting for scorer" until the new state arrives.
+   *    2. A fresh `initState(...)` using the team that was batting first in
+   *       the current live state (preserves the toss / batting-first choice
+   *       so the scorer doesn't have to re-pick the team). Falls back to
+   *       team1Id if the prior state is missing or malformed.
+   *    3. `pushState(fresh)` + `persist(fresh)` — broadcasts the fresh state
+   *       to viewers + saves it to the DB (overwriting the stale state).
+   *    4. `setHistory([])` — clears the local undo stack so Undo can't
+   *       resurrect the discarded scoring. */
   function reset() {
+    if (!match) return
+    // Determine the batting-first team from the prior state (preserves the
+    // toss result). Fall back to team1Id if the prior state is missing.
+    const battingFirstId =
+      liveState?.innings?.[0]?.battingTeamId ?? match.team1Id
+    const fresh = initState(match, battingFirstId)
+    // Preserve the scorer's ID so commentary entries continue to be
+    // attributed to the right scorer after the reset.
+    fresh.scorerId = session?.scorer?.id ?? null
+    // 1. Clear the score-service cache — viewers see "waiting" briefly.
+    clearState()
+    // 2. Broadcast the fresh empty innings.
+    pushState(fresh)
+    // 3. Clear the undo stack — the discarded scoring is gone for good.
     setHistory([])
-    // clear live cache
-    // (clearState not destructured here; use pushState(null) approach via a clear)
-    pushState({ ...liveState!, status: "live", result: "" })
+    // 4. Persist the fresh state to the DB (overwrites the stale state).
+    persist(fresh)
+    toast.success("Scoring reset — fresh innings ready")
+    if (id) logAudit(id, fresh.scorerId ?? null, "reset", 0, "Scoring reset — all balls cleared", token)
+    setResetOpen(false)
   }
 
   /** Test-match declaration: captain ends the current innings without being
@@ -971,6 +1149,20 @@ export function LiveScorerView() {
                       <CloudRain className="h-3.5 w-3.5" /> DLS
                     </Button>
                   )}
+                {/* Reset — destructive: clears ALL scoring for this match.
+                    Gated behind an AlertDialog confirm. Hidden once the
+                    match is completed (no point resetting a finished match). */}
+                {liveState.status !== "completed" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setResetOpen(true)}
+                    className="gap-1 border-red-400 text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/40"
+                    title="Reset all scoring for this match — cannot be undone"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" /> Reset
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -1078,7 +1270,22 @@ export function LiveScorerView() {
                 <Picker
                   title={needStriker ? "New batsman (striker's end)" : "New batsman (non-striker's end)"}
                   players={(playersByTeam[currentInnings!.battingTeamId] ?? []).filter(
-                    (p) => !currentInnings!.batsmen.some((b) => b.id === p.id)
+                    (p) => {
+                      // Exclude dismissed batters and batters currently at the
+                      // crease. ALLOW retired-hurt batters to return (they're
+                      // not out, not at the crease — their slot was cleared
+                      // when they retired hurt). Closes the "retired-hurt →
+                      // can't return" gap: previously any batter already in
+                      // inn.batsmen was excluded, so a retired-hurt batter
+                      // could never be picked back up.
+                      const bat = currentInnings!.batsmen.find((b) => b.id === p.id)
+                      if (!bat) return true // not yet batted — selectable
+                      if (bat.out) return false // dismissed — can't return
+                      if (p.id === liveState!.strikerId || p.id === liveState!.nonStrikerId) return false // at the crease
+                      // In the batting list but not out and not at the crease —
+                      // only happens when retired-hurt. Selectable (returning).
+                      return bat.retiredHurt === true
+                    }
                   )}
                   placeholder="Select new batsman"
                   confirmLabel="Add batsman"
@@ -1103,7 +1310,12 @@ export function LiveScorerView() {
 
               {/* Ball entry buttons */}
               {!isComplete && !needBatsman && !needBowler && (
-                <BallPad onBall={handleBall} disabled={!liveState} onWicket={() => setWicketOpen(true)} />
+                <BallPad
+                  onBall={handleBall}
+                  disabled={!liveState}
+                  onWicket={() => setWicketOpen(true)}
+                  onNoBall={() => setNoballOpen(true)}
+                />
               )}
 
               {/* Human / manual commentary input — only shown when there's an
@@ -1197,6 +1409,28 @@ export function LiveScorerView() {
                   onConfirm={(ev) => {
                     handleBall(ev)
                     setWicketOpen(false)
+                  }}
+                />
+              )}
+
+              {/* No-ball dialog — lets the scorer optionally enter runs off
+                  the bat (e.g. a four hit off a no-ball) plus rare byes/
+                  leg-byes. The common case (just +1 no-ball) is the default —
+                  the scorer can confirm immediately. Emits the extended
+                  BallEvent { kind: "noball", runsOffBat, byes, legByes }. */}
+              {noballOpen && liveState && currentInnings && (
+                <NoBallDialog
+                  open={noballOpen}
+                  onOpenChange={setNoballOpen}
+                  striker={{
+                    id: liveState.strikerId!,
+                    name: currentInnings.batsmen.find((b) => b.id === liveState.strikerId)?.name ?? "Striker",
+                  }}
+                  freeHit={currentInnings.freeHit}
+                  limitedOvers={liveState.maxOvers > 0}
+                  onConfirm={(ev) => {
+                    handleBall(ev)
+                    setNoballOpen(false)
                   }}
                 />
               )}
@@ -1318,7 +1552,7 @@ export function LiveScorerView() {
 
               {/* Commentary */}
               {liveState && liveState.commentary.length > 0 && (
-                <CommentaryFeed state={liveState} />
+                <CommentaryFeed state={liveState} onJumpToBall={handleJumpToBall} />
               )}
 
               {/* Public scorecard preview */}
@@ -1337,6 +1571,62 @@ export function LiveScorerView() {
           )}
         </CardContent>
       </Card>
+
+      {/* Reset confirmation dialog — destructive: clears ALL scoring. */}
+      <AlertDialog open={resetOpen} onOpenChange={setResetOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset all scoring for this match?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will clear every ball scored so far and return the match to a
+              fresh empty innings (preserving the toss / batting-first team).
+              The live broadcast will briefly show "waiting for scorer" until
+              the new state arrives. <strong>This cannot be undone.</strong>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 text-white hover:bg-red-700"
+              onClick={reset}
+            >
+              Reset scoring
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Jump-back confirmation — shown when the scorer clicks a past ball
+          more than 3 balls back in the commentary feed. Confirms before
+          discarding the balls scored since (bounded edit-past-ball). */}
+      <AlertDialog
+        open={jumpBackTarget !== null}
+        onOpenChange={(v) => { if (!v) setJumpBackTarget(null) }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Jump back {jumpBackTarget !== null ? history.length - jumpBackTarget : 0} ball{(jumpBackTarget !== null ? history.length - jumpBackTarget : 0) !== 1 ? "s" : ""}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Restores the scoring state to right after the clicked ball was
+              scored. Balls scored since then will be lost. You can still Undo
+              from the restored point. This is the bounded, safe version of
+              "edit a past ball" — full snapshot+replay is not supported.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (jumpBackTarget !== null) executeJumpBack(jumpBackTarget)
+              }}
+            >
+              Jump back
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Shell>
   )
 }
@@ -1883,10 +2173,15 @@ function ChangeButton({
 function BallPad({
   onBall,
   onWicket,
+  onNoBall,
   disabled,
 }: {
   onBall: (e: BallEvent) => void
   onWicket: () => void
+  /** Open the no-ball dialog (lets the scorer optionally enter runs off the
+   *  bat + byes/leg-byes). The common case (just +1 no-ball) is the default
+   *  in the dialog, so the scorer can confirm immediately. */
+  onNoBall: () => void
   disabled?: boolean
 }) {
   return (
@@ -1931,7 +2226,7 @@ function BallPad({
           variant="outline"
           className="h-14 gap-1 text-sm font-bold transition-transform active:scale-95 sm:h-10"
           disabled={disabled}
-          onClick={() => onBall({ kind: "noball" })}
+          onClick={onNoBall}
         >
           No Ball
         </Button>
@@ -1952,7 +2247,11 @@ function BallPad({
         <code className="rounded bg-muted px-1 py-0.5">w</code> wicket ·{" "}
         <code className="rounded bg-muted px-1 py-0.5">e</code> swap ·{" "}
         <code className="rounded bg-muted px-1 py-0.5">u</code> undo ·{" "}
-        <code className="rounded bg-muted px-1 py-0.5">s</code> save
+        <code className="rounded bg-muted px-1 py-0.5">s</code> save ·{" "}
+        <code className="rounded bg-muted px-1 py-0.5">⇧W</code> wide ·{" "}
+        <code className="rounded bg-muted px-1 py-0.5">⇧N</code> no-ball ·{" "}
+        <code className="rounded bg-muted px-1 py-0.5">⇧B</code> bye ·{" "}
+        <code className="rounded bg-muted px-1 py-0.5">⇧L</code> leg-bye
       </p>
     </div>
   )
@@ -2083,10 +2382,12 @@ function WicketDialog({
   // Free-hit-derived warning: when the current ball is a free hit AND the
   // selected dismissal type is bowler-credited, the engine will REJECT the
   // wicket (batsman survives). Show a warning so the admin knows.
+  // (`BOWLER_CREDITED_WICKETS` already excludes retiredOut / retiredHurt /
+  // runout, so the extra guard is belt-and-braces — kept for clarity.)
   const freeHitWillReject =
     !!freeHit &&
     BOWLER_CREDITED_WICKETS.has(wicketType) &&
-    wicketType !== "retired"
+    wicketType !== "retiredOut"
 
   function handleConfirm() {
     onConfirm({
@@ -2236,6 +2537,211 @@ function WicketDialog({
   )
 }
 
+/* ---------- No-ball dialog: optional runs off the bat + byes/leg-byes ---------- */
+
+const NO_BALL_RUN_OPTIONS = [0, 1, 2, 3, 4, 6] as const
+
+function NoBallDialog({
+  open,
+  onOpenChange,
+  striker,
+  freeHit,
+  limitedOvers,
+  onConfirm,
+}: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  striker: { id: string; name: string }
+  /** True when the current ball is a free hit (rare — a no-ball during a
+   *  free hit keeps the free hit pending). Just drives a banner hint. */
+  freeHit?: boolean
+  /** True for limited-overs matches (maxOvers > 0) — the no-ball triggers a
+   *  free hit on the next legal delivery. Drives the banner hint. */
+  limitedOvers?: boolean
+  onConfirm: (ev: {
+    kind: "noball"
+    runsOffBat: number
+    byes: number
+    legByes: number
+  }) => void
+}) {
+  // Runs off the bat — default 0 (the common case: just the +1 no-ball
+  // penalty). Picked from the same options as the run buttons (0/1/2/3/4/6).
+  const [runsOffBat, setRunsOffBat] = useState<number>(0)
+  // Byes / leg-byes off the no-ball — rare. Default 0.
+  const [byes, setByes] = useState<number>(0)
+  const [legByes, setLegByes] = useState<number>(0)
+  // Note: this component is conditionally rendered by the parent only when
+  // `noballOpen` is true, so it remounts fresh each time — useState initial
+  // values act as the "reset on open".
+
+  const totalRuns = 1 + runsOffBat + byes + legByes
+
+  function handleConfirm() {
+    onConfirm({
+      kind: "noball",
+      runsOffBat,
+      byes,
+      legByes,
+    })
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <span className="grid h-7 w-7 place-items-center rounded-md bg-amber-600 text-white">
+              <CircleDot className="h-4 w-4" />
+            </span>
+            No Ball
+          </DialogTitle>
+          <DialogDescription>
+            A no-ball concedes +1 (against the bowler) and the next legal ball
+            {limitedOvers ? " is a free hit." : " is re-bowled."} Optionally
+            enter runs scored off the bat (e.g. a four hit off a no-ball) —
+            these go to {striker.name} and against the bowler. Byes/leg-byes
+            are rare on a no-ball.
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Free-hit banner — shown when the current ball is already a free
+            hit (a no-ball during a free hit keeps it pending) OR when this
+            no-ball will trigger a free hit (limited-overs). */}
+        {(freeHit || limitedOvers) && (
+          <div className="rounded-md border border-amber-400 bg-amber-50 px-3 py-2 text-xs dark:bg-amber-950/40">
+            <div className="flex items-center gap-1.5 font-bold uppercase tracking-wide text-amber-800 dark:text-amber-300">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-600" />
+              {freeHit ? "Free hit in effect" : "Free hit next ball"}
+            </div>
+            <p className="mt-1 text-amber-700 dark:text-amber-400">
+              {freeHit
+                ? "This no-ball was bowled during a free hit — the free hit carries over to the next legal delivery."
+                : "The next LEGAL delivery will be a free hit. Bowler-credited dismissals (bowled/caught/lbw/stumped/hit-wkt) won't be allowed."}
+            </p>
+          </div>
+        )}
+
+        <div className="grid gap-3 py-2">
+          {/* Runs off the bat — same button grid as the run pad */}
+          <div className="grid gap-1.5">
+            <Label>
+              Runs off the bat <span className="text-muted-foreground">(default 0)</span>
+            </Label>
+            <div className="grid grid-cols-6 gap-1.5">
+              {NO_BALL_RUN_OPTIONS.map((r) => {
+                const isDot = r === 0
+                const isBoundary = r === 4 || r === 6
+                const selected = runsOffBat === r
+                return (
+                  <Button
+                    key={r}
+                    type="button"
+                    variant={selected ? "default" : "outline"}
+                    className={cn(
+                      "h-10 text-base font-extrabold tabular-nums transition-transform active:scale-95",
+                      isBoundary && !selected && "border-sky-400 text-sky-700",
+                      r === 4 && selected && "bg-sky-600 text-white hover:bg-sky-700",
+                      r === 6 && selected && "bg-fuchsia-600 text-white hover:bg-fuchsia-700",
+                    )}
+                    onClick={() => setRunsOffBat(r)}
+                  >
+                    {isDot ? "0" : r}
+                  </Button>
+                )
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Goes to {striker.name}&apos;s runs + balls faced, and against the bowler.
+            </p>
+          </div>
+
+          {/* Byes / leg-byes — rare on a no-ball */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="noball-byes">
+                Byes <span className="text-muted-foreground">(rare)</span>
+              </Label>
+              <Input
+                id="noball-byes"
+                type="number"
+                min={0}
+                max={6}
+                value={byes}
+                onChange={(e) => {
+                  const v = Number(e.target.value)
+                  setByes(Number.isFinite(v) && v >= 0 ? Math.min(v, 6) : 0)
+                }}
+                className="h-9 tabular-nums"
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="noball-legbyes">
+                Leg-byes <span className="text-muted-foreground">(rare)</span>
+              </Label>
+              <Input
+                id="noball-legbyes"
+                type="number"
+                min={0}
+                max={6}
+                value={legByes}
+                onChange={(e) => {
+                  const v = Number(e.target.value)
+                  setLegByes(Number.isFinite(v) && v >= 0 ? Math.min(v, 6) : 0)
+                }}
+                className="h-9 tabular-nums"
+              />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Byes/leg-byes go to the innings total + extras breakdown, but NOT
+            against the bowler and NOT as balls faced.
+          </p>
+
+          {/* Live total preview */}
+          <div className="rounded-md border bg-muted/40 p-3 text-sm">
+            <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              Total runs on this ball
+            </div>
+            <div className="mt-1 font-mono text-sm">
+              +1 (no-ball)
+              {runsOffBat > 0 && (
+                <span className="text-emerald-700 dark:text-emerald-300">
+                  {" "}+ {runsOffBat} (off bat)
+                </span>
+              )}
+              {byes > 0 && (
+                <span className="text-amber-700 dark:text-amber-300">
+                  {" "}+ {byes} (byes)
+                </span>
+              )}
+              {legByes > 0 && (
+                <span className="text-amber-700 dark:text-amber-300">
+                  {" "}+ {legByes} (leg-byes)
+                </span>
+              )}
+              {" "}= <span className="font-bold">{totalRuns}</span>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirm}
+            className="gap-1.5 bg-amber-600 text-white hover:bg-amber-700"
+          >
+            <CircleDot className="h-4 w-4" />
+            Confirm no ball ({totalRuns} run{totalRuns !== 1 ? "s" : ""})
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function Picker({
   title,
   players,
@@ -2365,7 +2871,26 @@ function Picker({
   )
 }
 
-function CommentaryFeed({ state }: { state: LiveMatchState }) {
+function CommentaryFeed({
+  state,
+  onJumpToBall,
+}: {
+  state: LiveMatchState
+  /** Click a past ball entry to jump the scoring state back to right after
+   *  that ball was scored (bounded undo — uses the existing history stack,
+   *  no snapshot+replay). Only ball-type entries (run/boundary/six/wicket/
+   *  extra/dot) are clickable; info/over/manual entries are not. */
+  onJumpToBall?: (commentaryId: string) => void
+}) {
+  // Ball-entry kinds are clickable (jump-to-ball). Computed once per render.
+  const BALL_KINDS = new Set([
+    "run",
+    "boundary",
+    "six",
+    "wicket",
+    "extra",
+    "dot",
+  ])
   return (
     <div className="rounded-lg border bg-card">
       <div className="flex items-center gap-2 border-b bg-muted/40 px-3 py-2">
@@ -2373,17 +2898,40 @@ function CommentaryFeed({ state }: { state: LiveMatchState }) {
         <h3 className="text-xs font-extrabold uppercase tracking-wide">
           Live Commentary
         </h3>
+        {onJumpToBall && (
+          <span className="ml-auto text-[10px] font-medium text-muted-foreground">
+            Click a past ball to jump back
+          </span>
+        )}
       </div>
       <div className="max-h-64 space-y-1.5 overflow-y-auto p-3 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
         {state.commentary.map((c) => {
           const isManual = c.kind === "manual"
+          const isBallEntry = BALL_KINDS.has(c.kind)
+          const canJump = !!onJumpToBall && isBallEntry
           return (
             <div
               key={c.id}
               className={cn(
                 "flex gap-2 text-xs",
-                isManual && "border-l-2 border-blue-500 bg-blue-50/40 pl-2 dark:bg-blue-950/20"
+                isManual && "border-l-2 border-blue-500 bg-blue-50/40 pl-2 dark:bg-blue-950/20",
+                canJump &&
+                  "cursor-pointer rounded-md transition-colors hover:bg-muted/60"
               )}
+              onClick={canJump ? () => onJumpToBall?.(c.id) : undefined}
+              title={canJump ? "Click to jump back to this ball" : undefined}
+              role={canJump ? "button" : undefined}
+              tabIndex={canJump ? 0 : undefined}
+              onKeyDown={
+                canJump
+                  ? (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault()
+                        onJumpToBall?.(c.id)
+                      }
+                    }
+                  : undefined
+              }
             >
               <span className="w-10 shrink-0 font-mono tabular-nums text-muted-foreground">
                 {c.over}

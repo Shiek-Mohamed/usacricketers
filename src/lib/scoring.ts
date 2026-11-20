@@ -413,9 +413,15 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
   const isFreeHit = limitedOvers && inn.freeHit
   let freeHit = inn.freeHit
   let fallOfWickets = inn.fallOfWickets
-  let strikerId = state.strikerId
-  let nonStrikerId = state.nonStrikerId
-  let bowlerId = state.bowlerId
+  // Annotated as `string | null` because the early-return guard above
+  // narrows state.strikerId / nonStrikerId / bowlerId to `string`, but the
+  // wicket / retired-hurt / over-end branches below reassign them to `null`
+  // (to clear the slot for a replacement). Without the explicit annotation
+  // TS infers `string` from the narrowed source and the null reassignments
+  // fail strictNullChecks.
+  let strikerId: string | null = state.strikerId
+  let nonStrikerId: string | null = state.nonStrikerId
+  let bowlerId: string | null = state.bowlerId
   let note = state.note
   let commentary = state.commentary
 
@@ -577,10 +583,22 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
 
       outBatsman.out = true
       outBatsman.dismissal = event.dismissal
-      // Only the striker has faced this delivery — the non-striker didn't
-      // (and on a retired-out, no delivery was bowled at all).
-      if (isStrikerOut && event.wicketType !== "retiredOut") {
-        outBatsman.balls += 1
+      // Ball-faced credit on a wicket delivery:
+      //   • retired-out: no delivery was bowled → no ball faced by anyone.
+      //   • striker dismissed (bowled/caught/lbw/runout/stumped/hit-wkt):
+      //     the striker faced this ball → outBatsman.balls += 1.
+      //   • NON-striker run out: the STRIKER still faced this delivery, so
+      //     the striker's balls-faced must be incremented (not the
+      //     non-striker's). Previously this branch only credited
+      //     outBatsman when isStrikerOut, which left the striker's balls
+      //     frozen on a non-striker run-out and distorted strike rates.
+      if (event.wicketType !== "retiredOut") {
+        if (isStrikerOut) {
+          outBatsman.balls += 1
+        } else if (isNonStrikerOut) {
+          // The striker (not the dismissed non-striker) faced this ball.
+          striker.balls += 1
+        }
       }
 
       wickets += 1
@@ -725,7 +743,7 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
         ballNo: next.ballNo,
         over: oversString(balls),
         text: `End of over ${Math.floor(balls / 6)} — ${inn.battingTeamShortName} ${runs}/${wickets} (${oversString(balls)})`,
-        kind: "over",
+        kind: "over" as const,
       },
       ...commentary,
     ].slice(0, 120)
@@ -761,7 +779,7 @@ export function endInnings(state: LiveMatchState, reason: string): LiveMatchStat
       ballNo: state.ballNo,
       over: oversString(inn.balls),
       text: `Innings end — ${inn.battingTeamShortName} ${inn.runs}/${inn.wickets} (${reason})`,
-      kind: "info",
+      kind: "info" as const,
     },
     ...commentary,
   ].slice(0, 120)
@@ -1027,7 +1045,7 @@ function computeMatchResult(
         ballNo: state.ballNo,
         over: oversString(innings[innings.length - 1].balls),
         text: `Result: ${result}`,
-        kind: "info",
+        kind: "info" as const,
       },
       ...commentary,
     ].slice(0, 120),

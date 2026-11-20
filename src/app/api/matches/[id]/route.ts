@@ -1,7 +1,52 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { serializeMatch } from "@/lib/serialize"
-import { requireSiteAdmin } from "@/lib/scorer-auth"
+import {
+  requireSiteAdmin,
+  readBearerToken,
+  verifyScorerToken,
+  scorerHasSeries,
+} from "@/lib/scorer-auth"
+import { authenticateLeagueAdmin } from "@/lib/league-admin-guard"
+
+/**
+ * Multi-mode authorization for match mutations — mirrors the pattern used in
+ * `src/app/api/matches/[id]/toss/route.ts`. Accepts any one of:
+ *
+ *   1. Site-admin cookie (`sa-session`) + CSRF double-submit (X-CSRF-Token
+ *      header matches csrf-token cookie). This is the path used by the CMS
+ *      admin UI — `requireSiteAdmin` performs both checks.
+ *   2. Scorer Bearer token (Authorization: Bearer <signed-token>) verified
+ *      with `verifyScorerToken` AND gated by `scorerHasSeries` for the
+ *      match's series. Scorers log in via /api/scorer/login and hold only a
+ *      Bearer token (no cookie), so they previously 401'd on PUT /matches/[id]
+ *      — that broke persist() from scorer-mode and liveStateJson was never
+ *      written. Bearer headers aren't auto-attached by browsers, so this
+ *      path is immune to CSRF.
+ *   3. League-admin Bearer token verified with `authenticateLeagueAdmin`.
+ *
+ * Returns true if any mode succeeds, false otherwise. The caller is
+ * responsible for returning 401 when this returns false.
+ */
+async function isAuthorized(
+  req: NextRequest,
+  matchSeriesId: string | null,
+): Promise<boolean> {
+  // Mode 1 — site admin (cookie + CSRF).
+  if (requireSiteAdmin(req)) return true
+
+  const token = readBearerToken(req.headers.get("authorization"))
+
+  // Mode 2 — scorer Bearer.
+  const scorerPayload = verifyScorerToken(token)
+  if (scorerPayload) {
+    return await scorerHasSeries(scorerPayload.scorerId, matchSeriesId)
+  }
+
+  // Mode 3 — league-admin Bearer.
+  const leagueAdminRes = await authenticateLeagueAdmin(req)
+  return "ctx" in leagueAdminRes
+}
 
 export async function GET(
   _req: NextRequest,
@@ -21,10 +66,21 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const admin = requireSiteAdmin(req)
-  if (!admin) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
+
+  // Fetch the match's seriesId first so scorerHasSeries can gate the Bearer
+  // path. Site-admins and league-admins bypass the series check.
+  const match = await db.match.findUnique({
+    where: { id },
+    select: { id: true, seriesId: true },
+  })
+  if (!match) return NextResponse.json({ error: "Not found" }, { status: 404 })
+
+  if (!(await isAuthorized(req, match.seriesId))) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 })
+  }
+
   const body = await req.json()
-  const match = await db.match.update({
+  const updated = await db.match.update({
     where: { id },
     data: {
       seriesId: body.seriesId || null,
@@ -53,7 +109,7 @@ export async function PUT(
     },
     include: { team1: true, team2: true, series: true },
   })
-  return NextResponse.json(serializeMatch(match))
+  return NextResponse.json(serializeMatch(updated))
 }
 
 export async function DELETE(

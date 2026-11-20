@@ -11,15 +11,52 @@ import { db } from "./db"
  * with the same secret and checks the match's series is in the token's list.
  */
 
+// Default (insecure) values used when the env var is missing. Kept here as
+// constants so warnIfDefaultSecrets() can detect them at boot — never rely on
+// these in production.
+const DEFAULT_SCORER_SECRET = "cric-cms-scorer-secret-change-me"
+const DEFAULT_INTERNAL_SECRET = "cric-cms-internal-change-me"
+
 // Shared secret for token signing. MUST match score-service env SCORER_SECRET.
 const SCORER_SECRET =
-  process.env.SCORER_SECRET || "cric-cms-scorer-secret-change-me"
+  process.env.SCORER_SECRET || DEFAULT_SCORER_SECRET
 
 // Internal secret for the match->series lookup endpoint (score-service -> api).
 const INTERNAL_SECRET =
-  process.env.INTERNAL_SECRET || "cric-cms-internal-change-me"
+  process.env.INTERNAL_SECRET || DEFAULT_INTERNAL_SECRET
 
 const TOKEN_TTL_MS = 1000 * 60 * 60 * 48 // 48 hours — matches can span multiple days
+
+/**
+ * Warn loudly (console.warn) if either shared secret is still the default
+ * value shipped in source. Does NOT throw — failing fast would break local
+ * dev where the defaults are convenient. Call once at boot (Next.js API
+ * route first import OR mini-service startup) so operators see the warning
+ * in their logs and set SCORER_SECRET / INTERNAL_SECRET in production.
+ *
+ * Reads process.env directly (not the module-level constants) so it can be
+ * safely imported and called from any context without side effects.
+ */
+export function warnIfDefaultSecrets(): void {
+  const scorerSecret = process.env.SCORER_SECRET
+  const internalSecret = process.env.INTERNAL_SECRET
+  if (
+    !scorerSecret ||
+    scorerSecret === DEFAULT_SCORER_SECRET
+  ) {
+    console.warn(
+      "[security] SCORER_SECRET is using the default value. Set SCORER_SECRET to a strong random string (e.g. `openssl rand -hex 32`) in production — the default allows anyone to forge scorer tokens."
+    )
+  }
+  if (
+    !internalSecret ||
+    internalSecret === DEFAULT_INTERNAL_SECRET
+  ) {
+    console.warn(
+      "[security] INTERNAL_SECRET is using the default value. Set INTERNAL_SECRET to a strong random string (e.g. `openssl rand -hex 32`) in production — the default allows anyone to call internal score-service endpoints."
+    )
+  }
+}
 
 export interface ScorerTokenPayload {
   scorerId: string
@@ -76,7 +113,10 @@ export function issueScorerToken(p: {
   return `${payload}.${sign(payload)}`
 }
 
-export function verifyScorerToken(token: string): ScorerTokenPayload | null {
+export function verifyScorerToken(
+  token: string | null | undefined
+): ScorerTokenPayload | null {
+  if (!token || typeof token !== "string") return null
   const [payload, sig] = token.split(".")
   if (!payload || !sig) return null
   const expected = sign(payload)
@@ -270,8 +310,9 @@ export function issueLeagueAdminToken(p: {
 }
 
 export function verifyLeagueAdminToken(
-  token: string
+  token: string | null | undefined
 ): LeagueAdminTokenPayload | null {
+  if (!token || typeof token !== "string") return null
   const [payload, sig] = token.split(".")
   if (!payload || !sig) return null
   const expected = sign(payload)

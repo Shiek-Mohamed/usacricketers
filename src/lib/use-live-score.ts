@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { io, type Socket } from "socket.io-client"
 import type { LiveMatchState } from "./scoring"
+import { api } from "./api"
 
 /**
  * Subscribe to a match's live scoring state and (for the operator) push new
@@ -42,6 +43,19 @@ export function useLiveScore(matchId: string | null, token: string | null) {
   // buffered state is flushed so no scoring data is lost during brief
   // network outages (common at cricket grounds with spotty WiFi).
   const bufferedStateRef = useRef<LiveMatchState | null>(null)
+  // Tracks whether we've already attempted the DB fallback for the current
+  // subscription. When the score-service cache is empty (right after a deploy
+  // / restart), the initial `state` event arrives as null — we then fall back
+  // to the match's persisted liveStateJson in the DB so viewers don't see
+  // "waiting for scorer" indefinitely when the state is actually saved. Only
+  // attempted ONCE per matchId; later null emits (scorer cleared the cache)
+  // are honored as null.
+  const dbFallbackAttemptedRef = useRef(false)
+  // True once a non-null live state has arrived from the score-service. Guards
+  // the DB fallback against a race where the scorer reconnects + broadcasts
+  // while the DB fetch is still in-flight — in that case we prefer the live
+  // snapshot and discard the (older) DB snapshot.
+  const gotLiveStateRef = useRef(false)
 
   // Keep the latest token available to pushState/clearState without forcing
   // a socket reconnect on every token change.
@@ -51,6 +65,12 @@ export function useLiveScore(matchId: string | null, token: string | null) {
 
   useEffect(() => {
     if (!matchId) return
+    dbFallbackAttemptedRef.current = false
+    gotLiveStateRef.current = false
+    // Guard the async DB fallback: if matchId changes (or the component
+    // unmounts) while the fetch is in-flight, bail before updating state so we
+    // don't flash the previous match's snapshot into the new subscription.
+    let cancelled = false
     queueMicrotask(() => {
       setStateReceived(false)
       setLiveState(null)
@@ -85,14 +105,56 @@ export function useLiveScore(matchId: string | null, token: string | null) {
     })
     socket.io.on("reconnect_attempt", () => setReconnecting(true))
     socket.io.on("reconnect_failed", () => setReconnecting(true))
-    socket.on("state", (payload: { matchId: string; state: unknown }) => {
-      if (payload.matchId === matchId) {
-        setLiveState((payload.state as LiveMatchState | null) ?? null)
+    socket.on("state", async (payload: { matchId: string; state: unknown }) => {
+      if (payload.matchId !== matchId) return
+      const incoming = (payload.state as LiveMatchState | null) ?? null
+      if (incoming) {
+        // Live state from the score-service — use it directly. This takes
+        // over from any DB fallback snapshot once the scorer reconnects and
+        // broadcasts (the live state is always newer than the persisted copy).
+        gotLiveStateRef.current = true
+        setLiveState(incoming)
+        setStateReceived(true)
+        return
+      }
+      // Null state. If this is the INITIAL snapshot (the score-service cache
+      // is empty, e.g. right after a deploy/restart), fall back to the match's
+      // persisted liveStateJson in the DB so viewers don't see "waiting for
+      // scorer" indefinitely when the state is actually saved in the DB. Only
+      // attempted ONCE per subscription — subsequent null emits (the scorer
+      // cleared the cache) are honored as null.
+      if (dbFallbackAttemptedRef.current) {
+        setLiveState(null)
+        setStateReceived(true)
+        return
+      }
+      dbFallbackAttemptedRef.current = true
+      try {
+        const m = await api.matches.get(matchId)
+        // If a live state arrived while the DB fetch was in-flight (or the
+        // subscription was torn down), prefer the live snapshot / bail — don't
+        // overwrite with the (older) persisted snapshot.
+        if (cancelled || gotLiveStateRef.current) return
+        const persisted = m?.liveStateJson
+        if (persisted) {
+          const parsed = JSON.parse(persisted) as LiveMatchState
+          setLiveState(parsed)
+        } else {
+          // liveStateJson empty — no state has ever been persisted for this
+          // match. Keep showing "waiting for scorer" as before.
+          setLiveState(null)
+        }
+        setStateReceived(true)
+      } catch {
+        // Fetch failed or liveStateJson unparseable — keep "waiting".
+        if (cancelled || gotLiveStateRef.current) return
+        setLiveState(null)
         setStateReceived(true)
       }
     })
 
     return () => {
+      cancelled = true
       socket.emit("unsubscribe", matchId)
       socket.disconnect()
       socketRef.current = null

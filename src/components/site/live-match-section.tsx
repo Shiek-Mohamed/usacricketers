@@ -2,8 +2,10 @@
 
 import { useMemo } from "react"
 import { useLiveScore } from "@/lib/use-live-score"
+import { useMatch } from "@/lib/use-data"
 import { oversString, type LiveMatchState } from "@/lib/scoring"
-import { Radio, Wifi, WifiOff, ChevronRight, Trophy, CloudRain } from "lucide-react"
+import { Radio, Wifi, WifiOff, ChevronRight, Trophy, CloudRain, Zap } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { CommentaryFeedRow } from "@/components/cricket/ball-chip"
 
 /* Commentary kind → color mapping (matches the live blog view) */
@@ -39,6 +41,10 @@ const KEY_MOMENT_KINDS = new Set(["wicket", "six", "boundary", "manual", "info"]
  */
 export function LiveMatchSection({ matchId }: { matchId: string }) {
   const { liveState, connected } = useLiveScore(matchId, null)
+  // Fetch the match so we can read its series' power-play config for the
+  // "Power Play" badge. Minimal plumbing (one hook) — the current over comes
+  // from the live state; the power-play over-ranges come from the series.
+  const { data: match } = useMatch(matchId)
 
   const innings = liveState?.innings ?? []
   const currentInnings = innings[liveState?.currentInnings ?? 0] ?? null
@@ -46,6 +52,16 @@ export function LiveMatchSection({ matchId }: { matchId: string }) {
 
   const striker = currentInnings?.batsmen.find((b) => b.id === liveState?.strikerId)
   const bowler = currentInnings?.bowlers.find((b) => b.id === liveState?.bowlerId)
+
+  // Power-play indicator — visual only. Current over is 1-indexed (the over
+  // currently being bowled). Shown when the series has power-play enabled and
+  // the current over falls within any configured over-range segment.
+  const series = match?.series ?? null
+  const currentOver = currentInnings ? Math.floor(currentInnings.balls / 6) + 1 : 0
+  const inPowerPlay =
+    !!(series?.powerPlayEnabled &&
+      currentOver > 0 &&
+      series.powerPlayOvers.some((seg) => currentOver >= seg.from && currentOver <= seg.to))
 
   const recentCommentary = useMemo(
     () => commentary.slice(0, 40), // show the 40 most recent entries
@@ -116,6 +132,12 @@ export function LiveMatchSection({ matchId }: { matchId: string }) {
                 : "0.00"}
               )
             </span>
+            {inPowerPlay && (
+              <Badge className="ml-2 border-purple-200 bg-purple-50 font-bold uppercase tracking-wide text-purple-700">
+                <Zap className="h-3 w-3" />
+                Power Play
+              </Badge>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 font-display text-[12px] font-medium">
             {striker && (

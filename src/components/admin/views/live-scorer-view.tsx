@@ -69,15 +69,15 @@ import {
   Check,
   RotateCw,
 } from "lucide-react"
-import type { Player } from "@/lib/types"
+import type { Match, Player } from "@/lib/types"
 import { useLiveScoreBackup, loadLocalBackup } from "@/lib/use-live-score-backup"
 import { calculateDLS, type DLSResult } from "@/lib/dls"
 
 /** Log a scoring action to the audit trail (non-fatal — fire and forget). */
-function logAudit(matchId: string, scorerId: string | null, action: string, ballNo: number, detail: string) {
+function logAudit(matchId: string, scorerId: string | null, action: string, ballNo: number, detail: string, token?: string | null) {
   fetch("/api/scoring-audit", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: JSON.stringify({ matchId, scorerId, action, ballNo, detail }),
   }).catch(() => {}) // non-fatal
 }
@@ -145,6 +145,12 @@ export function LiveScorerView() {
   // History stack for undo
   const [history, setHistory] = useState<LiveMatchState[]>([])
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Latest liveState + match held in refs so the flush-on-close effect
+  // (registered once, before the early returns) can persist the pending state
+  // synchronously when the tab is hidden / closed — guards against data loss
+  // if the browser crashes / loses WiFi within the 800ms persist debounce.
+  const latestLiveStateRef = useRef<LiveMatchState | null>(null)
+  const latestMatchRef = useRef<Match | null>(null)
   // Tracks the last bowler — used to enforce the cricket rule that a bowler
   // cannot bowl two consecutive overs. Updated whenever the bowlerId changes
   // from a value to null (which happens at over end in the scoring engine).
@@ -157,6 +163,55 @@ export function LiveScorerView() {
       lastBowlerRef.current = liveState.bowlerId
     }
   }, [liveState?.bowlerId])
+  // Keep the latest liveState + match in refs for the flush-on-close handler.
+  useEffect(() => {
+    latestLiveStateRef.current = liveState ?? null
+  }, [liveState])
+  useEffect(() => {
+    latestMatchRef.current = match ?? null
+  }, [match])
+  // Flush-on-close: when the tab is hidden / unloaded while a debounced
+  // persist (800ms) is still pending, fire the save immediately so the latest
+  // ball isn't lost if the browser crashes / loses WiFi within that window.
+  // Only acts when a persist is actually pending (saveTimer.current set) —
+  // otherwise a no-op, which also makes it harmless in read-only contexts
+  // (the public viewer never schedules a persist, so saveTimer stays null).
+  // Fire-and-forget with `keepalive` so the request survives page teardown
+  // (sendBeacon can't send a JSON PUT with headers, so fetch is used here).
+  useEffect(() => {
+    const flush = () => {
+      const timer = saveTimer.current
+      if (!timer) return
+      clearTimeout(timer)
+      saveTimer.current = null
+      const state = latestLiveStateRef.current
+      const m = latestMatchRef.current
+      if (!state || !m) return
+      const csrf =
+        typeof document !== "undefined"
+          ? document.cookie.match(/csrf-token=([^;]+)/)?.[1] || ""
+          : ""
+      void fetch(`/api/matches/${m.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf },
+        body: JSON.stringify({
+          scorecard: stateToScorecard(state),
+          status: state.status,
+          result: state.result,
+          liveStateJson: JSON.stringify(state),
+        }),
+        keepalive: true,
+      }).catch(() => {})
+    }
+    window.addEventListener("visibilitychange", flush)
+    window.addEventListener("pagehide", flush)
+    window.addEventListener("beforeunload", flush)
+    return () => {
+      window.removeEventListener("visibilitychange", flush)
+      window.removeEventListener("pagehide", flush)
+      window.removeEventListener("beforeunload", flush)
+    }
+  }, [])
   // Wicket-dialog open state — the Wicket button opens a modal that lets the
   // admin pick dismissal type + fielder(s) involved, then sends the structured
   // wicket BallEvent to applyBall via handleBall.
@@ -224,7 +279,7 @@ export function LiveScorerView() {
     pushState(withCommentary)
     persist(withCommentary)
     toast.success(`DLS target applied: ${dlsResult.revisedTarget} from ${dlsRevisedOvers} overs`)
-    if (id) logAudit(id, liveState.scorerId ?? null, "dls_applied", liveState.ballNo, `Target: ${dlsResult.revisedTarget} from ${dlsRevisedOvers} overs (was ${dlsResult.originalTarget})`)
+    if (id) logAudit(id, liveState.scorerId ?? null, "dls_applied", liveState.ballNo, `Target: ${dlsResult.revisedTarget} from ${dlsRevisedOvers} overs (was ${dlsResult.originalTarget})`, token)
     setDlsOpen(false)
     setDlsResult(null)
     setDlsRevisedOvers("")
@@ -546,7 +601,7 @@ export function LiveScorerView() {
     pushState(next)
     persist(next)
     // Audit trail — log every ball scored
-    if (id) logAudit(id, liveState.scorerId ?? null, "ball_scored", next.ballNo, `${event.kind}${'runs' in event ? ` ${event.runs}` : ''}`)
+    if (id) logAudit(id, liveState.scorerId ?? null, "ball_scored", next.ballNo, `${event.kind}${'runs' in event ? ` ${event.runs}` : ''}`, token)
   }
 
   function handleUndo() {
@@ -560,7 +615,7 @@ export function LiveScorerView() {
     persist(prev)
     toast.success("Undid last action")
     // Audit trail — log every undo
-    if (id) logAudit(id, prev.scorerId ?? null, "undo", prev.ballNo, "Reverted last action")
+    if (id) logAudit(id, prev.scorerId ?? null, "undo", prev.ballNo, "Reverted last action", token)
   }
 
   function startInnings(
@@ -607,7 +662,7 @@ export function LiveScorerView() {
     pushState(state)
     persist(state)
     toast.success("Innings started — status set to LIVE")
-    if (id) logAudit(id, state.scorerId ?? null, "innings_started", 0, `Innings ${state.currentInnings + 1}: ${battingFirstId === match!.team1Id ? t1?.shortName : t2?.shortName} batting first`)
+    if (id) logAudit(id, state.scorerId ?? null, "innings_started", 0, `Innings ${state.currentInnings + 1}: ${battingFirstId === match!.team1Id ? t1?.shortName : t2?.shortName} batting first`, token)
   }
 
   function bringInBatsman(playerId: string) {
@@ -780,6 +835,17 @@ export function LiveScorerView() {
   const waitingForState = !stateReceived
   const showSetup = stateReceived && (!liveState || liveState.innings.length === 0)
   const currentInnings = liveState?.innings[liveState.currentInnings]
+  // Power-play indicator: show a badge when the batting innings' current over
+  // (1-indexed — the over currently being bowled) falls within one of the
+  // series' configured power-play over-ranges. Visual only — the scoring
+  // engine does not (yet) enforce power-play fielding restrictions; this just
+  // surfaces the status to the scorer next to the score.
+  const series = match.series ?? null
+  const currentOver = currentInnings ? Math.floor(currentInnings.balls / 6) + 1 : 0
+  const inPowerPlay =
+    !!(series?.powerPlayEnabled &&
+      currentOver > 0 &&
+      series.powerPlayOvers.some((seg) => currentOver >= seg.from && currentOver <= seg.to))
   // Need a new batsman if either end is empty after a wicket (a run-out can
   // empty the non-striker slot while the striker stays in).
   const needStriker = !!liveState && liveState.strikerId === null && liveState.status === "live"
@@ -1003,6 +1069,7 @@ export function LiveScorerView() {
                   onChangeNonStriker={changeNonStriker}
                   onChangeBowler={changeBowler}
                   onSwapEnds={swapEnds}
+                  inPowerPlay={inPowerPlay}
                 />
               )}
 
@@ -1624,6 +1691,7 @@ function LiveScoreboard({
   onChangeNonStriker,
   onChangeBowler,
   onSwapEnds,
+  inPowerPlay,
 }: {
   state: LiveMatchState
   onChangeStriker?: () => void
@@ -1633,6 +1701,9 @@ function LiveScoreboard({
    *  when it disagrees with reality (caught-and-bowled crossing, etc.).
    *  Allowed at any time (not over-boundary-gated) — doesn't affect stats. */
   onSwapEnds?: () => void
+  /** When true, the current over is inside a series-configured power-play
+   *  range — render a "Power Play" badge next to the score. Visual only. */
+  inPowerPlay?: boolean
 }) {
   const inn = state.innings[state.currentInnings]
   const striker = inn.batsmen.find((b) => b.id === state.strikerId)
@@ -1677,6 +1748,12 @@ function LiveScoreboard({
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-950" />
                 Free hit
               </span>
+            )}
+            {inPowerPlay && (
+              <Badge className="ml-3 border-purple-200 bg-purple-50 font-bold uppercase tracking-wide text-purple-700">
+                <Zap className="h-3 w-3" />
+                Power Play
+              </Badge>
             )}
           </div>
           <div className="mt-1 text-xs text-slate-300">

@@ -24,6 +24,36 @@ const MAX_PER_MATCH = Number(process.env.MAX_PER_MATCH) || 2000
 const MIN_BROADCAST_GAP_MS = Number(process.env.MIN_BROADCAST_GAP_MS) || 80
 
 /**
+ * Warn loudly (console.warn) at boot if either shared secret is still the
+ * default value shipped in source. Does NOT throw — failing fast would
+ * break local dev where the defaults are convenient. Mirrors the same-named
+ * export in `src/lib/scorer-auth.ts` so the warning fires consistently on
+ * both the Next.js API side and the score-service.
+ *
+ * Kept local (not imported from src/lib/scorer-auth) because the
+ * score-service is a standalone bun project and importing scorer-auth would
+ * pull in the Prisma db client (an unwanted heavy dep for this service).
+ */
+function warnIfDefaultSecrets(): void {
+  if (
+    !process.env.SCORER_SECRET ||
+    process.env.SCORER_SECRET === "cric-cms-scorer-secret-change-me"
+  ) {
+    console.warn(
+      "[security] SCORER_SECRET is using the default value. Set SCORER_SECRET to a strong random string (e.g. `openssl rand -hex 32`) in production — the default allows anyone to forge scorer tokens."
+    )
+  }
+  if (
+    !process.env.INTERNAL_SECRET ||
+    process.env.INTERNAL_SECRET === "cric-cms-internal-change-me"
+  ) {
+    console.warn(
+      "[security] INTERNAL_SECRET is using the default value. Set INTERNAL_SECRET to a strong random string (e.g. `openssl rand -hex 32`) in production — the default allows anyone to call internal score-service endpoints."
+    )
+  }
+}
+
+/**
  * Optional Redis pub/sub adapter. When REDIS_URL is set, the score-service
  * can run as multiple instances behind a load balancer — a ball scored on
  * instance A fans out to viewers on instances B/C/D via Redis pub/sub. When
@@ -38,7 +68,12 @@ async function attachRedisAdapter() {
     return
   }
   try {
+    // @ts-expect-error optional dependency — @socket.io/redis-adapter may not
+    // be installed (single-instance mode). The dynamic import is inside a
+    // try/catch so a missing package falls through to the warning below.
     const { createAdapter } = await import("@socket.io/redis-adapter")
+    // @ts-expect-error optional dependency — redis may not be installed
+    // (single-instance mode). Same try/catch guard as above.
     const { createClient: createRedisClient } = await import("redis")
     const pub = createRedisClient({ url: REDIS_URL })
     const sub = pub.duplicate()
@@ -58,6 +93,9 @@ const lastBroadcast = new Map<string, number>()
 const matchSeries = new Map<string, string | null>()
 // matchId -> inflight series-resolution promise (dedupe concurrent lookups)
 const matchSeriesPending = new Map<string, Promise<string | null>>()
+// matchId -> inflight state-fetch promise (dedupe concurrent DB lookups so
+// a burst of viewers on a freshly-deployed instance shares one fetch).
+const matchStatePending = new Map<string, Promise<unknown>>()
 
 function roomSize(matchId: string): number {
   const room = io.sockets.adapter.rooms.get(`match:${matchId}`)
@@ -134,6 +172,79 @@ async function resolveMatchSeries(matchId: string): Promise<string | null> {
   return p
 }
 
+/* ------------- DB fallback: hydrate state from Match.liveStateJson ----------- */
+
+/**
+ * Fetch the latest persisted LiveMatchState for a match from the Next.js API
+ * (GET /api/matches/[id] is public and returns `liveStateJson` as a string
+ * on the serialized Match). Used to hydrate the in-memory cache when a
+ * viewer subscribes to a match the score-service has no cached state for —
+ * the common trigger is a fly.io deploy that wipes the Map but leaves the
+ * DB with the scorer's last persist() snapshot. Without this, viewers see
+ * "waiting for scorer" indefinitely even though Match.liveStateJson has
+ * the state.
+ *
+ * Behaviour:
+ *   • If the cache already has the match, return the cached value (no fetch).
+ *   • If the cache is empty, fetch GET /api/matches/[id], parse
+ *     `liveStateJson`, cache the result (state OR null) and return it.
+ *   • Concurrent calls for the same match share one fetch (matchStatePending).
+ *   • On network error: do NOT cache the failure (so the next subscriber can
+ *     retry) and return null.
+ *   • On malformed JSON or a missing liveStateJson field: cache null (so we
+ *     don't re-fetch on every subscriber for a match that genuinely has no
+ *     state yet — once the scorer pushes operator:state the cache updates).
+ *
+ * The fetch is non-blocking — callers (the subscribe handler) emit a null
+ * placeholder immediately and then emit the DB state to the socket when the
+ * promise resolves, so a slow API doesn't stall the subscribe handshake.
+ */
+function fetchMatchState(matchId: string): Promise<unknown> {
+  if (cache.has(matchId)) {
+    // Cache hit (could be a real state OR a cached null sentinel).
+    return Promise.resolve(cache.get(matchId) ?? null)
+  }
+  const inflight = matchStatePending.get(matchId)
+  if (inflight) return inflight
+  const p = (async () => {
+    let parsed: unknown = null
+    let networkError = false
+    try {
+      const res = await fetch(
+        `${APP_ORIGIN}/api/matches/${encodeURIComponent(matchId)}`
+      )
+      if (res.ok) {
+        const match = (await res.json()) as { liveStateJson?: string | null }
+        const raw = match?.liveStateJson
+        if (raw) {
+          try {
+            parsed = JSON.parse(raw)
+          } catch {
+            // Malformed JSON — treat as no state. Cached below as null.
+            parsed = null
+          }
+        }
+      }
+    } catch {
+      // Network error — don't cache the failure so the next subscriber
+      // can retry once the API is reachable again.
+      networkError = true
+    }
+    if (!networkError) {
+      // Cache state OR null so subsequent subscribers don't re-fetch. A
+      // later operator:state event from the scorer overrides this with the
+      // fresh live state.
+      cache.set(matchId, parsed)
+    }
+    return parsed
+  })()
+  matchStatePending.set(matchId, p)
+  // Clean up the inflight marker once the fetch settles so a later retry
+  // (after a network error) can run.
+  p.finally(() => matchStatePending.delete(matchId))
+  return p
+}
+
 /* ------------------------------- connection ------------------------------- */
 
 io.on("connection", (socket) => {
@@ -153,8 +264,29 @@ io.on("connection", (socket) => {
     }
     socket.join(`match:${matchId}`)
     socket.data.matchId = matchId
-    const state = cache.has(matchId) ? cache.get(matchId) : null
-    socket.emit("state", { matchId, state })
+
+    // Fast path: cache already has the state (or a cached null sentinel).
+    if (cache.has(matchId)) {
+      socket.emit("state", { matchId, state: cache.get(matchId) ?? null })
+      return
+    }
+
+    // Slow path: no cached state. Emit a null placeholder immediately so the
+    // viewer isn't blocked, then asynchronously fetch the latest persisted
+    // state from Match.liveStateJson (DB is the source of truth across
+    // deploys). When the fetch resolves, emit the DB state to THIS socket —
+    // the room-wide broadcast happens via the scorer's operator:state event.
+    socket.emit("state", { matchId, state: null })
+    fetchMatchState(matchId)
+      .then((state) => {
+        if (state != null) {
+          socket.emit("state", { matchId, state })
+        }
+      })
+      .catch(() => {
+        // fetchMatchState already swallows errors internally; this guard is
+        // belt-and-suspenders so a rejected promise never crashes the service.
+      })
   })
 
   socket.on("unsubscribe", (matchId: string) => {
@@ -251,10 +383,14 @@ setInterval(() => {
 
 const PORT = 3003
 httpServer.listen(PORT, async () => {
+  // Fail-loud warning if the shared secrets are still the insecure defaults
+  // shipped in source. Does NOT throw — see warnIfDefaultSecrets above.
+  warnIfDefaultSecrets()
   await attachRedisAdapter()
   console.log(`✅ Score service (socket.io) running on port ${PORT}`)
   console.log(`   caps: total=${MAX_TOTAL_CONNECTIONS} per-match=${MAX_PER_MATCH} gap=${MIN_BROADCAST_GAP_MS}ms`)
   console.log(`   auth: signed scorer tokens (HMAC-SHA256) + match->series guard via ${APP_ORIGIN}`)
+  console.log(`   hydrate: fetches Match.liveStateJson on subscribe when cache is empty (DB as source of truth)`)
 })
 
 process.on("SIGTERM", () => httpServer.close(() => process.exit(0)))

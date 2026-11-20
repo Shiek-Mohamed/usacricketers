@@ -18,9 +18,17 @@
  * The current row's own slug is excluded from the uniqueness check during
  * updates so an admin can save a Series without false-positive collisions
  * against itself.
+ *
+ * NOTE: The Series model in `prisma/schema.prisma` does NOT have a `slug`
+ * column (the project stores slugs on League/Team/Player, but not Series).
+ * The previous implementation called `db.series.findUnique({ where: { slug } })`,
+ * which queried a non-existent field and broke TypeScript compilation. Since
+ * there is no slug column to collide against, the uniqueness check is now a
+ * no-op (always returns "not taken") and the resolver is safe to call. If a
+ * slug column is added to the Series model in the future, restore the
+ * `db.series.findUnique({ where: { slug } })` lookups.
  */
 
-import { db } from "./db"
 import {
   slugifyLeagueName,
   isReservedSlug,
@@ -42,7 +50,7 @@ export class SlugError extends Error {
  * @param currentSeriesId  the id of the Series being updated (undefined on create)
  *
  * @returns the final slug string to write to the DB.
- * @throws SlugError on reserved or already-taken explicit slugs.
+ * @throws SlugError on reserved or empty slugs.
  */
 export async function resolveSeriesSlug(
   bodySlug: unknown,
@@ -60,16 +68,9 @@ export async function resolveSeriesSlug(
         "reserved",
       )
     }
-    const clash = await db.series.findUnique({
-      where: { slug: explicit },
-      select: { id: true },
-    })
-    if (clash && clash.id !== currentSeriesId) {
-      throw new SlugError(
-        `Slug "${explicit}" is already in use by another league.`,
-        "taken",
-      )
-    }
+    // The Series model has no `slug` column, so there is nothing to collide
+    // against in the DB. Accept the explicit slug as-is. (If a slug column
+    // is added later, restore the findUnique collision check here.)
     return explicit
   }
 
@@ -82,14 +83,10 @@ export async function resolveSeriesSlug(
   }
   const base = slugifyLeagueName(bodyName)
 
-  const existsFn = async (slug: string) => {
-    const clash = await db.series.findUnique({
-      where: { slug },
-      select: { id: true },
-    })
-    if (!clash) return false
-    return clash.id !== currentSeriesId
-  }
+  // With no `slug` column on Series, no slug can ever be taken. The
+  // existsFn always returns false so ensureUniqueLeagueSlug returns the
+  // base slug immediately (skipping the -2/-3 suffix loop).
+  const existsFn = async (_slug: string) => false
 
   return ensureUniqueLeagueSlug(base, existsFn, currentSeriesId)
 }

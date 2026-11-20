@@ -69,13 +69,22 @@ COPY --from=builder /app/public ./public
 # Copy the DB file (if it exists; the volume mount will override this)
 COPY --from=builder /app/db ./db
 
-# Copy prisma schema + generated client (the runtime Prisma CLIENT — used by
-# the app's queries and by sync-db.js). Also copy the prisma CLI for
-# `prisma db push` on boot (creates tables in PostgreSQL).
+# Copy prisma schema + generated client engine (the runtime Prisma CLIENT —
+# used by the app's queries). The @prisma/client package code is already
+# bundled into the Next.js standalone output; .prisma holds the query-engine
+# binary which standalone doesn't bundle.
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
+# Install the prisma CLI fresh with its FULL dependency tree (effect, c12,
+# deepmerge-ts, empathic + all transitives). The previous selective copy of
+# node_modules/prisma + node_modules/@prisma missed these external deps,
+# causing "Cannot find module 'effect'" on boot — so `prisma db push` never
+# ran and schema changes (new columns) never reached prod Postgres. Installing
+# prisma@6.19.2 (matching the builder's resolved version) lets npm resolve the
+# entire tree so the boot `prisma db push --accept-data-loss` in start-all.sh
+# actually applies the schema.
+RUN cd /app && npm install prisma@6.19.2 --no-save
 
 # DB schema fixup script (legacy — only runs if sync-db.js exists)
 COPY --from=builder /app/sync-db.js ./sync-db.js

@@ -161,7 +161,18 @@ export function SeriesDetailView() {
 
           {seriesMatches.some((m) => m.status === "completed") && (
             <TabsContent value="standings" className="mt-4">
-              <Standings matches={seriesMatches} seriesId={id ?? undefined} />
+              <Standings
+                matches={seriesMatches}
+                seriesId={id ?? undefined}
+                config={series ? {
+                  winPoints: series.winPoints,
+                  tiePoints: series.tiePoints,
+                  lossPoints: series.lossPoints,
+                  abandonedPoints: series.abandonedPoints,
+                  bonusPoints: series.bonusPoints,
+                  rankCriteria: series.rankCriteria,
+                } : undefined}
+              />
             </TabsContent>
           )}
 

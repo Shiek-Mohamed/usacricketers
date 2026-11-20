@@ -81,16 +81,37 @@ function matchOutcome(match: Match): { team1: "W" | "L" | "T" | "NR"; team2: "W"
  * is supplied. Without `seriesId` the table behaves exactly as before
  * (pure match-derived).
  */
+export interface StandingsConfig {
+  winPoints: number
+  tiePoints: number
+  lossPoints: number
+  abandonedPoints: number
+  bonusPoints: number
+  rankCriteria: string
+}
+
+const DEFAULT_CONFIG: StandingsConfig = {
+  winPoints: 2,
+  tiePoints: 1,
+  lossPoints: 0,
+  abandonedPoints: 1,
+  bonusPoints: 0,
+  rankCriteria: "points,nrr,headToHead,wins,winPercentage",
+}
+
 export function Standings({
   matches,
   seriesId,
+  config,
 }: {
   matches: Match[]
   teams?: Team[]
   seriesId?: string
+  config?: StandingsConfig
 }) {
   const navigate = useAppStore((s) => s.navigate)
   const [penaltyMap, setPenaltyMap] = useState<Map<string, PenaltyItem[]> | null>(null)
+  const cfg = config ?? DEFAULT_CONFIG
 
   useEffect(() => {
     if (!seriesId) return
@@ -152,10 +173,10 @@ export function Standings({
         const row = map.get(teamId)
         if (!row) continue
         row.played++
-        if (res === "W") { row.won++; row.points += 2 }
-        else if (res === "L") row.lost++
-        else if (res === "T") { row.tied++; row.points += 1 }
-        else if (res === "NR") { row.noResult++; row.points += 1 }
+        if (res === "W") { row.won++; row.points += cfg.winPoints + cfg.bonusPoints }
+        else if (res === "L") { row.lost++; row.points += cfg.lossPoints }
+        else if (res === "T") { row.tied++; row.points += cfg.tiePoints }
+        else if (res === "NR") { row.noResult++; row.points += cfg.abandonedPoints }
         // NRR data
         const sc = m.scorecard
         if (sc?.innings) {
@@ -190,15 +211,40 @@ export function Standings({
       row.effectivePoints = row.points - row.penaltyPoints
       row.effectiveNrr = Number((row.nrr + row.penaltyNrr).toFixed(3))
     }
+    // Head-to-head wins map for the headToHead tie-breaker.
+    const h2h = new Map<string, number>()
+    for (const m of matches) {
+      const o = matchOutcome(m)
+      if (!o || o.team1 === "NR" || o.team1 === "T") continue
+      if (o.team1 === "W") h2h.set(`${m.team1Id}|${m.team2Id}`, (h2h.get(`${m.team1Id}|${m.team2Id}`) ?? 0) + 1)
+      else if (o.team2 === "W") h2h.set(`${m.team2Id}|${m.team1Id}`, (h2h.get(`${m.team2Id}|${m.team1Id}`) ?? 0) + 1)
+    }
+    const criteria = cfg.rankCriteria.split(",").map((s) => s.trim()).filter(Boolean)
+    const order = criteria.length > 0 ? criteria : ["points", "nrr", "wins"]
+    const cmp = (a: StandingRow, b: StandingRow): number => {
+      for (const c of order) {
+        let diff = 0
+        if (c === "points") diff = b.effectivePoints - a.effectivePoints
+        else if (c === "nrr") diff = b.effectiveNrr - a.effectiveNrr
+        else if (c === "wins") diff = b.won - a.won
+        else if (c === "headToHead") {
+          const ab = h2h.get(`${a.teamId}|${b.teamId}`) ?? 0
+          const ba = h2h.get(`${b.teamId}|${a.teamId}`) ?? 0
+          diff = ba - ab
+        }
+        else if (c === "winPercentage") {
+          const pa = a.played > 0 ? a.won / a.played : 0
+          const pb = b.played > 0 ? b.won / b.played : 0
+          diff = pb - pa
+        }
+        if (diff !== 0) return diff
+      }
+      return 0
+    }
     return Array.from(map.values())
       .filter((r) => r.played > 0)
-      .sort(
-        (a, b) =>
-          b.effectivePoints - a.effectivePoints ||
-          b.won - a.won ||
-          b.effectiveNrr - a.effectiveNrr,
-      )
-  }, [matches, penaltyMap])
+      .sort(cmp)
+  }, [matches, penaltyMap, cfg])
 
   if (rows.length === 0) return null
 

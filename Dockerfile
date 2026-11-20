@@ -37,6 +37,15 @@ RUN bun run prisma generate
 # Copy the rest of the source
 COPY . .
 
+# Re-apply the postgres provider swap + directUrl insertion. `COPY . .` above
+# clobbers the sed-modified prisma/schema.prisma (from the builder stage above)
+# with the host's dev sqlite version. Without this re-sed, the runtime schema
+# has provider="sqlite", so the boot `prisma db push` fails with "the URL must
+# start with the protocol file:" (sqlite provider + postgres DATABASE_URL) and
+# schema migrations never reach prod Postgres.
+RUN sed -i 's/provider *= *"sqlite"/provider = "postgresql"/' prisma/schema.prisma && \
+    sed -i '/url *= *env("DATABASE_URL")/a\  directUrl = env("DIRECT_URL")' prisma/schema.prisma
+
 # Build the Next.js standalone output
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN bun run build

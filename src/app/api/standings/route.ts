@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
     }),
     db.series.findUnique({
       where: { id: seriesId },
-      select: { winPoints: true, lossPoints: true, tiePoints: true, abandonedPoints: true, rankCriteria: true },
+      select: { winPoints: true, lossPoints: true, tiePoints: true, abandonedPoints: true, bonusPoints: true, rankCriteria: true },
     }),
   ])
   // Points system + ranking criteria for this series. Defaults match the
@@ -42,7 +42,8 @@ export async function GET(req: NextRequest) {
     lossPoints: seriesCfg?.lossPoints ?? 0,
     tiePoints: seriesCfg?.tiePoints ?? 1,
     abandonedPoints: seriesCfg?.abandonedPoints ?? 1,
-    rankCriteria: seriesCfg?.rankCriteria ?? "points,nrr,wins",
+    bonusPoints: seriesCfg?.bonusPoints ?? 0,
+    rankCriteria: seriesCfg?.rankCriteria ?? "points,nrr,headToHead,wins,winPercentage",
   }
 
   type PenaltyInfo = { id: string; type: string; value: number; reason: string }
@@ -149,11 +150,11 @@ export async function GET(req: NextRequest) {
       const t2Won = result.includes(t2.teamName.toLowerCase()) || result.includes(t2.teamShortName.toLowerCase())
       if (t1Won && !t2Won) {
         t1.won++; t2.lost++
-        t1.points += cfg.winPoints
+        t1.points += cfg.winPoints + cfg.bonusPoints
         t2.points += cfg.lossPoints
       } else if (t2Won && !t1Won) {
         t2.won++; t1.lost++
-        t2.points += cfg.winPoints
+        t2.points += cfg.winPoints + cfg.bonusPoints
         t1.points += cfg.lossPoints
       } else {
         // Can't determine — skip
@@ -166,6 +167,21 @@ export async function GET(req: NextRequest) {
     const forRR = s.forOvers > 0 ? s.forRuns / s.forOvers : 0
     const againstRR = s.againstOvers > 0 ? s.againstRuns / s.againstOvers : 0
     s.nrr = Number((forRR - againstRR).toFixed(3))
+  }
+
+  // Head-to-head wins map — h2h.get(`${aId}|${bId}`) = number of times team a
+  // beat team b. Used by the headToHead tie-breaker.
+  const h2h = new Map<string, number>()
+  for (const m of matches) {
+    const result = (m.result || "").toLowerCase()
+    if (!result || result.includes("abandoned") || result.includes("no result") || result.includes("no play") || result.includes("tied")) continue
+    const r1 = map.get(m.team1Id)
+    const r2 = map.get(m.team2Id)
+    if (!r1 || !r2) continue
+    const w1 = result.includes(r1.teamName.toLowerCase()) || result.includes(r1.teamShortName.toLowerCase())
+    const w2 = result.includes(r2.teamName.toLowerCase()) || result.includes(r2.teamShortName.toLowerCase())
+    if (w1 && !w2) h2h.set(`${m.team1Id}|${m.team2Id}`, (h2h.get(`${m.team1Id}|${m.team2Id}`) ?? 0) + 1)
+    else if (w2 && !w1) h2h.set(`${m.team2Id}|${m.team1Id}`, (h2h.get(`${m.team2Id}|${m.team1Id}`) ?? 0) + 1)
   }
 
   // Apply penalties. type="points" deducts `value` points; type="nrr" adds
@@ -197,6 +213,11 @@ export async function GET(req: NextRequest) {
         if (c === "points") diff = b.effectivePoints - a.effectivePoints
         else if (c === "nrr") diff = b.effectiveNrr - a.effectiveNrr
         else if (c === "wins") diff = b.won - a.won
+        else if (c === "headToHead") {
+          const ab = h2h.get(`${a.teamId}|${b.teamId}`) ?? 0
+          const ba = h2h.get(`${b.teamId}|${a.teamId}`) ?? 0
+          diff = ba - ab
+        }
         else if (c === "winPercentage") {
           const aPct = a.played > 0 ? (a.won / a.played) * 100 : 0
           const bPct = b.played > 0 ? (b.won / b.played) * 100 : 0

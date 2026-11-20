@@ -384,18 +384,18 @@ function TournamentEditor({
                   {rankCriteria.map((c, i) => (
                     <div key={c} className="flex items-center gap-2 rounded-md border bg-muted/20 px-3 py-2">
                       <span className="text-xs font-semibold text-muted-foreground tabular-nums">{i + 1}.</span>
-                      <span className="flex-1 text-sm font-medium">{c === "points" ? "Most Points" : c === "nrr" ? "NRR" : c === "wins" ? "No. of wins" : "Win percentage"}</span>
+                      <span className="flex-1 text-sm font-medium">{c === "points" ? "Most Points" : c === "nrr" ? "NRR" : c === "headToHead" ? "Head to head" : c === "wins" ? "No. of wins" : "Win percentage"}</span>
                       <Button type="button" size="icon" variant="ghost" className="h-7 w-7" disabled={i === 0} onClick={() => { const arr = [...rankCriteria]; [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]]; setRankCriteria(arr) }}><ChevronUp className="h-3.5 w-3.5" /></Button>
                       <Button type="button" size="icon" variant="ghost" className="h-7 w-7" disabled={i === rankCriteria.length - 1} onClick={() => { const arr = [...rankCriteria]; [arr[i + 1], arr[i]] = [arr[i], arr[i + 1]]; setRankCriteria(arr) }}><ChevronDown className="h-3.5 w-3.5" /></Button>
                       <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive" disabled={rankCriteria.length <= 1} onClick={() => setRankCriteria(rankCriteria.filter((_, j) => j !== i))}><X className="h-3.5 w-3.5" /></Button>
                     </div>
                   ))}
                 </div>
-                {["points", "nrr", "wins", "winPercentage"].filter((c) => !rankCriteria.includes(c)).length > 0 && (
+                {["points", "nrr", "headToHead", "wins", "winPercentage"].filter((c) => !rankCriteria.includes(c)).length > 0 && (
                   <Select value="" onValueChange={(c) => { if (c) setRankCriteria([...rankCriteria, c]) }}>
                     <SelectTrigger className="h-8 w-44 text-xs"><SelectValue placeholder="+ Add criterion" /></SelectTrigger>
                     <SelectContent>
-                      {["points", "nrr", "wins", "winPercentage"].filter((c) => !rankCriteria.includes(c)).map((c) => <SelectItem key={c} value={c}>{c === "points" ? "Most Points" : c === "nrr" ? "NRR" : c === "wins" ? "No. of wins" : "Win percentage"}</SelectItem>)}
+                      {["points", "nrr", "headToHead", "wins", "winPercentage"].filter((c) => !rankCriteria.includes(c)).map((c) => <SelectItem key={c} value={c}>{c === "points" ? "Most Points" : c === "nrr" ? "NRR" : c === "headToHead" ? "Head to head" : c === "wins" ? "No. of wins" : "Win percentage"}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 )}

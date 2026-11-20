@@ -37,6 +37,12 @@ export async function POST(req: NextRequest) {
       playersPerTeam: body.playersPerTeam ? Number(body.playersPerTeam) : 11,
       squadLimit: body.squadLimit ? Number(body.squadLimit) : 0,
       logoUrl: body.logoUrl || null,
+      winPoints: body.winPoints !== undefined ? Number(body.winPoints) : 2,
+      lossPoints: body.lossPoints !== undefined ? Number(body.lossPoints) : 0,
+      tiePoints: body.tiePoints !== undefined ? Number(body.tiePoints) : 1,
+      abandonedPoints: body.abandonedPoints !== undefined ? Number(body.abandonedPoints) : 1,
+      bonusPoints: body.bonusPoints !== undefined ? Number(body.bonusPoints) : 0,
+      rankCriteria: body.rankCriteria || "points,nrr,headToHead,wins,winPercentage",
     },
     include: { tournamentTeams: { include: { team: true } } },
   })

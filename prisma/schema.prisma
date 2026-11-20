@@ -94,6 +94,17 @@ model Series {
   playersPerTeam  Int      @default(11)
   squadLimit      Int      @default(0) // 0 = unlimited squad size
   logoUrl         String?
+  // Points system + ranking criteria (CricClub "Points Settings" + "How to
+  // Rank Teams"). Applied by GET /api/standings when computing the table
+  // instead of the hardcoded 2/1/0.
+  winPoints       Int      @default(2)
+  tiePoints       Int      @default(1)
+  lossPoints      Int      @default(0)
+  abandonedPoints Int      @default(1) // awarded to both teams for no-result matches
+  bonusPoints     Int      @default(0) // added to each win
+  // Tie-breaker order for ranking teams — comma-separated criteria keys:
+  // points | nrr | headToHead | wins | winPercentage
+  rankCriteria    String   @default("points,nrr,headToHead,wins,winPercentage")
   matches      Match[]
   tournamentTeams TournamentTeam[]
   penalties    Penalty[]

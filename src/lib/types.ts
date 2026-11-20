@@ -156,6 +156,12 @@ export interface Series {
   playersPerTeam: number
   squadLimit: number
   logoUrl: string | null
+  winPoints: number
+  lossPoints: number
+  tiePoints: number
+  abandonedPoints: number
+  bonusPoints: number
+  rankCriteria: string
   teams: Team[]
   createdAt: string
   updatedAt: string

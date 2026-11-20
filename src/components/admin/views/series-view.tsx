@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import {
-  Plus, Pencil, Trash2, Save, ArrowLeft, Trophy, Users, X, Radio, Scale,
+  Plus, Pencil, Trash2, Save, ArrowLeft, Trophy, Users, X, Radio, Scale, BarChart3, ChevronUp, ChevronDown,
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -151,6 +151,13 @@ function TournamentEditor({
   const [playersPerTeam, setPlayersPerTeam] = useState(tournament?.playersPerTeam ?? 11)
   const [squadLimit, setSquadLimit] = useState(tournament?.squadLimit ?? 0)
   const [logoUrl, setLogoUrl] = useState(tournament?.logoUrl ?? "")
+  // Points system + ranking criteria (CricClub Points Settings + How to Rank)
+  const [winPoints, setWinPoints] = useState(tournament?.winPoints ?? 2)
+  const [lossPoints, setLossPoints] = useState(tournament?.lossPoints ?? 0)
+  const [tiePoints, setTiePoints] = useState(tournament?.tiePoints ?? 1)
+  const [abandonedPoints, setAbandonedPoints] = useState(tournament?.abandonedPoints ?? 1)
+  const [bonusPoints, setBonusPoints] = useState(tournament?.bonusPoints ?? 0)
+  const [rankCriteria, setRankCriteria] = useState<string[]>((tournament?.rankCriteria ?? "points,nrr,wins").split(",").map((s) => s.trim()).filter(Boolean))
   const [saving, setSaving] = useState(false)
 
   // New-team quick-create form
@@ -179,7 +186,7 @@ function TournamentEditor({
       // When "Custom" is selected, store as "T{N}" (e.g. "T12", "T8") so
       // maxOversForFormat() can parse it.
       const actualFormat = format === "Custom" ? `T${customOvers}` : format
-      const payload = { name, shortName: shortName || name.slice(0, 20), format: actualFormat, season, status, description, startDate, endDate, ballType, category, level, playersPerTeam: Number(playersPerTeam), squadLimit: Number(squadLimit), logoUrl: logoUrl || null }
+      const payload = { name, shortName: shortName || name.slice(0, 20), format: actualFormat, season, status, description, startDate, endDate, ballType, category, level, playersPerTeam: Number(playersPerTeam), squadLimit: Number(squadLimit), logoUrl: logoUrl || null, winPoints: Number(winPoints), lossPoints: Number(lossPoints), tiePoints: Number(tiePoints), abandonedPoints: Number(abandonedPoints), bonusPoints: Number(bonusPoints), rankCriteria: rankCriteria.join(",") }
       if (tournament) { await api.series.update(tournament.id, payload); toast.success("Tournament saved") }
       else { await api.series.create(payload); toast.success("Tournament created") }
       onSave()
@@ -284,6 +291,9 @@ function TournamentEditor({
             <TabsTrigger value="details" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none whitespace-nowrap">
               <Trophy className="h-4 w-4" /> Details
             </TabsTrigger>
+            <TabsTrigger value="points" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none whitespace-nowrap">
+              <BarChart3 className="h-4 w-4" /> Points & Ranking
+            </TabsTrigger>
             <TabsTrigger value="teams" className="gap-2 rounded-none border-b-[3px] border-transparent bg-transparent px-4 py-3 text-sm font-bold text-muted-foreground transition-colors data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none whitespace-nowrap">
               <Users className="h-4 w-4" /> Teams
             </TabsTrigger>
@@ -352,6 +362,44 @@ function TournamentEditor({
                 </div>
               </div>
               <div className="grid gap-1.5"><Label htmlFor="t-desc">Description</Label><Textarea id="t-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} /></div>
+            </CardContent></Card>
+          </TabsContent>
+
+          {/* Points & Ranking */}
+          <TabsContent value="points">
+            <Card><CardContent className="grid gap-4 p-4 sm:p-6">
+              <div className="flex items-center gap-2"><BarChart3 className="h-5 w-5 text-emerald-600" /><h2 className="text-base font-bold">Points System</h2></div>
+              <p className="text-xs text-muted-foreground">Points awarded per match outcome. Applied to the auto-computed standings table.</p>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                <div className="grid gap-1.5"><Label>Win</Label><Input type="number" min={0} value={winPoints} onChange={(e) => setWinPoints(Number(e.target.value) || 0)} /></div>
+                <div className="grid gap-1.5"><Label>Loss</Label><Input type="number" min={0} value={lossPoints} onChange={(e) => setLossPoints(Number(e.target.value) || 0)} /></div>
+                <div className="grid gap-1.5"><Label>Tie</Label><Input type="number" min={0} value={tiePoints} onChange={(e) => setTiePoints(Number(e.target.value) || 0)} /></div>
+                <div className="grid gap-1.5"><Label>Abandoned</Label><Input type="number" min={0} value={abandonedPoints} onChange={(e) => setAbandonedPoints(Number(e.target.value) || 0)} /></div>
+                <div className="grid gap-1.5"><Label>Bonus</Label><Input type="number" min={0} value={bonusPoints} onChange={(e) => setBonusPoints(Number(e.target.value) || 0)} /></div>
+              </div>
+              <div className="grid gap-1.5 pt-2">
+                <Label>How to rank teams (tie-breaker order)</Label>
+                <p className="text-xs text-muted-foreground">Higher-listed criteria are applied first when teams are level.</p>
+                <div className="space-y-1.5">
+                  {rankCriteria.map((c, i) => (
+                    <div key={c} className="flex items-center gap-2 rounded-md border bg-muted/20 px-3 py-2">
+                      <span className="text-xs font-semibold text-muted-foreground tabular-nums">{i + 1}.</span>
+                      <span className="flex-1 text-sm font-medium">{c === "points" ? "Most Points" : c === "nrr" ? "NRR" : c === "wins" ? "No. of wins" : "Win percentage"}</span>
+                      <Button type="button" size="icon" variant="ghost" className="h-7 w-7" disabled={i === 0} onClick={() => { const arr = [...rankCriteria]; [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]]; setRankCriteria(arr) }}><ChevronUp className="h-3.5 w-3.5" /></Button>
+                      <Button type="button" size="icon" variant="ghost" className="h-7 w-7" disabled={i === rankCriteria.length - 1} onClick={() => { const arr = [...rankCriteria]; [arr[i + 1], arr[i]] = [arr[i], arr[i + 1]]; setRankCriteria(arr) }}><ChevronDown className="h-3.5 w-3.5" /></Button>
+                      <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive" disabled={rankCriteria.length <= 1} onClick={() => setRankCriteria(rankCriteria.filter((_, j) => j !== i))}><X className="h-3.5 w-3.5" /></Button>
+                    </div>
+                  ))}
+                </div>
+                {["points", "nrr", "wins", "winPercentage"].filter((c) => !rankCriteria.includes(c)).length > 0 && (
+                  <Select value="" onValueChange={(c) => { if (c) setRankCriteria([...rankCriteria, c]) }}>
+                    <SelectTrigger className="h-8 w-44 text-xs"><SelectValue placeholder="+ Add criterion" /></SelectTrigger>
+                    <SelectContent>
+                      {["points", "nrr", "wins", "winPercentage"].filter((c) => !rankCriteria.includes(c)).map((c) => <SelectItem key={c} value={c}>{c === "points" ? "Most Points" : c === "nrr" ? "NRR" : c === "wins" ? "No. of wins" : "Win percentage"}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
             </CardContent></Card>
           </TabsContent>
 

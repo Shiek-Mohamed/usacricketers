@@ -35,6 +35,12 @@ export async function PUT(
   if (body.logoUrl !== undefined) data.logoUrl = body.logoUrl ? String(body.logoUrl) : null
   if (body.playersPerTeam !== undefined) data.playersPerTeam = Number(body.playersPerTeam) || 11
   if (body.squadLimit !== undefined) data.squadLimit = Number(body.squadLimit) || 0
+  if (body.winPoints !== undefined) data.winPoints = Number(body.winPoints) || 0
+  if (body.lossPoints !== undefined) data.lossPoints = Number(body.lossPoints) || 0
+  if (body.tiePoints !== undefined) data.tiePoints = Number(body.tiePoints) || 0
+  if (body.abandonedPoints !== undefined) data.abandonedPoints = Number(body.abandonedPoints) || 0
+  if (body.bonusPoints !== undefined) data.bonusPoints = Number(body.bonusPoints) || 0
+  if (body.rankCriteria !== undefined) data.rankCriteria = String(body.rankCriteria)
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "no fields to update" }, { status: 400 })
   }

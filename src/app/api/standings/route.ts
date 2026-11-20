@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   const seriesId = searchParams.get("seriesId")
   if (!seriesId) return NextResponse.json([])
 
-  const [matches, teamsInSeries, penalties] = await Promise.all([
+  const [matches, teamsInSeries, penalties, seriesCfg] = await Promise.all([
     db.match.findMany({
       where: { seriesId, status: "completed" },
       include: { team1: true, team2: true },
@@ -29,7 +29,21 @@ export async function GET(req: NextRequest) {
       include: { team: { select: { name: true, shortName: true } } },
       orderBy: { createdAt: "asc" },
     }),
+    db.series.findUnique({
+      where: { id: seriesId },
+      select: { winPoints: true, lossPoints: true, tiePoints: true, abandonedPoints: true, rankCriteria: true },
+    }),
   ])
+  // Points system + ranking criteria for this series. Defaults match the
+  // schema defaults so a series created before this feature still computes
+  // the classic 2/1/0 + points→NRR→wins table.
+  const cfg = {
+    winPoints: seriesCfg?.winPoints ?? 2,
+    lossPoints: seriesCfg?.lossPoints ?? 0,
+    tiePoints: seriesCfg?.tiePoints ?? 1,
+    abandonedPoints: seriesCfg?.abandonedPoints ?? 1,
+    rankCriteria: seriesCfg?.rankCriteria ?? "points,nrr,wins",
+  }
 
   type PenaltyInfo = { id: string; type: string; value: number; reason: string }
   type Standing = {
@@ -93,10 +107,20 @@ export async function GET(req: NextRequest) {
     if (!t1 || !t2) continue
 
     const result = (m.result || "").toLowerCase()
-    if (!result || result.includes("abandoned") || result.includes("no result") || result.includes("no play")) continue
+    const isNoResult = result.includes("no result")
+    // Abandoned / no-play (match didn't happen) — not counted as played.
+    if (!result || ((result.includes("abandoned") || result.includes("no play")) && !isNoResult)) continue
 
     t1.played++
     t2.played++
+
+    // No-result match (started, no result) — both teams get abandonedPoints,
+    // no runs/wickets counted toward NRR.
+    if (isNoResult) {
+      t1.points += cfg.abandonedPoints
+      t2.points += cfg.abandonedPoints
+      continue
+    }
 
     const sc = parseScorecard(m.scorecard)
     let t1Runs = 0, t2Runs = 0, t1Overs = 0, t2Overs = 0
@@ -119,16 +143,18 @@ export async function GET(req: NextRequest) {
 
     if (result.includes("tied")) {
       t1.tied++; t2.tied++
-      t1.points += 1; t2.points += 1
+      t1.points += cfg.tiePoints; t2.points += cfg.tiePoints
     } else {
       const t1Won = result.includes(t1.teamName.toLowerCase()) || result.includes(t1.teamShortName.toLowerCase())
       const t2Won = result.includes(t2.teamName.toLowerCase()) || result.includes(t2.teamShortName.toLowerCase())
       if (t1Won && !t2Won) {
         t1.won++; t2.lost++
-        t1.points += 2
+        t1.points += cfg.winPoints
+        t2.points += cfg.lossPoints
       } else if (t2Won && !t1Won) {
         t2.won++; t1.lost++
-        t2.points += 2
+        t2.points += cfg.winPoints
+        t1.points += cfg.lossPoints
       } else {
         // Can't determine — skip
       }
@@ -160,9 +186,26 @@ export async function GET(req: NextRequest) {
     s.effectiveNrr = Number((s.nrr + s.penaltyNrr).toFixed(3))
   }
 
+  // Rank by the series' configured tie-breaker order (default points→NRR→wins).
+  const criteria = cfg.rankCriteria.split(",").map((s) => s.trim()).filter(Boolean)
+  const order = criteria.length > 0 ? criteria : ["points", "nrr", "wins"]
   const standings = Array.from(map.values())
     .filter((s) => s.played > 0) // only show teams that have played at least 1 match
-    .sort((a, b) => b.effectivePoints - a.effectivePoints || b.effectiveNrr - a.effectiveNrr || b.won - a.won)
+    .sort((a, b) => {
+      for (const c of order) {
+        let diff = 0
+        if (c === "points") diff = b.effectivePoints - a.effectivePoints
+        else if (c === "nrr") diff = b.effectiveNrr - a.effectiveNrr
+        else if (c === "wins") diff = b.won - a.won
+        else if (c === "winPercentage") {
+          const aPct = a.played > 0 ? (a.won / a.played) * 100 : 0
+          const bPct = b.played > 0 ? (b.won / b.played) * 100 : 0
+          diff = bPct - aPct
+        }
+        if (diff !== 0) return diff
+      }
+      return 0
+    })
 
   const res = NextResponse.json(standings)
   res.headers.set("Cache-Control", "public, s-maxage=30, stale-while-revalidate=60")

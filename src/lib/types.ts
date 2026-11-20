@@ -140,6 +140,12 @@ export interface Player {
   updatedAt: string
 }
 
+/** A power-play over-range segment, e.g. overs 1–6 (powerPlay 1). */
+export interface PowerPlaySegment {
+  from: number
+  to: number
+}
+
 export interface Series {
   id: string
   name: string
@@ -162,6 +168,12 @@ export interface Series {
   abandonedPoints: number
   bonusPoints: number
   rankCriteria: string
+  // Group/stage structure (1 = single group / round-robin).
+  numberOfGroups: number
+  // Power-play configuration. powerPlayOvers is parsed from the JSON string
+  // column into a PowerPlaySegment[] for the API response.
+  powerPlayEnabled: boolean
+  powerPlayOvers: PowerPlaySegment[]
   teams: Team[]
   createdAt: string
   updatedAt: string
@@ -372,6 +384,27 @@ export function parseScorecard(json: string | null | undefined): Scorecard | nul
     return p as Scorecard
   } catch {
     return null
+  }
+}
+
+/**
+ * Parse the Series.powerPlayOvers JSON-string column into a PowerPlaySegment[].
+ * Accepts `[{from,to},...]` or a legacy `[[from,to],...]` shape; non-array /
+ * malformed values return [] so the editor always starts from a clean list.
+ */
+export function parsePowerPlayOvers(json: string | null | undefined): PowerPlaySegment[] {
+  if (!json) return []
+  try {
+    const p = JSON.parse(json)
+    if (!Array.isArray(p)) return []
+    return p
+      .map((seg: any) => {
+        if (Array.isArray(seg)) return { from: Number(seg[0]) || 0, to: Number(seg[1]) || 0 }
+        return { from: Number(seg?.from) || 0, to: Number(seg?.to) || 0 }
+      })
+      .filter((seg: PowerPlaySegment) => seg.to > 0)
+  } catch {
+    return []
   }
 }
 

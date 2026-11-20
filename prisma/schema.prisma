@@ -105,6 +105,17 @@ model Series {
   // Tie-breaker order for ranking teams — comma-separated criteria keys:
   // points | nrr | headToHead | wins | winPercentage
   rankCriteria    String   @default("points,nrr,headToHead,wins,winPercentage")
+  // Group/stage structure (CricClub "Number of Groups"). 1 = single group /
+  // round-robin; >1 splits teams into that many groups for a group-stage →
+  // knockout structure. Stored now so editors can capture it; downstream
+  // match-generation + standings grouping consume it later.
+  numberOfGroups  Int      @default(1)
+  // Power Play configuration (CricClub "Series Format → Power Play").
+  // powerPlayEnabled gates whether power-play overs apply; powerPlayOvers is
+  // a JSON string array of {from, to} over-ranges, e.g.
+  // [{"from":1,"to":6},{"from":16,"to":20}].
+  powerPlayEnabled Boolean  @default(false)
+  powerPlayOvers   String   @default("") // JSON [{from,to}]
   matches      Match[]
   tournamentTeams TournamentTeam[]
   penalties    Penalty[]

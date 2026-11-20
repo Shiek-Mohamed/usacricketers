@@ -1,4 +1,4 @@
-import { parseBattingStats, parseBowlingStats, parseCategories, parseScorecard } from "./types"
+import { parseBattingStats, parseBowlingStats, parseCategories, parsePowerPlayOvers, parseScorecard } from "./types"
 import type { Article, Banner, Gallery, LeagueAdmin, Match, PhotoItem, Player, Scorer, Series, SidebarBlock, SiteAdmin, Team, Video } from "./types"
 import type { Prisma } from "@prisma/client"
 
@@ -74,6 +74,9 @@ export function serializeSeries(
     abandonedPoints: s.abandonedPoints,
     bonusPoints: s.bonusPoints,
     rankCriteria: s.rankCriteria,
+    numberOfGroups: s.numberOfGroups,
+    powerPlayEnabled: s.powerPlayEnabled,
+    powerPlayOvers: parsePowerPlayOvers(s.powerPlayOvers),
     teams: (s as any).tournamentTeams?.map((tt: any) => serializeTeam(tt.team)) ?? [],
     createdAt: toISO(s.createdAt),
     updatedAt: toISO(s.updatedAt),

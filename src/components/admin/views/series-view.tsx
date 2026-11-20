@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import { useSeries, useTeams, useMatches } from "@/lib/use-data"
 import { useAppStore } from "@/lib/store"
 import { api } from "@/lib/api"
@@ -24,12 +24,14 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import {
   Plus, Pencil, Trash2, Save, ArrowLeft, Trophy, Users, X, Radio, Scale, BarChart3, ChevronUp, ChevronDown,
+  Info, Zap, ClipboardList, Pointer, Gem,
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
-import type { Series, Team } from "@/lib/types"
+import type { Series, Team, PowerPlaySegment } from "@/lib/types"
 import { BulkPlayersDialog } from "@/components/admin/bulk-players/bulk-players-dialog"
 import { parsePlayerRows } from "@/components/admin/bulk-players/bulk-players-dialog"
 import { PenaltiesCard } from "@/components/admin/penalties-card"
@@ -38,6 +40,54 @@ import { UploadButton } from "@/components/admin/upload-button"
 const SCROLLBAR = "[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border"
 const FORMATS = ["Test", "ODI", "T20I", "T10", "T25", "T30", "T35", "Custom"] as const
 const STATUSES = ["upcoming", "ongoing", "completed"] as const
+const FORMAT_OVERS: Record<string, number> = { Test: 90, ODI: 50, T20I: 20, T10: 10, T25: 25, T30: 30, T35: 35 }
+
+/** Small ⓘ info tooltip — matches the CricClub Create-Series info icons. */
+function InfoTip({ text }: { text: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button type="button" className="inline-flex text-muted-foreground hover:text-foreground" aria-label="More info">
+          <Info className="h-3.5 w-3.5" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs">{text}</TooltipContent>
+    </Tooltip>
+  )
+}
+
+/** Sectioned card with a colored icon badge + title + description, matching
+ *  the CricClub Create-Series section layout. */
+function SectionCard({
+  icon, title, description, accent = "emerald", children,
+}: {
+  icon: ReactNode
+  title: string
+  description: string
+  accent?: "emerald" | "amber" | "violet" | "slate"
+  children: ReactNode
+}) {
+  const accents: Record<string, string> = {
+    emerald: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+    amber: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+    violet: "bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300",
+    slate: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+  }
+  return (
+    <Card>
+      <CardContent className="space-y-4 p-4 sm:p-6">
+        <div className="flex items-center gap-3">
+          <div className={cn("flex h-9 w-9 items-center justify-center rounded-lg", accents[accent])}>{icon}</div>
+          <div>
+            <h3 className="text-sm font-bold">{title}</h3>
+            <p className="text-xs text-muted-foreground">{description}</p>
+          </div>
+        </div>
+        {children}
+      </CardContent>
+    </Card>
+  )
+}
 
 export function AdminSeriesView() {
   const { data, loading, refetch } = useSeries()
@@ -158,6 +208,13 @@ function TournamentEditor({
   const [abandonedPoints, setAbandonedPoints] = useState(tournament?.abandonedPoints ?? 1)
   const [bonusPoints, setBonusPoints] = useState(tournament?.bonusPoints ?? 0)
   const [rankCriteria, setRankCriteria] = useState<string[]>((tournament?.rankCriteria ?? "points,nrr,wins").split(",").map((s) => s.trim()).filter(Boolean))
+  // Group/stage + power-play config (CricClub "Create Series Info")
+  const [numberOfGroups, setNumberOfGroups] = useState(tournament?.numberOfGroups ?? 1)
+  const [powerPlayEnabled, setPowerPlayEnabled] = useState(tournament?.powerPlayEnabled ?? false)
+  const [powerPlaySegments, setPowerPlaySegments] = useState<PowerPlaySegment[]>(tournament?.powerPlayOvers ?? [])
+  // Squad-limit toggle (mockup: "Is the team squad size limited?"). Off =
+  // unlimited (squadLimit 0); On reveals a max-players number input.
+  const [squadLimited, setSquadLimited] = useState((tournament?.squadLimit ?? 0) > 0)
   const [saving, setSaving] = useState(false)
 
   // New-team quick-create form
@@ -178,6 +235,10 @@ function TournamentEditor({
   const allTeams = teamsApi.data ?? []
   const availableTeams = allTeams.filter((t) => !tournamentTeams.some((tt) => tt.id === t.id))
   const tournamentMatches = (matchesApi.data ?? []).filter((m) => m.seriesId === tournament?.id)
+  // Overs per side for the "Series Format" section — derived from the format
+  // for standard formats, or the custom-overs stepper when "Custom" is chosen.
+  const isCustomFormat = format === "Custom" || /^T\d+$/i.test(format)
+  const oversPerSide = isCustomFormat ? customOvers : (FORMAT_OVERS[format] ?? 20)
 
   async function handleSave() {
     if (!name.trim()) { toast.error("Name is required"); return }
@@ -186,7 +247,7 @@ function TournamentEditor({
       // When "Custom" is selected, store as "T{N}" (e.g. "T12", "T8") so
       // maxOversForFormat() can parse it.
       const actualFormat = format === "Custom" ? `T${customOvers}` : format
-      const payload = { name, shortName: shortName || name.slice(0, 20), format: actualFormat, season, status, description, startDate, endDate, ballType, category, level, playersPerTeam: Number(playersPerTeam), squadLimit: Number(squadLimit), logoUrl: logoUrl || null, winPoints: Number(winPoints), lossPoints: Number(lossPoints), tiePoints: Number(tiePoints), abandonedPoints: Number(abandonedPoints), bonusPoints: Number(bonusPoints), rankCriteria: rankCriteria.join(",") }
+      const payload = { name, shortName: shortName || name.slice(0, 20), format: actualFormat, season, status, description, startDate, endDate, ballType, category, level, playersPerTeam: Number(playersPerTeam), squadLimit: squadLimited ? Number(squadLimit) || 15 : 0, logoUrl: logoUrl || null, winPoints: Number(winPoints), lossPoints: Number(lossPoints), tiePoints: Number(tiePoints), abandonedPoints: Number(abandonedPoints), bonusPoints: Number(bonusPoints), rankCriteria: rankCriteria.join(","), numberOfGroups: Number(numberOfGroups), powerPlayEnabled, powerPlayOvers: powerPlaySegments }
       if (tournament) { await api.series.update(tournament.id, payload); toast.success("Tournament saved") }
       else { await api.series.create(payload); toast.success("Tournament created") }
       onSave()
@@ -309,66 +370,147 @@ function TournamentEditor({
             )}
           </TabsList>
 
-          {/* Details */}
+          {/* Details — sectioned to mirror the CricClub Create-Series Info screen */}
           <TabsContent value="details">
-            <Card><CardContent className="grid gap-4 p-4 sm:p-6">
-              <div className="grid gap-1.5"><Label htmlFor="t-name">Tournament name</Label><Input id="t-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Sunday T20 League 2025" /></div>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <div className="grid gap-1.5"><Label>Short name</Label><Input value={shortName} onChange={(e) => setShortName(e.target.value)} placeholder="STL 2025" /></div>
+            <div className="space-y-4">
+
+              {/* ── Basic Details ── */}
+              <SectionCard
+                icon={<ClipboardList className="h-4 w-4" />}
+                accent="emerald"
+                title="Basic Details"
+                description="Essential information about your series"
+              >
                 <div className="grid gap-1.5">
-                  <Label>Format</Label>
-                  <Select
-                    value={format === "Custom" || /^T\d+$/i.test(format) ? "Custom" : format}
-                    onValueChange={(v) => setFormat(v)}
-                  >
-                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                    <SelectContent>{FORMATS.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
-                  </Select>
-                  {format === "Custom" && (
-                    <div className="flex items-center gap-2 mt-1">
-                      <Input
-                        type="number"
-                        min="1"
-                        max="50"
-                        value={customOvers}
-                        onChange={(e) => setCustomOvers(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
-                        className="w-20"
-                      />
-                      <span className="text-xs text-muted-foreground">overs per side</span>
+                  <Label htmlFor="t-name">Series Name <span className="text-destructive">*</span></Label>
+                  <Input id="t-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter Series Name" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-1.5"><Label>Start Date <span className="text-destructive">*</span></Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></div>
+                  <div className="grid gap-1.5"><Label>End Date</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <div className="grid gap-1.5"><Label>Short name</Label><Input value={shortName} onChange={(e) => setShortName(e.target.value)} placeholder="STL 2025" /></div>
+                  <div className="grid gap-1.5"><Label>Season</Label><Input value={season} onChange={(e) => setSeason(e.target.value)} placeholder="2025" /></div>
+                  <div className="grid gap-1.5"><Label>Status</Label><Select value={status} onValueChange={setStatus}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{STATUSES.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent></Select></div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <div className="grid gap-1.5">
+                    <Label className="flex items-center gap-1">Number of Groups <InfoTip text="Split teams into this many groups for a group-stage → knockout structure. 1 = single round-robin." /></Label>
+                    <Input type="number" min={1} max={16} value={numberOfGroups} onChange={(e) => setNumberOfGroups(Math.max(1, Number(e.target.value) || 1))} />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="flex items-center gap-1">Ball Type <InfoTip text="The type of ball used in this series — affects scoring norms." /></Label>
+                    <Select value={ballType} onValueChange={setBallType}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{["Leather","Hard Tennis","Soft Tennis","Tape Ball"].map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="flex items-center gap-1">Players Allowed per Team <InfoTip text="Number of players per side on the field (default 11)." /></Label>
+                    <Input type="number" min={1} max={20} value={playersPerTeam} onChange={(e) => setPlayersPerTeam(Number(e.target.value) || 11)} />
+                  </div>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label>Series logo</Label>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {logoUrl ? <img src={logoUrl} alt="Series logo" className="h-12 w-12 rounded-lg border object-cover" /> : null}
+                    <UploadButton label="Upload logo" withBrowse onUploaded={(url) => setLogoUrl(url)} />
+                    {logoUrl && <Button type="button" variant="ghost" size="sm" onClick={() => setLogoUrl("")}>Remove</Button>}
+                  </div>
+                </div>
+                <div className="grid gap-1.5"><Label htmlFor="t-desc">Description</Label><Textarea id="t-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} /></div>
+              </SectionCard>
+
+              {/* ── Team & Squad Settings ── */}
+              <SectionCard
+                icon={<Users className="h-4 w-4" />}
+                accent="emerald"
+                title="Team & Squad Settings"
+                description="Configure team limits and club structure"
+              >
+                <div className="flex items-center justify-between gap-4 rounded-lg border bg-muted/20 px-4 py-3">
+                  <div className="space-y-0.5">
+                    <Label className="flex items-center gap-1 text-sm font-medium">Is the team squad size limited? <InfoTip text="When enabled, set the maximum squad size each team can register." /></Label>
+                    <p className="text-xs text-muted-foreground">Off = unlimited squad size.</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={cn("text-xs font-semibold", !squadLimited ? "text-foreground" : "text-muted-foreground")}>No</span>
+                    <Switch checked={squadLimited} onCheckedChange={(v) => { setSquadLimited(v); if (!v) setSquadLimit(0) }} />
+                    <span className={cn("text-xs font-semibold", squadLimited ? "text-foreground" : "text-muted-foreground")}>Yes</span>
+                  </div>
+                </div>
+                {squadLimited && (
+                  <div className="grid max-w-xs gap-1.5">
+                    <Label>Squad limit (max players per team)</Label>
+                    <Input type="number" min={1} value={squadLimit === 0 ? 15 : squadLimit} onChange={(e) => setSquadLimit(Number(e.target.value) || 15)} />
+                  </div>
+                )}
+              </SectionCard>
+
+              {/* ── Series Format ── */}
+              <SectionCard
+                icon={<Pointer className="h-4 w-4" />}
+                accent="amber"
+                title="Series Format"
+                description="Define the format and playing rules for your series"
+              >
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <div className="grid gap-1.5">
+                    <Label className="flex items-center gap-1">Format <InfoTip text="Match format determines overs per side and scoring rules." /></Label>
+                    <Select value={isCustomFormat ? "Custom" : format} onValueChange={(v) => setFormat(v)}>
+                      <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                      <SelectContent>{FORMATS.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label>Overs per Side</Label>
+                    <Input type="number" min={1} max={90} value={oversPerSide} onChange={(e) => { const n = Math.max(1, Math.min(90, parseInt(e.target.value) || 1)); setCustomOvers(n); setFormat("Custom") }} disabled={!isCustomFormat} />
+                  </div>
+                  <div className="grid gap-1.5"><Label>Category</Label><Select value={category} onValueChange={setCategory}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{["Men","Women","Mixed","Boys","Girls"].map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></div>
+                  <div className="grid gap-1.5"><Label>Level</Label><Select value={level} onValueChange={setLevel}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{["International","State","District","Club","School","Corporate"].map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></div>
+                </div>
+
+                {/* Power Play sub-block */}
+                <div className="rounded-xl border border-purple-200 bg-purple-50/60 p-4 dark:border-purple-900 dark:bg-purple-950/30">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-purple-600" />
+                      <div>
+                        <h4 className="text-sm font-bold text-purple-700 dark:text-purple-300">Power Play</h4>
+                        <p className="text-xs text-muted-foreground">Configure power play overs for enhanced gameplay</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={cn("text-xs font-semibold", !powerPlayEnabled ? "text-foreground" : "text-muted-foreground")}>No</span>
+                      <Switch checked={powerPlayEnabled} onCheckedChange={setPowerPlayEnabled} />
+                      <span className={cn("text-xs font-semibold", powerPlayEnabled ? "text-foreground" : "text-muted-foreground")}>Yes</span>
+                    </div>
+                  </div>
+                  {powerPlayEnabled && (
+                    <div className="mt-3 space-y-2">
+                      {powerPlaySegments.map((seg, i) => (
+                        <div key={i} className="rounded-lg border bg-card p-3">
+                          <div className="mb-2 flex items-center justify-between">
+                            <span className="text-xs font-bold text-purple-700 dark:text-purple-300">Power Play {i + 1}</span>
+                            <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-blue-600 hover:text-destructive" onClick={() => setPowerPlaySegments(powerPlaySegments.filter((_, j) => j !== i))} aria-label="Remove power play"><Trash2 className="h-3.5 w-3.5" /></Button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="grid gap-1"><Label className="text-xs text-muted-foreground">From</Label><Input type="number" min={0} value={seg.from} onChange={(e) => setPowerPlaySegments(powerPlaySegments.map((s, j) => j === i ? { ...s, from: Number(e.target.value) || 0 } : s))} /></div>
+                            <div className="grid gap-1"><Label className="text-xs text-muted-foreground">To</Label><Input type="number" min={0} value={seg.to} onChange={(e) => setPowerPlaySegments(powerPlaySegments.map((s, j) => j === i ? { ...s, to: Number(e.target.value) || 0 } : s))} /></div>
+                          </div>
+                        </div>
+                      ))}
+                      <Button type="button" variant="outline" className="w-full border-dashed border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300 dark:hover:bg-purple-950/40" onClick={() => setPowerPlaySegments([...powerPlaySegments, { from: 1, to: 6 }])}><Plus className="mr-1 h-4 w-4" /> Add power play</Button>
                     </div>
                   )}
                 </div>
-                <div className="grid gap-1.5"><Label>Season</Label><Input value={season} onChange={(e) => setSeason(e.target.value)} placeholder="2025" /></div>
-                <div className="grid gap-1.5"><Label>Status</Label><Select value={status} onValueChange={setStatus}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{STATUSES.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent></Select></div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="grid gap-1.5"><Label>Start date</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></div>
-                <div className="grid gap-1.5"><Label>End date</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></div>
-              </div>
-              {/* Classification & playing rules (CricClub Create Series Info) */}
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                <div className="grid gap-1.5"><Label>Ball type</Label><Select value={ballType} onValueChange={setBallType}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{["Leather","Hard Tennis","Soft Tennis","Tape Ball"].map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></div>
-                <div className="grid gap-1.5"><Label>Category</Label><Select value={category} onValueChange={setCategory}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{["Men","Women","Mixed","Boys","Girls"].map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></div>
-                <div className="grid gap-1.5"><Label>Level</Label><Select value={level} onValueChange={setLevel}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{["International","State","District","Club","School","Corporate"].map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></div>
-                <div className="grid gap-1.5"><Label>Players per team</Label><Input type="number" min={1} max={20} value={playersPerTeam} onChange={(e) => setPlayersPerTeam(Number(e.target.value) || 11)} /></div>
-                <div className="grid gap-1.5"><Label>Squad limit (0 = unlimited)</Label><Input type="number" min={0} value={squadLimit} onChange={(e) => setSquadLimit(Number(e.target.value) || 0)} /></div>
-              </div>
-              <div className="grid gap-1.5">
-                <Label>Series logo</Label>
-                <div className="flex flex-wrap items-center gap-3">
-                  {logoUrl ? <img src={logoUrl} alt="Series logo" className="h-12 w-12 rounded-lg border object-cover" /> : null}
-                  <UploadButton label="Upload logo" withBrowse onUploaded={(url) => setLogoUrl(url)} />
-                  {logoUrl && <Button type="button" variant="ghost" size="sm" onClick={() => setLogoUrl("")}>Remove</Button>}
-                </div>
-              </div>
-              <div className="grid gap-1.5"><Label htmlFor="t-desc">Description</Label><Textarea id="t-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} /></div>
-            </CardContent></Card>
+              </SectionCard>
+
+            </div>
           </TabsContent>
 
           {/* Points & Ranking */}
           <TabsContent value="points">
             <Card><CardContent className="grid gap-4 p-4 sm:p-6">
-              <div className="flex items-center gap-2"><BarChart3 className="h-5 w-5 text-emerald-600" /><h2 className="text-base font-bold">Points System</h2></div>
+              <div className="flex items-center gap-2"><BarChart3 className="h-5 w-5 text-emerald-600" /><h2 className="text-base font-bold">Points System</h2><Badge className="gap-1 bg-amber-100 text-amber-800 hover:bg-amber-100 dark:bg-amber-950 dark:text-amber-300"><Gem className="h-3 w-3" />Pro</Badge></div>
               <p className="text-xs text-muted-foreground">Points awarded per match outcome. Applied to the auto-computed standings table.</p>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
                 <div className="grid gap-1.5"><Label>Win</Label><Input type="number" min={0} value={winPoints} onChange={(e) => setWinPoints(Number(e.target.value) || 0)} /></div>

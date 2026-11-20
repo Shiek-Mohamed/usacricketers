@@ -41,6 +41,9 @@ export async function PUT(
   if (body.abandonedPoints !== undefined) data.abandonedPoints = Number(body.abandonedPoints) || 0
   if (body.bonusPoints !== undefined) data.bonusPoints = Number(body.bonusPoints) || 0
   if (body.rankCriteria !== undefined) data.rankCriteria = String(body.rankCriteria)
+  if (body.numberOfGroups !== undefined) data.numberOfGroups = Math.max(1, Number(body.numberOfGroups) || 1)
+  if (body.powerPlayEnabled !== undefined) data.powerPlayEnabled = body.powerPlayEnabled === true
+  if (body.powerPlayOvers !== undefined) data.powerPlayOvers = JSON.stringify(Array.isArray(body.powerPlayOvers) ? body.powerPlayOvers : [])
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "no fields to update" }, { status: 400 })
   }

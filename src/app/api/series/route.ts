@@ -43,6 +43,9 @@ export async function POST(req: NextRequest) {
       abandonedPoints: body.abandonedPoints !== undefined ? Number(body.abandonedPoints) : 1,
       bonusPoints: body.bonusPoints !== undefined ? Number(body.bonusPoints) : 0,
       rankCriteria: body.rankCriteria || "points,nrr,headToHead,wins,winPercentage",
+      numberOfGroups: body.numberOfGroups !== undefined ? Math.max(1, Number(body.numberOfGroups) || 1) : 1,
+      powerPlayEnabled: body.powerPlayEnabled === true,
+      powerPlayOvers: JSON.stringify(Array.isArray(body.powerPlayOvers) ? body.powerPlayOvers : []),
     },
     include: { tournamentTeams: { include: { team: true } } },
   })

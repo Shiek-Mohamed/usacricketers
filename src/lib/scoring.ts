@@ -111,6 +111,7 @@ export interface CommentaryEntry {
     | "info"
     | "dot"
     | "manual"
+    | "milestone"
   /** Who scored this ball — the scorer's ID from their session token.
    *  Closes scoring data gap #10 (scorer identity per ball). */
   scorerId?: string
@@ -446,6 +447,12 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
 
   const striker = batsmen[strikerIdx]
   const bowler = bowlers[bowlerIdx]
+  // Capture the striker's runs BEFORE this ball is processed so we can
+  // detect strike-rate milestone crossings (50 / 100 / 150) after the
+  // switch mutates `striker.runs`. Only the striker who faces the delivery
+  // can cross a threshold — byes / leg-byes / wides don't add bat runs, and
+  // a wicket doesn't increase the striker's tally.
+  const strikerRunsBefore = striker.runs
   let isLegal = true
   let eventText = ""
   let eventKind: CommentaryEntry["kind"] = "run"
@@ -841,6 +848,44 @@ export function applyBall(state: LiveMatchState, event: BallEvent): LiveMatchSta
     ].slice(0, 120)
   }
   next.commentary = commentary
+
+  // Strike-rate milestone detection (50 / 100 / 150). Fires ONLY on the
+  // crossing ball — the striker's runs went from below the threshold to >=
+  // it on this delivery. The milestone entry is prepended to the commentary
+  // so it surfaces as the newest (most prominent) entry. Only the highest
+  // crossed threshold fires per ball (a 49→101 boundary triggers HUNDRED,
+  // not FIFTY). The trophy emoji in the text + the `milestone` kind lets
+  // the commentary feed render a distinct gold/trophy treatment.
+  {
+    const strikerAfter = batsmen[strikerIdx]
+    if (strikerAfter) {
+      const rAfter = strikerAfter.runs
+      for (const threshold of [150, 100, 50] as const) {
+        if (strikerRunsBefore < threshold && rAfter >= threshold) {
+          const milestoneText =
+            threshold >= 150
+              ? `🏆 ${strikerAfter.name} reaches 150!`
+              : threshold >= 100
+                ? `🏆 ${strikerAfter.name} brings up his HUNDRED!`
+                : `🏆 ${strikerAfter.name} reaches his FIFTY!`
+          const milestoneEntry: CommentaryEntry = {
+            id: uid(),
+            ballNo: next.ballNo,
+            over: oversString(balls),
+            text: milestoneText,
+            kind: "milestone",
+            scorerId: state.scorerId ?? undefined,
+            timestamp: new Date().toISOString(),
+          }
+          next = {
+            ...next,
+            commentary: [milestoneEntry, ...next.commentary].slice(0, 120),
+          }
+          break
+        }
+      }
+    }
+  }
 
   // Innings end checks
   const allOut = wickets >= 10

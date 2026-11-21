@@ -25,9 +25,12 @@ import {
   EnhancedCommentaryFeed,
 } from "@/components/cricket/live-match-enhancements"
 import { useLiveScore } from "@/lib/use-live-score"
+import { stateToScorecard, type LiveMatchState } from "@/lib/scoring"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart"
+import { FallOfWicketsChart } from "@/components/cricket/fall-of-wickets-chart"
+import { OverComparisonChart } from "@/components/cricket/over-comparison-chart"
 import { cn } from "@/lib/utils"
 import { Bar, BarChart, Line, LineChart, XAxis, YAxis, Cell, ResponsiveContainer, CartesianGrid } from "recharts"
 import {
@@ -403,17 +406,27 @@ function OverBlock({
 function BallCommentaryCard({ entry }: { entry: { id: string; over: string; text: string; kind: string } }) {
   const ballKinds = new Set(["run", "boundary", "six", "wicket", "extra", "dot"])
   const isBall = ballKinds.has(entry.kind)
+  const isMilestone = entry.kind === "milestone"
   // Parse "Bowler — description" format, or use the text as-is
   const parts = entry.text.split("—")
   const heading = parts[0]?.trim() || ""
   const description = parts.slice(1).join("—").trim() || entry.text
 
   return (
-    <div className="flex items-start gap-3 rounded-lg bg-muted/50 p-3">
+    <div
+      className={cn(
+        "flex items-start gap-3 rounded-lg p-3",
+        isMilestone ? "bg-amber-50 dark:bg-amber-950/20" : "bg-muted/50",
+      )}
+    >
       {/* Ball number circle + over.ball notation */}
       <div className="flex shrink-0 flex-col items-center gap-1">
         {isBall ? (
           <BallChip kind={entry.kind} text={entry.text} size="md" />
+        ) : isMilestone ? (
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-amber-500 text-white">
+            <Trophy className="h-4 w-4" />
+          </span>
         ) : (
           <div className="h-9 w-9 shrink-0" />
         )}
@@ -424,7 +437,16 @@ function BallCommentaryCard({ entry }: { entry: { id: string; over: string; text
         {heading && (
           <p className="text-sm font-bold text-foreground">{heading}</p>
         )}
-        <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
+        <p
+          className={cn(
+            "mt-0.5 text-sm",
+            isMilestone
+              ? "font-bold text-amber-700 dark:text-amber-300"
+              : "text-muted-foreground",
+          )}
+        >
+          {description}
+        </p>
       </div>
     </div>
   )
@@ -648,13 +670,32 @@ function MatchPreview({ match, recent }: { match: Match; recent: Match[] }) {
 /*  WinViz — win probability bar based on current match state                   */
 /* -------------------------------------------------------------------------- */
 
-function WinVizView({ match }: { match: Match }) {
-  const sc = match.scorecard
+function WinVizView({ match, scorecard, liveState }: { match: Match; scorecard?: Scorecard | null; liveState?: LiveMatchState | null }) {
+  // Prefer the explicitly-passed scorecard (live-derived when broadcasting)
+  // over the persisted snapshot so the win-probability bar updates in near
+  // real-time as balls are scored. Falls back to match.scorecard for
+  // completed/upcoming matches with no live state.
+  const sc = scorecard ?? match.scorecard
   const t1 = match.team1
   const t2 = match.team2
 
+  // The persisted row can lag behind the broadcast — when the live state has
+  // already completed with a result, prefer it so a finished chase resolves
+  // to 100% immediately instead of showing stale chase numbers.
+  const effectiveMatch: Match =
+    liveState && liveState.status === "completed" && liveState.result
+      ? { ...match, status: liveState.status, result: liveState.result }
+      : match
+
+  // DLS-aware chase — when the scorer applied a revised target, the model
+  // must chase that target over the revised overs, not the original ones.
+  const dls =
+    liveState?.dlsTarget && liveState.dlsTarget > 0
+      ? { targetOverride: liveState.dlsTarget, revisedOvers: liveState.dlsRevisedOvers ?? null }
+      : undefined
+
   // Compute win probability from the match state
-  const probs = computeWinProbability(match, sc)
+  const probs = computeWinProbability(effectiveMatch, sc, dls)
 
   if (!probs) {
     return (
@@ -728,7 +769,11 @@ function WinVizView({ match }: { match: Match }) {
 }
 
 /** Simplified win probability model based on match state. */
-function computeWinProbability(match: Match, sc: Scorecard | null):
+function computeWinProbability(
+  match: Match,
+  sc: Scorecard | null,
+  dls?: { targetOverride?: number; revisedOvers?: number | null },
+):
   | { t1: number; t2: number; draw: number }
   | null {
   if (!sc || sc.innings.length === 0) return null
@@ -770,12 +815,14 @@ function computeWinProbability(match: Match, sc: Scorecard | null):
 
   if (innings.length >= 2) {
     // 2nd innings — chasing team's probability based on target + wickets + balls left
-    const target = (firstInn.totalRuns ?? 0) + 1
+    // A DLS-revised chase replaces the original target and the overs on offer.
+    const target = dls?.targetOverride ?? (firstInn.totalRuns ?? 0) + 1
     const chasingRuns = lastInn.totalRuns
     const chasingWickets = lastInn.totalWickets
     const chasingOvers = parseFloat(lastInn.totalOvers) || 0
     const maxOvers = match.format === "T20" || match.format === "T20I" ? 20 : match.format === "ODI" || match.format === "ODI" ? 50 : 90
-    const ballsRemaining = Math.max(0, (maxOvers - chasingOvers) * 6)
+    const effectiveMaxOvers = dls?.revisedOvers && dls.revisedOvers > 0 ? dls.revisedOvers : maxOvers
+    const ballsRemaining = Math.max(0, (effectiveMaxOvers - chasingOvers) * 6)
     const runsNeeded = target - chasingRuns
     const wicketsInHand = 10 - chasingWickets
 
@@ -813,8 +860,11 @@ function computeWinProbability(match: Match, sc: Scorecard | null):
 /*  Graphs — Run Rate Worm (Manhattan chart)                                   */
 /* --------------------------------------------------------------------------- */
 
-function GraphsView({ match }: { match: Match }) {
-  const sc = match.scorecard
+function GraphsView({ match, scorecard }: { match: Match; scorecard?: Scorecard | null }) {
+  // Prefer the explicitly-passed scorecard (live-derived when broadcasting)
+  // so the worms + new charts update in near real-time. Falls back to the
+  // persisted snapshot when there's no live state.
+  const sc = scorecard ?? match.scorecard
   if (!sc || sc.innings.length === 0) {
     return (
       <Card className="flex flex-col items-center justify-center gap-2 p-10 text-center">
@@ -833,6 +883,12 @@ function GraphsView({ match }: { match: Match }) {
       {sc.innings.length >= 2 && (
         <CumulativeRunWorm match={match} scorecard={sc} />
       )}
+
+      {/* Over Comparison — grouped bars of runs per over, one series per team */}
+      <OverComparisonChart match={match} scorecard={sc} />
+
+      {/* Fall of Wickets — cumulative score at each wicket, one line per innings */}
+      <FallOfWicketsChart match={match} scorecard={sc} />
 
       {/* Per-innings Run Rate Worms (Manhattan) */}
       {sc.innings.map((inn, i) => {
@@ -1075,6 +1131,14 @@ export function MatchPageContent({ match, recent }: { match: Match; recent: Matc
   // gracefully render nothing until their data arrives.
   const hasLiveState = Boolean(liveState && currentInnings)
 
+  // Live-derived scorecard — when a scorer is broadcasting, derive a fresh
+  // Scorecard from the live state so WinViz + the Graphs tab update in near
+  // real-time as balls are scored. Falls back to the persisted snapshot when
+  // there's no live state (completed / upcoming matches).
+  const displayScorecard: Scorecard | null = liveState
+    ? stateToScorecard(liveState)
+    : match.scorecard
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
@@ -1184,12 +1248,12 @@ export function MatchPageContent({ match, recent }: { match: Match; recent: Matc
 
                 {/* WinViz tab — win probability */}
                 <TabsContent value="winviz" className="mt-4">
-                  <WinVizView match={match} />
+                  <WinVizView match={match} scorecard={displayScorecard} liveState={liveState} />
                 </TabsContent>
 
                 {/* Graphs tab — run rate worm */}
                 <TabsContent value="graphs" className="mt-4">
-                  <GraphsView match={match} />
+                  <GraphsView match={match} scorecard={displayScorecard} />
                 </TabsContent>
 
                 {/* Match Info tab */}

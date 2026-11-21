@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils"
 import type { LiveMatchState } from "@/lib/scoring"
+import { Trophy } from "lucide-react"
 
 /* -------------------------------------------------------------------------- */
 /*  Ball chip — a colored square showing the ball result (4, 6, W, •, 1, wd)  */
@@ -50,6 +51,7 @@ export function getBallChipData(entry: CommentaryEntry): ChipData | null {
     case "over":
     case "info":
     case "manual":
+    case "milestone":
     default:
       return null
   }
@@ -135,6 +137,7 @@ export function CommentaryFeedRow({ entry }: { entry: CommentaryEntry }) {
   const chip = getBallChipData(entry)
   const isAudio = entry.text.startsWith("[audio:")
   const audioUrl = isAudio ? entry.text.slice(7, -1) : null
+  const isMilestone = entry.kind === "milestone"
 
   return (
     <div
@@ -143,10 +146,15 @@ export function CommentaryFeedRow({ entry }: { entry: CommentaryEntry }) {
         entry.kind === "wicket" && "bg-red-50/50",
         entry.kind === "six" && "bg-purple-50/30",
         entry.kind === "boundary" && "bg-sky-50/30",
+        isMilestone && "bg-amber-50/60 dark:bg-amber-950/20",
       )}
     >
-      {/* Ball chip (or over label for non-ball entries) */}
-      {chip ? (
+      {/* Ball chip (or trophy for milestones, or over label for non-ball entries) */}
+      {isMilestone ? (
+        <span className="grid h-6 w-6 shrink-0 place-items-center rounded bg-amber-500 text-white">
+          <Trophy className="h-3.5 w-3.5" />
+        </span>
+      ) : chip ? (
         <BallChip entry={entry} />
       ) : (
         <span className="w-6 shrink-0 text-right font-display text-[11px] font-bold tabular-nums text-gray-400">
@@ -159,7 +167,12 @@ export function CommentaryFeedRow({ entry }: { entry: CommentaryEntry }) {
         {isAudio && audioUrl ? (
           <audio controls src={audioUrl} className="h-8 w-full max-w-xs" preload="none" />
         ) : (
-          <span className="text-[13px] leading-relaxed text-foreground">
+          <span
+            className={cn(
+              "text-[13px] leading-relaxed text-foreground",
+              isMilestone && "font-bold text-amber-700 dark:text-amber-300",
+            )}
+          >
             {entry.text}
           </span>
         )}

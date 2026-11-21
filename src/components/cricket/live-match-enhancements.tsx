@@ -5,7 +5,9 @@ import type { LiveMatchState, CommentaryEntry, ScorerInnings } from "@/lib/scori
 import { oversString } from "@/lib/scoring"
 import type { Match } from "@/lib/types"
 import { TeamBadge } from "@/components/cricket/ui"
+import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { calculateDLS } from "@/lib/dls"
 import {
   Radio,
   TrendingUp,
@@ -13,6 +15,7 @@ import {
   Zap,
   Users,
   Activity,
+  Trophy,
 } from "lucide-react"
 
 /* -------------------------------------------------------------------------- */
@@ -102,6 +105,12 @@ function ThisOverBall({ entry, empty, size = "md" }: BallCircleProps) {
       return <span className={cn(base, "bg-purple-600 text-white")}>6</span>
     case "boundary":
       return <span className={cn(base, "bg-sky-600 text-white")}>4</span>
+    case "milestone":
+      return (
+        <span className={cn(base, "bg-amber-500 text-white")}>
+          <Trophy className="h-3 w-3" />
+        </span>
+      )
     case "dot":
       return (
         <span className={cn(base, "bg-gray-700 text-white")}>
@@ -238,16 +247,65 @@ export function LiveScoreBanner({
       ? ((current.runs / current.balls) * 6).toFixed(2)
       : "0.00"
 
-  const isChasing = current.target !== null && current.target > 0
-  const runsNeeded = isChasing ? Math.max(0, (current.target ?? 0) - current.runs) : 0
+  // DLS-aware chase numbers — when the scorer has applied a DLS revision, the
+  // target + overs on offer change mid-chase, so the runs needed / balls left
+  // shown here must use the revised values, not the original innings target.
+  const chaseTarget =
+    liveState.dlsTarget && liveState.dlsTarget > 0
+      ? liveState.dlsTarget
+      : current.target
+  const isChasing = chaseTarget !== null && chaseTarget > 0
+  const runsNeeded = isChasing ? Math.max(0, (chaseTarget ?? 0) - current.runs) : 0
+  const chaseOvers =
+    liveState.dlsRevisedOvers && liveState.dlsRevisedOvers > 0
+      ? liveState.dlsRevisedOvers
+      : liveState.maxOvers
   const ballsRemaining =
-    liveState.maxOvers > 0
-      ? Math.max(0, liveState.maxOvers * 6 - current.balls)
-      : 0
+    chaseOvers > 0 ? Math.max(0, chaseOvers * 6 - current.balls) : 0
   const rrr =
     isChasing && ballsRemaining > 0
       ? ((runsNeeded / ballsRemaining) * 6).toFixed(2)
       : null
+
+  // DLS par-score — only meaningful during the chasing innings when the
+  // scorer has applied a DLS revised target after a rain interruption.
+  // Recomputed from the current live state (runs, wickets, overs faced) so
+  // it updates ball-by-ball. Green when the chasing side is ahead of par,
+  // red when behind. (Plain derivation — no useMemo — so this stays after
+  // the `if (!current) return null` guard without violating the Rules of
+  // Hooks. The DLS table lookup is a handful of arithmetic ops.)
+  const dlsParScore = (() => {
+    const dlsTarget = liveState.dlsTarget ?? null
+    const dlsRevisedOvers = liveState.dlsRevisedOvers ?? null
+    if (
+      !dlsTarget ||
+      !dlsRevisedOvers ||
+      innings.length < 2 ||
+      currentIdx < 1 ||
+      liveState.maxOvers <= 0
+    ) {
+      return null
+    }
+    const firstInn = innings[0]
+    if (!firstInn) return null
+    try {
+      const result = calculateDLS(
+        firstInn.runs,
+        Math.floor(firstInn.balls / 6),
+        firstInn.wickets,
+        current.runs,
+        Math.floor(current.balls / 6),
+        current.wickets,
+        liveState.maxOvers,
+        dlsRevisedOvers,
+      )
+      return result.parScore
+    } catch {
+      return null
+    }
+  })()
+  const aheadOfPar =
+    dlsParScore !== null ? current.runs >= dlsParScore : false
 
   // Match status text
   const statusText = (() => {
@@ -359,7 +417,7 @@ export function LiveScoreBanner({
             icon={Activity}
             label="Overs"
             value={oversString(current.balls)}
-            sub={liveState.maxOvers > 0 ? `${liveState.maxOvers} max` : "Test"}
+            sub={liveState.maxOvers > 0 ? `${chaseOvers} max` : "Test"}
           />
         </div>
       </div>
@@ -374,6 +432,19 @@ export function LiveScoreBanner({
             <span className="tabular-nums">{ballsRemaining}</span> ball
             {ballsRemaining !== 1 ? "s" : ""}
             {rrr !== null && ` · RRR ${rrr}`}
+            {dlsParScore !== null && (
+              <span
+                className={cn(
+                  "ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold tabular-nums",
+                  aheadOfPar
+                    ? "bg-emerald-700 text-emerald-50"
+                    : "bg-red-700 text-red-50",
+                )}
+                title="Duckworth-Lewis-Stern par score at this position"
+              >
+                Par: {dlsParScore}
+              </span>
+            )}
           </p>
         </div>
       )}
@@ -384,16 +455,24 @@ export function LiveScoreBanner({
           {liveState.note}
         </div>
       )}
-      {liveState.dlsTarget && (
-        <div className="flex items-center justify-center gap-2 bg-sky-600 px-4 py-1.5 text-center sm:px-6">
+      {liveState.dlsTarget ? (
+        <div className="flex flex-col items-center justify-center gap-0.5 bg-sky-600 px-4 py-1.5 text-center sm:px-6">
           <span className="font-display text-xs font-bold text-white">
             DLS Revised Target: {liveState.dlsTarget}
             {liveState.dlsRevisedOvers
               ? ` from ${liveState.dlsRevisedOvers} overs`
               : ""}
           </span>
+          {isChasing && (
+            <span className="font-display text-[11px] font-semibold text-white/85">
+              {battingTeam?.shortName ?? current.battingTeamShortName} need{" "}
+              <span className="tabular-nums">{runsNeeded}</span> off{" "}
+              <span className="tabular-nums">{ballsRemaining}</span> — par{" "}
+              <span className="tabular-nums">{dlsParScore ?? "—"}</span>
+            </span>
+          )}
         </div>
-      )}
+      ) : null}
     </div>
   )
 }
@@ -680,6 +759,29 @@ export function CurrentPartnership({ liveState }: { liveState: LiveMatchState })
   )
 }
 
+/** Subtle milestone badge for scorecard batting rows — a soft amber "50"
+ *  chip once a batter reaches fifty, solid gold from a century up. Derived
+ *  purely from the batter's runs, so it works for live + persisted cards.
+ *  Exported for reuse by the scorecard components. */
+export function MilestoneBadge({ runs }: { runs: number }) {
+  if (!Number.isFinite(runs) || runs < 50) return null
+  const century = runs >= 100
+  return (
+    <Badge
+      variant="outline"
+      aria-label={century ? "Century" : "Half-century"}
+      className={cn(
+        "shrink-0 rounded-full border-transparent px-1.5 py-0 font-display text-[10px] font-bold leading-4 tabular-nums",
+        century
+          ? "bg-amber-400 text-amber-950 shadow-sm"
+          : "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+      )}
+    >
+      {century ? "100" : "50"}
+    </Badge>
+  )
+}
+
 function BatsmanCell({
   name,
   runs,
@@ -691,6 +793,10 @@ function BatsmanCell({
   balls: number
   isStriker: boolean
 }) {
+  // Strike-rate milestone pill — shown when the batter has reached 50,
+  // 100, or 150. Gold-colored, matching the trophy treatment in the feed.
+  const milestone =
+    runs >= 150 ? "150" : runs >= 100 ? "100" : runs >= 50 ? "50" : null
   return (
     <div
       className={cn(
@@ -705,6 +811,12 @@ function BatsmanCell({
         <span className="truncate font-display text-xs font-bold text-foreground">
           {name}
         </span>
+        {milestone && (
+          <span className="ml-auto inline-flex shrink-0 items-center gap-0.5 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+            <Trophy className="h-2.5 w-2.5" />
+            {milestone}
+          </span>
+        )}
       </div>
       <div className="font-display text-sm font-bold tabular-nums text-foreground">
         {runs}
@@ -731,6 +843,7 @@ const BORDER_BY_KIND: Record<string, string> = {
   over: "border-l-slate-400",
   run: "border-l-emerald-400",
   dot: "border-l-slate-300",
+  milestone: "border-l-amber-500",
 }
 
 const LABEL_BY_KIND: Record<string, { text: string; cls: string }> = {
@@ -740,6 +853,7 @@ const LABEL_BY_KIND: Record<string, { text: string; cls: string }> = {
   extra: { text: "EXTRA", cls: "text-amber-600 dark:text-amber-400" },
   manual: { text: "NOTE", cls: "text-emerald-600 dark:text-emerald-400" },
   info: { text: "INFO", cls: "text-amber-600 dark:text-amber-400" },
+  milestone: { text: "MILESTONE", cls: "text-amber-600 dark:text-amber-400" },
 }
 
 /** Enhanced commentary row with ball number, color-coded left border, and
@@ -766,6 +880,7 @@ function EnhancedCommentaryRow({ entry }: { entry: CommentaryEntry }) {
   const label = LABEL_BY_KIND[entry.kind]
   const isAudio = entry.text.startsWith("[audio:")
   const audioUrl = isAudio ? entry.text.slice(7, -1) : null
+  const isMilestone = entry.kind === "milestone"
 
   return (
     <div
@@ -775,6 +890,7 @@ function EnhancedCommentaryRow({ entry }: { entry: CommentaryEntry }) {
         entry.kind === "wicket" && "bg-red-50/50 dark:bg-red-950/20",
         entry.kind === "six" && "bg-purple-50/30 dark:bg-purple-950/10",
         entry.kind === "boundary" && "bg-sky-50/30 dark:bg-sky-950/10",
+        isMilestone && "bg-amber-50/60 dark:bg-amber-950/20",
       )}
     >
       {/* Ball number annotation — over.ball notation */}
@@ -797,7 +913,12 @@ function EnhancedCommentaryRow({ entry }: { entry: CommentaryEntry }) {
         {isAudio && audioUrl ? (
           <audio controls src={audioUrl} className="h-8 w-full max-w-xs" preload="none" />
         ) : (
-          <span className="text-[13px] leading-relaxed text-foreground">
+          <span
+            className={cn(
+              "text-[13px] leading-relaxed text-foreground",
+              isMilestone && "font-bold text-amber-700 dark:text-amber-300",
+            )}
+          >
             {entry.text}
           </span>
         )}

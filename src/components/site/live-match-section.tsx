@@ -4,8 +4,10 @@ import { useMemo } from "react"
 import { useLiveScore } from "@/lib/use-live-score"
 import { useMatch } from "@/lib/use-data"
 import { oversString, type LiveMatchState } from "@/lib/scoring"
+import { calculateDLS } from "@/lib/dls"
 import { Radio, Wifi, WifiOff, ChevronRight, Trophy, CloudRain, Zap } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
 import { CommentaryFeedRow } from "@/components/cricket/ball-chip"
 
 /* Commentary kind → color mapping (matches the live blog view) */
@@ -19,10 +21,19 @@ const KIND_STYLES: Record<string, { dot: string; label: string; text: string; bg
   run: { dot: "bg-slate-300", label: "", text: "text-slate-600 dark:text-slate-400", bg: "" },
   extra: { dot: "bg-orange-400", label: "EXTRA", text: "text-orange-700 dark:text-orange-400", bg: "bg-orange-500/5" },
   dot: { dot: "bg-slate-200", label: "", text: "text-slate-500", bg: "" },
+  milestone: { dot: "bg-amber-500", label: "MILESTONE", text: "text-amber-700 dark:text-amber-400", bg: "bg-amber-500/5" },
 }
 
 /** Kinds that qualify as "key moments" — shown in the right column. */
-const KEY_MOMENT_KINDS = new Set(["wicket", "six", "boundary", "manual", "info"])
+const KEY_MOMENT_KINDS = new Set(["wicket", "six", "boundary", "manual", "info", "milestone"])
+
+/** Strike-rate milestone pill label for a batter's current runs. */
+function milestoneLabel(runs: number): string | null {
+  if (runs >= 150) return "150"
+  if (runs >= 100) return "100"
+  if (runs >= 50) return "50"
+  return null
+}
 
 /**
  * LiveMatchSection — embeds the live commentary feed directly on the SSR
@@ -62,6 +73,47 @@ export function LiveMatchSection({ matchId }: { matchId: string }) {
     !!(series?.powerPlayEnabled &&
       currentOver > 0 &&
       series.powerPlayOvers.some((seg) => currentOver >= seg.from && currentOver <= seg.to))
+
+  // DLS par-score — recomputed from the live state during the chasing
+  // innings (2nd innings onward) when a DLS revised target has been applied.
+  // Updates ball-by-ball. Green when the chasing side is ahead of par, red
+  // when behind. Null when no DLS target is set or it isn't the chase yet.
+  // (Plain derivation — the DLS table lookup is cheap arithmetic.)
+  const dlsParScore = (() => {
+    if (!liveState || !currentInnings) return null
+    const dlsTarget = liveState.dlsTarget ?? null
+    const dlsRevisedOvers = liveState.dlsRevisedOvers ?? null
+    if (
+      !dlsTarget ||
+      !dlsRevisedOvers ||
+      liveState.innings.length < 2 ||
+      (liveState.currentInnings ?? 0) < 1 ||
+      liveState.maxOvers <= 0
+    ) {
+      return null
+    }
+    const firstInn = liveState.innings[0]
+    if (!firstInn) return null
+    try {
+      const result = calculateDLS(
+        firstInn.runs,
+        Math.floor(firstInn.balls / 6),
+        firstInn.wickets,
+        currentInnings.runs,
+        Math.floor(currentInnings.balls / 6),
+        currentInnings.wickets,
+        liveState.maxOvers,
+        dlsRevisedOvers,
+      )
+      return result.parScore
+    } catch {
+      return null
+    }
+  })()
+  const aheadOfPar =
+    dlsParScore !== null && currentInnings
+      ? currentInnings.runs >= dlsParScore
+      : false
 
   const recentCommentary = useMemo(
     () => commentary.slice(0, 40), // show the 40 most recent entries
@@ -138,6 +190,21 @@ export function LiveMatchSection({ matchId }: { matchId: string }) {
                 Power Play
               </Badge>
             )}
+            {/* DLS par-score — live during a DLS-affected chase. Color-coded
+                green (ahead of par) / red (behind par). */}
+            {dlsParScore !== null && (
+              <span
+                className={cn(
+                  "ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums",
+                  aheadOfPar
+                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
+                    : "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300",
+                )}
+                title="Duckworth-Lewis-Stern par score at this position"
+              >
+                Par: {dlsParScore}
+              </span>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 font-display text-[12px] font-medium">
             {striker && (
@@ -146,6 +213,12 @@ export function LiveMatchSection({ matchId }: { matchId: string }) {
                 <span className="font-normal text-muted-foreground">
                   {striker.runs} ({striker.balls})
                 </span>
+                {milestoneLabel(striker.runs) && (
+                  <span className="ml-1 inline-flex items-center gap-0.5 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                    <Trophy className="h-2.5 w-2.5" />
+                    {milestoneLabel(striker.runs)}
+                  </span>
+                )}
               </span>
             )}
             {bowler && (

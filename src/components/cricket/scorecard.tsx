@@ -2,6 +2,7 @@
 
 import type { Innings, Scorecard, BattingLine, BowlingLine } from "@/lib/types"
 import { TeamBadgeByName } from "./ui"
+import { MilestoneBadge } from "./live-match-enhancements"
 import { cn } from "@/lib/utils"
 
 /* -------------------------------------------------------------------------- */
@@ -261,6 +262,9 @@ function BattingTableRow({ b }: { b: BattingLine }) {
             isKeeper={b.isKeeper}
             className="font-display text-base font-bold tracking-tight whitespace-nowrap text-black"
           />
+          {/* 50/100 milestone chip — amber once a batter reaches fifty, gold
+              from a century (derived from the row's runs, live or persisted). */}
+          <MilestoneBadge runs={b.runs} />
           {b.dismissal && (
             <span className="text-sm text-gray-500 truncate">
               {b.dismissal}
@@ -414,6 +418,8 @@ function BattingStackedRow({ b, innings }: { b: BattingLine; innings: Innings })
             isKeeper={b.isKeeper}
             className="font-display text-base font-bold text-black truncate"
           />
+          {/* 50/100 milestone chip — subtle amber/gold pill next to the name. */}
+          <MilestoneBadge runs={b.runs} />
         </div>
         {/* Stats — fixed-width columns, right-aligned, regular weight (not bold).
             The widths keep them aligned across all batsmen. */}

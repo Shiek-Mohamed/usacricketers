@@ -913,14 +913,25 @@ function EnhancedCommentaryRow({ entry }: { entry: CommentaryEntry }) {
         {isAudio && audioUrl ? (
           <audio controls src={audioUrl} className="h-8 w-full max-w-xs" preload="none" />
         ) : (
-          <span
-            className={cn(
-              "text-[13px] leading-relaxed text-foreground",
-              isMilestone && "font-bold text-amber-700 dark:text-amber-300",
+          <>
+            {entry.kind === "ai" && (
+              <span className="mr-1.5 inline-block rounded bg-slate-700 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white align-middle">
+                AI
+              </span>
             )}
-          >
-            {entry.text}
-          </span>
+            <span
+              className={cn(
+                "text-[13px] leading-relaxed text-foreground",
+                entry.kind === "ai" && "italic text-foreground/80",
+                isMilestone && "font-bold text-amber-700 dark:text-amber-300",
+              )}
+            >
+              {entry.text}
+            </span>
+            {entry.kind === "ai" && entry.audioUrl && (
+              <audio controls src={entry.audioUrl} className="mt-1 h-7 w-full max-w-[240px]" preload="none" />
+            )}
+          </>
         )}
       </div>
     </div>

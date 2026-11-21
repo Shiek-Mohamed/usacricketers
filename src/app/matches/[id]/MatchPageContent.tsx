@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import type { Match, Scorecard } from "@/lib/types"
 import {
   TeamBadge,
@@ -50,6 +50,7 @@ import {
   TrendingUp,
   CloudRain,
   Radio,
+  Volume2,
 } from "lucide-react"
 
 function MatchBreadcrumbs({ match }: { match: Match }) {
@@ -1139,6 +1140,64 @@ export function MatchPageContent({ match, recent }: { match: Match; recent: Matc
     ? stateToScorecard(liveState)
     : match.scorecard
 
+  /* ------------------ AI commentary audio autoplay ------------------
+   * Mobile browsers (iOS Safari especially) block audio.play() without a
+   * prior user gesture. The viewer taps "Enable commentary audio" once —
+   * that unlocks the audio context, after which new AI clips autoplay as
+   * balls are scored. Preference persists in localStorage. Only NEW AI
+   * entries (after enable) play — lastPlayedAiId prevents replaying old
+   * lines when enabling mid-match. */
+  const [audioEnabled, setAudioEnabled] = useState(false)
+  const lastPlayedAiId = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    if (window.localStorage.getItem("ai-audio-enabled") === "1") {
+      // setState-in-effect is unavoidable: localStorage isn't available
+      // during SSR, so the preference MUST be read post-mount.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAudioEnabled(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    const comm = liveState?.commentary
+    if (!comm || !comm.length) return
+    const newestAi = comm.find((c) => c.kind === "ai" && c.audioUrl)
+    if (!newestAi || !newestAi.audioUrl) {
+      lastPlayedAiId.current = null
+      return
+    }
+    if (newestAi.id === lastPlayedAiId.current) return
+    lastPlayedAiId.current = newestAi.id
+    if (!audioEnabled) return
+    const audio = new Audio(newestAi.audioUrl)
+    audio.play().catch(() => {
+      // Blocked (unlock expired / tab backgrounded) — inline player still works.
+    })
+  }, [liveState?.commentary, audioEnabled])
+
+  const enableAudio = () => {
+    const silent = new Audio(
+      "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA="
+    )
+    silent
+      .play()
+      .then(() => {
+        silent.pause()
+        setAudioEnabled(true)
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem("ai-audio-enabled", "1")
+        }
+      })
+      .catch(() => {
+        setAudioEnabled(true)
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem("ai-audio-enabled", "1")
+        }
+      })
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
@@ -1210,7 +1269,25 @@ export function MatchPageContent({ match, recent }: { match: Match; recent: Matc
                 {/* Commentary tab — LIVE feed when broadcasting, else static accordion */}
                 <TabsContent value="commentary" className="mt-4">
                   {hasLiveState && liveState ? (
-                    <EnhancedCommentaryFeed liveState={liveState} />
+                    <>
+                      {hasLiveState && !audioEnabled && (
+                        <button
+                          type="button"
+                          onClick={enableAudio}
+                          className="mb-3 flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-emerald-700"
+                        >
+                          <Volume2 className="h-3.5 w-3.5" />
+                          Enable commentary audio
+                        </button>
+                      )}
+                      {hasLiveState && audioEnabled && (
+                        <div className="mb-3 flex items-center justify-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
+                          <Volume2 className="h-3 w-3" />
+                          Commentary audio on — AI lines play automatically
+                        </div>
+                      )}
+                      <EnhancedCommentaryFeed liveState={liveState} />
+                    </>
                   ) : match.scorecard?.commentary?.length ? (
                     <CommentaryAccordion scorecard={match.scorecard} match={match} />
                   ) : match.scorecard ? (

@@ -5,6 +5,19 @@
 
 set -e
 
+# Write the z-ai-web-dev-sdk config from the ZAI_CONFIG Fly secret. The SDK
+# reads process.cwd()/.z-ai-config (= /app/.z-ai-config) at runtime — without
+# it, /api/ai-commentary fails with "Configuration file not found" and NO AI
+# commentary (text OR audio) is generated on prod. The config is gitignored +
+# never baked into the image; it's injected as a runtime secret instead.
+if [ -n "$ZAI_CONFIG" ]; then
+  printf '%s' "$ZAI_CONFIG" > /app/.z-ai-config
+  chmod 600 /app/.z-ai-config
+  echo "🤖 z-ai config written (AI commentary + TTS enabled)"
+else
+  echo "⚠️ ZAI_CONFIG secret not set — AI commentary + TTS will be unavailable"
+fi
+
 # Push the Prisma schema to PostgreSQL (creates tables if they don't exist).
 # Idempotent — safe to run on every boot. Non-fatal (app can start even
 # if this fails, e.g. during a temporary DB outage).

@@ -87,7 +87,7 @@ export interface Innings {
 export interface Scorecard {
   innings: Innings[]
   note: string
-  commentary?: { id: string; over: string; text: string; kind: string }[]
+  commentary?: { id: string; over: string; text: string; kind: string; audioUrl?: string }[]
 }
 
 // API response types mirror Prisma models but with parsed JSON fields

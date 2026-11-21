@@ -758,6 +758,7 @@ export function LiveScorerView() {
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         const prose: string | null = data?.prose ?? null
+        const audioUrl: string | null = data?.audioUrl ?? null
         if (!prose) return
         const current = latestLiveStateRef.current
         if (!current) return
@@ -774,6 +775,7 @@ export function LiveScorerView() {
           kind: "ai" as const,
           scorerId: current.scorerId ?? undefined,
           timestamp: new Date().toISOString(),
+          audioUrl: audioUrl ?? undefined,
         }
         const newCommentary = [...current.commentary]
         newCommentary.splice(idx + 1, 0, aiEntry)
@@ -3144,7 +3146,17 @@ function CommentaryFeed({
                     />
                   </span>
                 ) : (
-                  c.text
+                  <>
+                    {c.text}
+                    {c.kind === "ai" && c.audioUrl && (
+                      <audio
+                        controls
+                        src={c.audioUrl}
+                        preload="none"
+                        className="mt-1 h-7 w-full max-w-[240px]"
+                      />
+                    )}
+                  </>
                 )}
               </span>
             </div>

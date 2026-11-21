@@ -58,7 +58,9 @@ export async function GET(
                   ? "audio/mp4"
                   : ext === ".mp3"
                     ? "audio/mpeg"
-                    : "image/jpeg"
+                    : ext === ".wav"
+                      ? "audio/wav"
+                      : "image/jpeg"
     return new NextResponse(buf, {
       headers: {
         "Content-Type": ct,

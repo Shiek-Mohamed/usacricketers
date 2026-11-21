@@ -119,6 +119,11 @@ export interface CommentaryEntry {
   /** When this ball was scored — ISO timestamp.
    *  Closes scoring data gap #11 (timestamp per ball). */
   timestamp?: string
+  /** TTS audio URL for AI-generated commentary entries. Set when the
+   *  /api/ai-commentary route successfully synthesizes speech for the prose;
+   *  null/undefined means text-only (TTS unavailable or disabled). Renders
+   *  an inline audio player below the prose on the public match feed. */
+  audioUrl?: string
 }
 
 export interface LiveMatchState {
@@ -1474,6 +1479,7 @@ export function stateToScorecard(state: LiveMatchState): Scorecard {
       over: c.over,
       text: c.text,
       kind: c.kind,
+      audioUrl: c.audioUrl,
     })),
   }
 }

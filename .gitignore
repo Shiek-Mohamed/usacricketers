@@ -58,5 +58,9 @@ server.log
 db/*.db
 db/*.db-journal
 
+# Runtime uploads (voice clips, AI TTS audio, scraped images) persisted to the
+# fly.io volume at /app/db/uploads — never source
+db/uploads/
+
 # Tool output dumps (Read/Bash tool artifacts) — not source
 /tool-results/

@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import ZAI from "z-ai-web-dev-sdk"
 import { verifyScorerToken, readBearerToken } from "@/lib/scorer-auth"
 import { rateLimit } from "@/lib/rate-limit"
+import { writeFile, mkdir } from "fs/promises"
+import { existsSync } from "fs"
+import path from "path"
+import { randomUUID } from "node:crypto"
 
 /**
  * POST /api/ai-commentary
@@ -28,6 +32,9 @@ import { rateLimit } from "@/lib/rate-limit"
  */
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
+// LLM (~1-2s) + TTS synthesis (~0.5-1s) + file write can approach 5s on a
+// cold instance. 30s gives comfortable headroom on fly.io.
+export const maxDuration = 30
 
 // Generous cap — key events fire at most a few per over. 30/min/IP is well
 // above the realistic ~6/min peak (an over with a wicket + boundary + six +
@@ -194,14 +201,48 @@ export async function POST(req: NextRequest) {
     if (!prose) {
       // Empty model response — return null so the client skips insertion
       // rather than showing a blank line in the feed.
-      return NextResponse.json({ prose: null })
+      return NextResponse.json({ prose: null, audioUrl: null })
     }
-    return NextResponse.json({ prose })
+
+    // TTS — synthesize spoken audio for the prose so viewers HEAR the AI
+    // commentary, not just read it. Voice "jam" (English-gentleman accent)
+    // fits the cricket-commentator register. Graceful degradation: if TTS
+    // fails, return the prose alone (text-only AI entry) — the client renders
+    // the line without an audio player. Audio is saved to the persistent
+    // db/uploads volume (survives fly.io restarts) and served by
+    // /api/uploads/[name] which already handles .mp3 → audio/mpeg.
+    let audioUrl: string | null = null
+    try {
+      const ttsRes = await zai.audio.tts.create({
+        input: prose, // already <= 240 chars, well under the 1024 TTS cap
+        voice: "jam",
+        speed: 1.0,
+        // wav — the TTS API rejects response_format "mp3" (400: unsupported
+        // value), despite the skill docs listing it. wav is the default +
+        // browser-playable via <audio>. Files are ~150-200KB for a short
+        // sentence at 24kHz — fine for the db/uploads volume.
+        response_format: "wav",
+        stream: false,
+      })
+      const arrayBuffer = await ttsRes.arrayBuffer()
+      const audioBuffer = Buffer.from(new Uint8Array(arrayBuffer))
+      const dir = path.join(process.cwd(), "db", "uploads")
+      if (!existsSync(dir)) await mkdir(dir, { recursive: true })
+      const filename = `ai-tts-${randomUUID()}.wav`
+      await writeFile(path.join(dir, filename), audioBuffer)
+      audioUrl = `/api/uploads/${filename}`
+    } catch (ttsErr) {
+      // Non-fatal — prose is still useful without audio. Log + continue.
+      const ttsMsg = ttsErr instanceof Error ? ttsErr.message : String(ttsErr).slice(0, 200)
+      console.warn("[ai-commentary] TTS failed (returning prose without audio):", ttsMsg)
+    }
+
+    return NextResponse.json({ prose, audioUrl })
   } catch (err) {
     // Never 500 the scorer — a failed LLM call should just mean no AI line
     // for this ball, not a disrupted scoring flow. Log + return null.
     const msg = err instanceof Error ? err.message : String(err).slice(0, 200)
     console.warn("[ai-commentary] LLM call failed:", msg)
-    return NextResponse.json({ prose: null, error: "LLM unavailable" })
+    return NextResponse.json({ prose: null, audioUrl: null, error: "LLM unavailable" })
   }
 }

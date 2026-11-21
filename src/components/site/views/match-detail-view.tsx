@@ -64,6 +64,7 @@ interface CommentaryItem {
   over: string
   text: string
   kind: string
+  audioUrl?: string
 }
 
 function MatchHeaderCard({ match }: { match: Match }) {
@@ -661,7 +662,17 @@ function CommentaryFeed({
                           />
                         </span>
                       ) : (
-                        entry.text
+                        <>
+                          {entry.text}
+                          {isAi && entry.audioUrl && (
+                            <audio
+                              controls
+                              src={entry.audioUrl}
+                              preload="none"
+                              className="mt-1 h-7 w-full max-w-[240px]"
+                            />
+                          )}
+                        </>
                       )}
                     </span>
                   </div>
@@ -702,6 +713,7 @@ export function MatchDetailView() {
         over: c.over,
         text: c.text,
         kind: c.kind,
+        audioUrl: c.audioUrl,
       }))
     }
     return []
@@ -758,6 +770,7 @@ export function MatchDetailView() {
       over: x.over,
       text: x.text,
       kind: x.kind,
+      audioUrl: x.audioUrl,
     }))
   })()
 

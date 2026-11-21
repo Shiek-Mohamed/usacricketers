@@ -47,6 +47,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -78,6 +79,7 @@ import {
   CloudRain,
   Check,
   RotateCw,
+  Sparkles,
 } from "lucide-react"
 import type { Match, Player } from "@/lib/types"
 import { useLiveScoreBackup, loadLocalBackup } from "@/lib/use-live-score-backup"
@@ -247,6 +249,11 @@ export function LiveScorerView() {
   // with a blue accent + "Commentator" label so it's distinguishable from
   // the auto-generated ball-by-ball feed).
   const [commentaryText, setCommentaryText] = useState("")
+  // AI commentary toggle — when ON, the scorer auto-generates a short prose
+  // line for key events (wicket/boundary/six/milestone/over) via
+  // /api/ai-commentary. AUGMENTS the templated feed (does NOT replace the
+  // structured ball entries — those power jump-to-ball, badges, charts).
+  const [aiCommentaryEnabled, setAiCommentaryEnabled] = useState(true)
 
   // DLS calculator state — shown when rain interrupts a limited-overs match
   const [dlsOpen, setDlsOpen] = useState(false)
@@ -648,12 +655,151 @@ export function LiveScorerView() {
     setCommentaryText("")
   }
 
+  /** Fire an LLM-generated prose commentary line for a KEY event that just
+   *  happened on this ball (wicket / boundary / six / milestone / over-end).
+   *  AUGMENTS the templated feed — the structured ball entry stays as the
+   *  canonical record (it powers jump-to-ball, badges, charts); the AI line
+   *  is a parallel narrative inserted right after the triggering entry.
+   *
+   *  Non-blocking: the templated entry + state are already pushed (handleBall
+   *  called pushState(next) before this). This fires the LLM call async; when
+   *  the prose arrives (~1-2s) it reads the LATEST liveState
+   *  (latestLiveStateRef) so scoring can continue in the meantime, inserts
+   *  the kind="ai" entry immediately AFTER the triggering ball entry (by id,
+   *  so it stays in position even if newer balls have since been scored), and
+   *  pushes the updated state through the normal pipeline.
+   *
+   *  Gated to key events only (not every delivery) to bound cost/latency —
+   *  see /api/ai-commentary. One LLM call per ball at most (the highest-
+   *  priority key event wins: wicket > milestone > six > boundary > over). */
+  function maybeGenerateAiCommentary(
+    prev: LiveMatchState,
+    next: LiveMatchState,
+    event: BallEvent,
+  ) {
+    if (!aiCommentaryEnabled || !token || !match) return
+    const inn = next.innings[next.currentInnings]
+    if (!inn) return
+
+    // Diff commentary: the new entries are those at the front of
+    // next.commentary whose ids weren't in prev.commentary. (applyBall
+    // prepends newest-first.)
+    const prevIds = new Set(prev.commentary.map((c) => c.id))
+    const newEntries = next.commentary.filter((c) => !prevIds.has(c.id))
+
+    // Pick the highest-priority KEY event. One prose line per ball.
+    const PRIORITY: Record<string, number> = {
+      wicket: 5, milestone: 4, six: 3, boundary: 2, over: 1,
+    }
+    let best: { id: string; kind: string; over: string; ballNo: number; text: string } | null = null
+    for (const c of newEntries) {
+      const p = PRIORITY[c.kind]
+      if (p == null) continue
+      if (!best || p > PRIORITY[best.kind]) {
+        best = { id: c.id, kind: c.kind, over: c.over, ballNo: c.ballNo, text: c.text }
+      }
+    }
+    if (!best) return
+
+    // Capture into consts for the async closure (avoids TS narrowing issues
+    // with the `let best` across the fetch boundary).
+    const trigId = best.id
+    const trigKind = best.kind as "wicket" | "milestone" | "six" | "boundary" | "over"
+    const trigOver = best.over
+    const trigBallNo = best.ballNo
+    const trigText = best.text
+
+    const striker = inn.batsmen.find((b) => b.id === next.strikerId)
+    const nonStriker = inn.batsmen.find((b) => b.id === next.nonStrikerId)
+    const bowler = inn.bowlers.find((b) => b.id === next.bowlerId)
+
+    // For wickets, pull the structured dismissal + out batsman name from the
+    // BallEvent (source of truth — cleaner than reverse-engineering from
+    // state, where the out slot may already be cleared/refilled).
+    let dismissal: string | undefined
+    let outBatsmanName: string | undefined
+    if (event.kind === "wicket") {
+      dismissal = event.dismissal
+      const outB = inn.batsmen.find((b) => b.id === event.outBatsmanId)
+      outBatsmanName = outB?.name
+    }
+
+    const payload = {
+      matchId: match.id,
+      format: next.format,
+      innings: {
+        battingTeam: inn.battingTeamShortName || undefined,
+        bowlingTeam: inn.bowlingTeamShortName || undefined,
+        runs: inn.runs,
+        wickets: inn.wickets,
+        overs: oversString(inn.balls),
+        inningsNo: next.currentInnings + 1,
+        target: inn.target ?? undefined,
+      },
+      striker: striker?.name,
+      nonStriker: nonStriker?.name,
+      bowler: bowler?.name,
+      event: {
+        kind: trigKind,
+        runs: "runs" in event ? event.runs : undefined,
+        over: trigOver,
+        ballNo: trigBallNo,
+        dismissal,
+        outBatsman: outBatsmanName,
+        description: trigKind === "milestone" || trigKind === "over" ? trigText : undefined,
+      },
+    }
+
+    fetch("/api/ai-commentary", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(payload),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        const prose: string | null = data?.prose ?? null
+        if (!prose) return
+        const current = latestLiveStateRef.current
+        if (!current) return
+        // Insert the AI line immediately AFTER the triggering ball entry (by
+        // id) so it stays positioned right below the ball it describes, even
+        // if newer balls have since been prepended while the LLM was thinking.
+        const idx = current.commentary.findIndex((c) => c.id === trigId)
+        if (idx < 0) return // trimmed past 120 cap or state reset — drop
+        const aiEntry = {
+          id: Math.random().toString(36).slice(2),
+          ballNo: trigBallNo,
+          over: trigOver,
+          text: prose,
+          kind: "ai" as const,
+          scorerId: current.scorerId ?? undefined,
+          timestamp: new Date().toISOString(),
+        }
+        const newCommentary = [...current.commentary]
+        newCommentary.splice(idx + 1, 0, aiEntry)
+        const updated: LiveMatchState = {
+          ...current,
+          commentary: newCommentary.slice(0, 120),
+        }
+        setHistory((h) => [...h, current].slice(-50))
+        pushState(updated)
+        persist(updated)
+      })
+      .catch(() => {
+        // LLM call failed — silent (the route already swallows + returns null).
+      })
+  }
+
   function handleBall(event: BallEvent) {
     if (!liveState) return
     setHistory((h) => [...h, liveState].slice(-50))
     const next = applyBall(liveState, event)
     pushState(next)
     persist(next)
+    // AI commentary — fire-and-forget. Non-blocking: the templated entry +
+    // state are already pushed; the AI prose arrives ~1-2s later and is
+    // inserted after the triggering ball entry. Gated to key events only.
+    maybeGenerateAiCommentary(liveState, next, event)
     // Audit trail — log every ball scored
     if (id) logAudit(id, liveState.scorerId ?? null, "ball_scored", next.ballNo, `${event.kind}${'runs' in event ? ` ${event.runs}` : ''}`, token)
   }
@@ -1316,6 +1462,30 @@ export function LiveScorerView() {
                   onWicket={() => setWicketOpen(true)}
                   onNoBall={() => setNoballOpen(true)}
                 />
+              )}
+
+              {/* AI commentary toggle — when ON, the scorer auto-generates a
+                  short prose line for key events (wickets, boundaries,
+                  sixes, milestones, over-end) via /api/ai-commentary. AUGMENTS
+                  the templated feed — the structured ball entries stay as the
+                  canonical record (they power jump-to-ball, badges, charts). */}
+              {!isComplete && !showSetup && liveState && (
+                <div className="flex items-center justify-between rounded-lg border bg-card px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                    <div className="flex flex-col">
+                      <span className="text-xs font-semibold">AI Commentary</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        Auto-narrates wickets, boundaries, sixes &amp; milestones
+                      </span>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={aiCommentaryEnabled}
+                    onCheckedChange={setAiCommentaryEnabled}
+                    aria-label="Toggle AI commentary"
+                  />
+                </div>
               )}
 
               {/* Human / manual commentary input — only shown when there's an
@@ -2947,12 +3117,18 @@ function CommentaryFeed({
                   c.kind === "over" && "font-semibold text-foreground",
                   c.kind === "info" && "italic text-muted-foreground",
                   c.kind === "dot" && "text-muted-foreground/70 tabular-nums",
+                  c.kind === "ai" && "italic text-foreground/80",
                   isManual && "text-foreground"
                 )}
               >
                 {isManual && (
                   <span className="mr-1 inline-block rounded bg-blue-600 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white align-middle">
                     Commentator
+                  </span>
+                )}
+                {c.kind === "ai" && (
+                  <span className="mr-1 inline-block rounded bg-slate-700 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white align-middle">
+                    AI
                   </span>
                 )}
                 {c.text.startsWith("[audio:") ? (

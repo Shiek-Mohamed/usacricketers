@@ -112,6 +112,7 @@ export interface CommentaryEntry {
     | "dot"
     | "manual"
     | "milestone"
+    | "ai"
   /** Who scored this ball — the scorer's ID from their session token.
    *  Closes scoring data gap #10 (scorer identity per ball). */
   scorerId?: string

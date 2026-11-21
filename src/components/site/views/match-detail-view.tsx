@@ -514,6 +514,14 @@ function commentaryColors(kind: string): {
         text: "text-foreground",
         border: "border-l-2 border-sky-500 pl-2",
       }
+    case "ai":
+      // AI-generated prose — neutral slate badge + italic text so it reads
+      // as narrative rather than a stat line. AUGMENTS the templated feed
+      // (the structured ball entry it describes sits directly above it).
+      return {
+        badge: "bg-slate-700 text-white",
+        text: "italic text-foreground/80",
+      }
     default:
       return { badge: "bg-muted text-muted-foreground", text: "text-foreground" }
   }
@@ -612,6 +620,7 @@ function CommentaryFeed({
               {group.entries.map((entry) => {
                 const colors = commentaryColors(entry.kind)
                 const isManual = entry.kind === "manual"
+                const isAi = entry.kind === "ai"
                 return (
                   <div
                     key={entry.id}
@@ -632,6 +641,11 @@ function CommentaryFeed({
                       {isManual && (
                         <span className="mr-1 inline-block rounded bg-sky-600 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white align-middle">
                           Commentator
+                        </span>
+                      )}
+                      {isAi && (
+                        <span className="mr-1 inline-block rounded bg-slate-700 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white align-middle">
+                          AI
                         </span>
                       )}
                       {entry.text.startsWith("[audio:") ? (

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useAppStore } from "@/lib/store"
 import { useMatch } from "@/lib/use-data"
 import type { Match } from "@/lib/types"
@@ -48,6 +48,7 @@ import {
   MessageSquare,
   Radio,
   Mic,
+  Volume2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ShareButtons } from "@/components/site/share-buttons"
@@ -719,6 +720,79 @@ export function MatchDetailView() {
     return []
   }, [liveState])
 
+  /* ------------------ AI commentary audio autoplay ------------------
+   * Mobile browsers (iOS Safari especially) block audio.play() without a
+   * prior user gesture. So the viewer taps "Enable commentary audio" once —
+   * that gesture unlocks the audio context, after which new AI clips autoplay
+   * as balls are scored. The preference persists in localStorage so the
+   * viewer doesn't re-enable on every visit.
+   *
+   * Only NEW AI entries (arriving after enable) are played — old entries are
+   * tracked via lastPlayedAiId so the viewer never hears a stale line when
+   * they first enable mid-match. Uses the live `commentary` feed (not the
+   * persisted fallback) because autoplay only matters for live matches. */
+  const [audioEnabled, setAudioEnabled] = useState(false)
+  const lastPlayedAiId = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    if (window.localStorage.getItem("ai-audio-enabled") === "1") {
+      // setState-in-effect is unavoidable here: localStorage isn't available
+      // during SSR, so the persisted preference MUST be read post-mount.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAudioEnabled(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!commentary.length) return
+    // Commentary is newest-first — find the most recent AI entry with audio.
+    const newestAi = commentary.find((c) => c.kind === "ai" && c.audioUrl)
+    if (!newestAi || !newestAi.audioUrl) {
+      lastPlayedAiId.current = null
+      return
+    }
+    if (newestAi.id === lastPlayedAiId.current) return // already handled
+    // Mark as seen regardless of enable state, so we never replay an entry
+    // that arrived before the viewer enabled audio.
+    lastPlayedAiId.current = newestAi.id
+    if (!audioEnabled) return
+    // Autoplay the new clip. The viewer's prior "Enable" tap unlocked the
+    // audio context, so programmatic play() succeeds on mobile.
+    const audio = new Audio(newestAi.audioUrl)
+    audio.play().catch(() => {
+      // Play was blocked (unlock expired / tab backgrounded). The viewer
+      // can still tap play on the inline player below the prose.
+    })
+  }, [commentary, audioEnabled])
+
+  function enableAudio() {
+    // Unlock the audio context within the user gesture. iOS Safari requires a
+    // real play() call inside the gesture handler to allow subsequent
+    // programmatic playback. A tiny silent WAV does the unlock.
+    const silent = new Audio(
+      "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA="
+    )
+    silent
+      .play()
+      .then(() => {
+        silent.pause()
+        setAudioEnabled(true)
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem("ai-audio-enabled", "1")
+        }
+      })
+      .catch(() => {
+        // Even if the silent play fails, try enabling — some browsers
+        // unlock on the gesture alone. The watcher effect's play() calls
+        // will succeed or no-op via their own .catch().
+        setAudioEnabled(true)
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem("ai-audio-enabled", "1")
+        }
+      })
+  }
+
   if (loading) return <MatchDetailSkeleton />
 
   if (error || !data) {
@@ -909,6 +983,26 @@ export function MatchDetailView() {
                     <LiveBattingStrip state={liveState} />
                   </div>
                 </div>
+
+                {/* AI commentary audio — tap once to enable autoplay. Mobile
+                    browsers block audio without a user gesture; after enabling,
+                    new AI lines speak automatically as balls are scored. */}
+                {isLive && !audioEnabled && (
+                  <button
+                    type="button"
+                    onClick={enableAudio}
+                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-emerald-700"
+                  >
+                    <Volume2 className="h-3.5 w-3.5" />
+                    Enable commentary audio
+                  </button>
+                )}
+                {isLive && audioEnabled && (
+                  <div className="flex items-center justify-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
+                    <Volume2 className="h-3 w-3" />
+                    Commentary audio on — AI lines play automatically
+                  </div>
+                )}
 
                 {/* Commentary feed */}
                 <CommentaryFeed commentary={effectiveCommentary} />
